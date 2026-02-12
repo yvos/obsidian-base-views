@@ -142,6 +142,11 @@
    Custom Table View (Bases)
    ================================================ */
 
+.tn-tasknotesCustomTable {
+    --tn-bases-row-height: 40px;
+    --tn-bases-row-line-clamp: 1;
+}
+
 .tn-tasknotesCustomTable .tn-bases-table-scroll {
     flex: 1;
     overflow-y: auto;
@@ -193,6 +198,12 @@
     min-width: var(--tn-table-min-width, 640px);
 }
 
+.tn-tasknotesCustomTable .tn-bases-table-row--virtual {
+    align-items: stretch;
+    height: var(--tn-bases-row-height);
+    border-bottom: 1px solid var(--tn-border-color);
+}
+
 .tn-tasknotesCustomTable .tn-bases-table-header-cell--virtual {
     position: sticky;
     top: 0;
@@ -204,6 +215,11 @@
     border-collapse: separate;
     border-spacing: 0;
     min-width: 640px;
+    table-layout: fixed;
+}
+
+.tn-tasknotesCustomTable .tn-bases-custom-table .tn-bases-table-row {
+    height: var(--tn-bases-row-height);
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-header-cell {
@@ -226,9 +242,27 @@
 
 .tn-tasknotesCustomTable .tn-bases-table-cell {
     border-bottom: 1px solid var(--tn-border-color);
-    padding: 8px 12px;
+    padding: 0 12px;
     color: var(--tn-text-normal);
     vertical-align: middle;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.tn-tasknotesCustomTable .tn-bases-custom-table .tn-bases-table-cell {
+    height: var(--tn-bases-row-height);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-row--virtual > .tn-bases-table-cell {
+    border-bottom: none;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-row--virtual > .tn-bases-table-cell > * {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-cell--empty {
@@ -238,6 +272,16 @@
 .tn-tasknotesCustomTable .tn-bases-table-file-link {
     color: var(--text-accent);
     text-decoration: none;
+    max-width: 100%;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-text-value,
+.tn-tasknotesCustomTable .tn-bases-table-file-link {
+    display: -webkit-box;
+    -webkit-line-clamp: var(--tn-bases-row-line-clamp);
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-file-link:hover {
@@ -272,24 +316,24 @@
 }
 
 /* Row height options */
-.tn-tasknotesCustomTable.tn-bases-table-row-height-short .tn-bases-table-cell {
-    padding-top: 4px;
-    padding-bottom: 4px;
+.tn-tasknotesCustomTable.tn-bases-table-row-height-short {
+    --tn-bases-row-height: 32px;
+    --tn-bases-row-line-clamp: 1;
 }
 
-.tn-tasknotesCustomTable.tn-bases-table-row-height-medium .tn-bases-table-cell {
-    padding-top: 8px;
-    padding-bottom: 8px;
+.tn-tasknotesCustomTable.tn-bases-table-row-height-medium {
+    --tn-bases-row-height: 40px;
+    --tn-bases-row-line-clamp: 1;
 }
 
-.tn-tasknotesCustomTable.tn-bases-table-row-height-tall .tn-bases-table-cell {
-    padding-top: 12px;
-    padding-bottom: 12px;
+.tn-tasknotesCustomTable.tn-bases-table-row-height-tall {
+    --tn-bases-row-height: 56px;
+    --tn-bases-row-line-clamp: 2;
 }
 
-.tn-tasknotesCustomTable.tn-bases-table-row-height-extraTall .tn-bases-table-cell {
-    padding-top: 16px;
-    padding-bottom: 16px;
+.tn-tasknotesCustomTable.tn-bases-table-row-height-extraTall {
+    --tn-bases-row-height: 72px;
+    --tn-bases-row-line-clamp: 3;
 }
 
 @media (max-width: 768px) {

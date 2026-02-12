@@ -779,7 +779,10 @@ export class CustomTableView extends BasesViewBase {
 			}
 		}
 
-		cellEl.setText(this.valueToString(value));
+		const textEl = this.containerEl.ownerDocument.createElement("span");
+		textEl.className = "tn-bases-table-text-value";
+		textEl.setText(this.valueToString(value));
+		cellEl.appendChild(textEl);
 	}
 
 	private valueToString(value: any): string {

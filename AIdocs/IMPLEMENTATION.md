@@ -23,6 +23,7 @@
   - `file.name` 列のリンク描画（クリックでノートを開く）
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
   - 行高設定（`short` / `medium` / `tall` / `extraTall`）
+    - 固定行高として適用（`short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
   - 列ごとの summary 設定（右クリック）
   - `tableSummaries` の config 永続化
   - 再描画タイミング最適化
@@ -82,6 +83,8 @@
 - 仮想行は `display: grid` をインラインでも指定し、テーマやCSS競合時の列崩れを抑制している。
 - スクロール責務は基本的に `tn-bases-table-scroll`（縦）と `tn-bases-table-wrapper`（横）で分離している。
 - 仮想レイアウト再構築時は `virtualColumnTemplate` / `virtualMinWidth` を再設定してからヘッダー/行を生成する実装となっている。
+- 仮想行の区切り線は行単位で描画し、セル単位の高さ差で罫線がずれないようにしている。
+- テキスト/リンクは行高設定に応じたline-clampを適用（`short/medium=1行`, `tall=2行`, `extraTall=3行`）。
 - summary は設定された列のみ表示し、未設定列は空セル。
 - セル描画は `Value.renderTo(...)` を試し、失敗時は文字列描画にフォールバック。
 - TaskListView と違い、Custom Table View は TaskNotes 判定で絞り込まず Base の全エントリを表示。
