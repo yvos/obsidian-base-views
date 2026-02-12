@@ -144,7 +144,8 @@
 
 .tn-tasknotesCustomTable .tn-bases-table-scroll {
     flex: 1;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
     padding: var(--tn-spacing-sm);
 }
@@ -162,9 +163,40 @@
 
 .tn-tasknotesCustomTable .tn-bases-table-wrapper {
     overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
     border: 1px solid var(--tn-border-color);
     border-radius: var(--tn-radius-md);
     background: var(--tn-bg-primary);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-virtual {
+    display: flex;
+    flex-direction: column;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-virtual-viewport {
+    position: relative;
+    min-height: 0;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-virtual-host {
+    position: relative;
+    min-width: var(--tn-table-min-width, 640px);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-header-row--virtual,
+.tn-tasknotesCustomTable .tn-bases-table-row--virtual,
+.tn-tasknotesCustomTable .tn-bases-table-summary-row--virtual {
+    display: grid;
+    align-items: center;
+    min-width: var(--tn-table-min-width, 640px);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-header-cell--virtual {
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .tn-tasknotesCustomTable .tn-bases-custom-table {
@@ -230,6 +262,15 @@
     white-space: nowrap;
 }
 
+.tn-tasknotesCustomTable .tn-bases-table-group-title-row {
+    border-bottom: 1px solid var(--tn-border-color);
+    background: var(--tn-bg-secondary);
+    padding: 8px 12px;
+    font-size: var(--tn-font-size-sm);
+    font-weight: var(--tn-font-weight-medium);
+    color: var(--tn-text-muted);
+}
+
 /* Row height options */
 .tn-tasknotesCustomTable.tn-bases-table-row-height-short .tn-bases-table-cell {
     padding-top: 4px;
@@ -249,6 +290,13 @@
 .tn-tasknotesCustomTable.tn-bases-table-row-height-extraTall .tn-bases-table-cell {
     padding-top: 16px;
     padding-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .tn-tasknotesCustomTable .tn-bases-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 /* Kanban Board Styles */
