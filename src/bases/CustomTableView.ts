@@ -23,6 +23,9 @@ export class CustomTableView extends BasesViewBase {
 	private rowHeight: RowHeightOption = "medium";
 	private tableSummaries: Record<string, TableSummaryKey> = {};
 	private configLoaded = false;
+	private hasHandledFirstDataUpdate = false;
+	private lastViewConfigSignature = "";
+	private readonly NORMAL_UPDATE_DEBOUNCE_MS = 120;
 
 	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
 		super(controller, containerEl, plugin);
@@ -32,6 +35,54 @@ export class CustomTableView extends BasesViewBase {
 	onload(): void {
 		this.readViewOptions();
 		super.onload();
+	}
+
+	/**
+	 * Optimize update timing:
+	 * - First data update: render immediately.
+	 * - View config changes (sort/order/group/options): render immediately.
+	 * - Regular data churn: short debounce to avoid excessive rerenders.
+	 */
+	onDataUpdated(): void {
+		if (!this.rootElement?.isConnected) {
+			return;
+		}
+
+		const currentSignature = this.buildViewConfigSignature();
+		const configChanged = currentSignature !== this.lastViewConfigSignature;
+		this.lastViewConfigSignature = currentSignature;
+
+		const shouldRenderImmediately = !this.hasHandledFirstDataUpdate || configChanged;
+		const delay = shouldRenderImmediately ? 0 : this.NORMAL_UPDATE_DEBOUNCE_MS;
+
+		if (this.dataUpdateDebounceTimer) {
+			clearTimeout(this.dataUpdateDebounceTimer);
+		}
+
+		const win = this.containerEl.ownerDocument.defaultView || window;
+		this.dataUpdateDebounceTimer = win.setTimeout(() => {
+			this.dataUpdateDebounceTimer = null;
+			this.hasHandledFirstDataUpdate = true;
+			try {
+				this.render();
+			} catch (error) {
+				console.error(`[TaskNotes][${this.type}] Render error:`, error);
+				this.renderError(error as Error);
+			}
+		}, delay);
+	}
+
+	private buildViewConfigSignature(): string {
+		try {
+			const order = JSON.stringify(this.config?.getOrder?.() ?? []);
+			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
+			const rowHeight = String(this.config?.get?.("rowHeight") ?? "medium");
+			const summaries = JSON.stringify(this.config?.get?.("tableSummaries") ?? {});
+			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
+			return `${order}|${sort}|${rowHeight}|${summaries}|${grouped}`;
+		} catch {
+			return "";
+		}
 	}
 
 	protected setupContainer(): void {

@@ -5,6 +5,7 @@
 # 1. 実装状況のサマリー
 - Bases 連携として、Task List / Kanban / Calendar / Mini Calendar の各カスタムビューを実装済み。
 - 2026-02-09 時点で `tasknotesCustomTable`（Custom Table View）を追加し、テーブル表示と組み込み summary を実装。
+- 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -23,6 +24,9 @@
   - 行高設定（`short` / `medium` / `tall` / `extraTall`）
   - 列ごとの summary 設定（右クリック）
   - `tableSummaries` の config 永続化
+  - 再描画タイミング最適化
+    - 初回データ更新と view 設定変更（sort/order/group/options）は即時描画
+    - 通常データ更新のみ短デバウンス（120ms）
 - 組み込み summary
   - 共通: `empty`, `filled`, `unique`
   - 数値: `sum`, `avg`, `min`, `max`
