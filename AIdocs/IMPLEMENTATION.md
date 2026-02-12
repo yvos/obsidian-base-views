@@ -1,0 +1,87 @@
+# 0. この文章の意義、位置づけ
+このファイルは、TaskNotes の**現在の実装状態**を共有するためのスナップショットです。  
+最終仕様は `AIdocs/SPEC.md`（存在する場合）を優先し、本書は仕様確定文書ではありません。
+
+# 1. 実装状況のサマリー
+- Bases 連携として、Task List / Kanban / Calendar / Mini Calendar の各カスタムビューを実装済み。
+- 2026-02-09 時点で `tasknotesCustomTable`（Custom Table View）を追加し、テーブル表示と組み込み summary を実装。
+- Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
+
+# 2. 実装済み機能
+- Bases カスタムビュー登録/解除
+  - `tasknotesTaskList`
+  - `tasknotesCustomTable`
+  - `tasknotesKanban`
+  - `tasknotesCalendar`
+  - `tasknotesMiniCalendar`
+- Custom Table View (`tasknotesCustomTable`)
+  - Base フィルタ結果の全エントリを 1行=1ファイルで表示
+  - `config.getOrder()` に従った列順
+  - grouped / ungrouped 両対応
+  - `file.name` 列のリンク描画（クリックでノートを開く）
+  - `Value.renderTo(...)` 優先 + `toString()` フォールバック
+  - 行高設定（`short` / `medium` / `tall` / `extraTall`）
+  - 列ごとの summary 設定（右クリック）
+  - `tableSummaries` の config 永続化
+- 組み込み summary
+  - 共通: `empty`, `filled`, `unique`
+  - 数値: `sum`, `avg`, `min`, `max`
+  - 日付: `earliest`, `latest`, `range`
+  - 真偽: `checked`, `unchecked`
+
+# 3. ファイル構造
+- `src/bases/CustomTableView.ts`
+  - Custom Table View 本体
+- `src/bases/tableSummary.ts`
+  - summary 判定・集計の純粋関数
+- `src/bases/registration.ts`
+  - Bases view の登録/解除
+- `src/bases/api.ts`
+  - Bases API ラッパー型
+- `src/releaseNotes.ts`
+  - リリースノート束ね込みファイルのフォールバック（未生成時のコンパイル用）
+- `styles/bases-views.css`
+  - Bases 系 view のスタイル
+- `tests/unit/bases/tableSummary.test.ts`
+  - summary ロジックのユニットテスト
+
+# 4. データ構造
+- `tableSummaries: Record<propertyId, summaryKey>`
+  - Custom Table View の列ごとの summary 設定
+  - `BasesViewConfig.set/get("tableSummaries")` で保存
+- `rowHeight: "short" | "medium" | "tall" | "extraTall"`
+  - View option から取得する行高設定
+
+# 5. 挙動の詳細や注意点
+- grouped 時は各グループのテーブル先頭に summary 行を表示。
+- ungrouped 時はテーブル下部（tfoot）に summary 行を表示。
+- summary は設定された列のみ表示し、未設定列は空セル。
+- セル描画は `Value.renderTo(...)` を試し、失敗時は文字列描画にフォールバック。
+- TaskListView と違い、Custom Table View は TaskNotes 判定で絞り込まず Base の全エントリを表示。
+
+# 6. SPEC との差分、ずれ
+- `AIdocs/SPEC.md` が本リポジトリに存在しないため、差分評価は未実施。
+
+# 7. 未実装な点
+- セル直接編集（text/number/checkbox）
+- 複数セル選択
+- コピー/貼り付け
+- Undo/Redo
+- カスタム summary 式
+
+# 8. 既知の制限
+- 大規模データ向けの仮想スクロールは未導入（MVP 優先）。
+- 検証コマンド（`npm run typecheck`, `npm run build`）は、実行環境に `node`/`npm` がないため未実行。
+- `src/releaseNotes.ts` はビルド時に `generate-release-notes-import.mjs` で上書きされる想定。
+
+# 9. AI向けの注意点
+- Bases 実装の参照優先:
+  - `src/bases/BasesViewBase.ts`
+  - `src/bases/registration.ts`
+  - `src/bases/api.ts`
+- Custom Table View 変更時は以下を同時確認:
+  - 表示ロジック: `src/bases/CustomTableView.ts`
+  - 集計ロジック: `src/bases/tableSummary.ts`
+  - スタイル: `styles/bases-views.css`
+  - テスト: `tests/unit/bases/tableSummary.test.ts`
+- `AIdocs/obsidian.d.ts` は必要箇所のみ参照し、通読しない。

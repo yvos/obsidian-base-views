@@ -138,6 +138,119 @@
     margin: var(--tn-spacing-lg) 0;
 }
 
+/* ================================================
+   Custom Table View (Bases)
+   ================================================ */
+
+.tn-tasknotesCustomTable .tn-bases-table-scroll {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+    padding: var(--tn-spacing-sm);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-group {
+    margin-bottom: var(--tn-spacing-lg);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-group-title {
+    margin: 0 0 var(--tn-spacing-sm) 0;
+    font-size: var(--tn-font-size-md);
+    font-weight: var(--tn-font-weight-semibold);
+    color: var(--tn-text-normal);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--tn-border-color);
+    border-radius: var(--tn-radius-md);
+    background: var(--tn-bg-primary);
+}
+
+.tn-tasknotesCustomTable .tn-bases-custom-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 640px;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-header-cell {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: left;
+    font-size: var(--tn-font-size-sm);
+    font-weight: var(--tn-font-weight-semibold);
+    color: var(--tn-text-normal);
+    background: var(--tn-bg-secondary);
+    border-bottom: 1px solid var(--tn-border-color);
+    padding: 10px 12px;
+    white-space: nowrap;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-row:hover .tn-bases-table-cell {
+    background: var(--tn-interactive-hover);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-cell {
+    border-bottom: 1px solid var(--tn-border-color);
+    padding: 8px 12px;
+    color: var(--tn-text-normal);
+    vertical-align: middle;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-cell--empty {
+    color: var(--tn-text-faint);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-file-link {
+    color: var(--text-accent);
+    text-decoration: none;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-file-link:hover {
+    text-decoration: underline;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-summary-row {
+    background: var(--tn-bg-secondary);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-summary-row--group {
+    background: var(--tn-bg-primary);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-summary-cell {
+    border-bottom: 1px solid var(--tn-border-color);
+    border-top: 1px solid var(--tn-border-color);
+    padding: 8px 12px;
+    font-size: var(--tn-font-size-xs);
+    font-weight: var(--tn-font-weight-medium);
+    color: var(--tn-text-muted);
+    white-space: nowrap;
+}
+
+/* Row height options */
+.tn-tasknotesCustomTable.tn-bases-table-row-height-short .tn-bases-table-cell {
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.tn-tasknotesCustomTable.tn-bases-table-row-height-medium .tn-bases-table-cell {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.tn-tasknotesCustomTable.tn-bases-table-row-height-tall .tn-bases-table-cell {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.tn-tasknotesCustomTable.tn-bases-table-row-height-extraTall .tn-bases-table-cell {
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
 /* Kanban Board Styles */
 .tn-bases-kanban-board {
     display: flex;
@@ -242,6 +355,14 @@
 
 /* Responsive design for Bases views */
 @media (max-width: 768px) {
+    .tn-tasknotesCustomTable .tn-bases-table-scroll {
+        padding: var(--tn-spacing-xs);
+    }
+
+    .tn-tasknotesCustomTable .tn-bases-custom-table {
+        min-width: 520px;
+    }
+
     .tn-bases-kanban-board {
         gap: var(--tn-spacing-sm);
     }

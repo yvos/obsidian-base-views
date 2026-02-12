@@ -5,6 +5,7 @@ import { buildTaskListViewFactory } from "./TaskListView";
 import { buildKanbanViewFactory } from "./KanbanView";
 import { buildCalendarViewFactory } from "./CalendarView";
 import { buildMiniCalendarViewFactory } from "./MiniCalendarView";
+import { buildCustomTableViewFactory } from "./CustomTableView";
 import { registerBasesView, unregisterBasesView } from "./api";
 
 /**
@@ -39,6 +40,27 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 						key: "enableSearch",
 						displayName: "Enable search box",
 						default: false,
+					},
+				],
+			});
+
+			// Register Custom Table view using public API
+			const customTableSuccess = registerBasesView(plugin, "tasknotesCustomTable", {
+				name: "TaskNotes Table",
+				icon: "table",
+				factory: buildCustomTableViewFactory(plugin),
+				options: () => [
+					{
+						type: "dropdown",
+						key: "rowHeight",
+						displayName: "Row height",
+						default: "medium",
+						options: {
+							short: "Short",
+							medium: "Medium",
+							tall: "Tall",
+							extraTall: "Extra tall",
+						},
 					},
 				],
 			});
@@ -515,7 +537,7 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 			});
 
 			// Consider it successful if any view registered successfully
-			if (!taskListSuccess && !kanbanSuccess && !calendarSuccess && !miniCalendarSuccess) {
+			if (!taskListSuccess && !customTableSuccess && !kanbanSuccess && !calendarSuccess && !miniCalendarSuccess) {
 				console.debug("[TaskNotes][Bases] Bases plugin not available for registration");
 				return false;
 			}
@@ -567,6 +589,7 @@ export function unregisterBasesViews(plugin: TaskNotesPlugin): void {
 	try {
 		// Unregister views using wrapper (uses internal API as public API doesn't provide unregister)
 		unregisterBasesView(plugin, "tasknotesTaskList");
+		unregisterBasesView(plugin, "tasknotesCustomTable");
 		unregisterBasesView(plugin, "tasknotesKanban");
 		unregisterBasesView(plugin, "tasknotesCalendar");
 		unregisterBasesView(plugin, "tasknotesMiniCalendar");

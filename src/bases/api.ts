@@ -54,7 +54,7 @@ export interface DropdownOption {
 	type: "dropdown";
 	key: string;
 	displayName: string;
-	options: string[];
+	options: Record<string, string>;
 	default?: string;
 }
 
