@@ -24,6 +24,9 @@
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
   - 行高設定（`short` / `medium` / `tall` / `extraTall`）
     - 固定行高として適用（`short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
+  - 列幅設定（`columnSize` 互換形式）
+    - ヘッダー境界ドラッグで対象列のみ幅変更
+    - 変更時のみ `columnSize: Record<propertyId, px>` を保存
   - 列ごとの summary 設定（右クリック）
   - `tableSummaries` の config 永続化
   - 再描画タイミング最適化
@@ -47,6 +50,8 @@
   - Custom Table View 本体
 - `src/bases/customTableVirtualization.ts`
   - 仮想化判定と grouped フラット化ロジック
+- `src/bases/tableColumnSizing.ts`
+  - 列幅正規化・テンプレート生成・合計幅計算の純粋関数
 - `src/bases/tableSummary.ts`
   - summary 判定・集計の純粋関数
 - `src/bases/registration.ts`
@@ -63,6 +68,8 @@
   - 仮想化閾値判定ロジックのユニットテスト
 - `tests/unit/bases/customTableGroupedFlatten.test.ts`
   - grouped フラット化順序のユニットテスト
+- `tests/unit/bases/tableColumnSizing.test.ts`
+  - 列幅ロジックのユニットテスト
 
 # 4. データ構造
 - `tableSummaries: Record<propertyId, summaryKey>`
@@ -70,6 +77,8 @@
   - `BasesViewConfig.set/get("tableSummaries")` で保存
 - `rowHeight: "short" | "medium" | "tall" | "extraTall"`
   - View option から取得する行高設定
+- `columnSize: Record<propertyId, number>`
+  - 列幅の永続化設定（変更列のみ）
 - `VirtualGroupedItem`
   - grouped 仮想描画で使用する内部表現
   - `group-header` / `group-summary` / `row` の3種を保持
@@ -81,9 +90,11 @@
   - ungrouped: 仮想リスト下部に全体 summary 行
   - grouped: 各グループ header 直下に group summary 行
 - 仮想行は `display: grid` をインラインでも指定し、テーマやCSS競合時の列崩れを抑制している。
-- スクロール責務は基本的に `tn-bases-table-scroll`（縦）と `tn-bases-table-wrapper`（横）で分離している。
+- スクロール責務は `tn-bases-table-scroll` が主担当（縦・横）で、`tn-bases-table-wrapper` はレイアウト枠として機能する。
 - 仮想レイアウト再構築時は `virtualColumnTemplate` / `virtualMinWidth` を再設定してからヘッダー/行を生成する実装となっている。
 - 仮想行の区切り線は行単位で描画し、セル単位の高さ差で罫線がずれないようにしている。
+- 列幅はヘッダー境界ドラッグで変更でき、通常描画（colgroup）と仮想描画（grid template）に同時反映する。
+- 列幅合計が表示幅を超えると横スクロールバーが表示される。
 - テキスト/リンクは行高設定に応じたline-clampを適用（`short/medium=1行`, `tall=2行`, `extraTall=3行`）。
 - summary は設定された列のみ表示し、未設定列は空セル。
 - セル描画は `Value.renderTo(...)` を試し、失敗時は文字列描画にフォールバック。
@@ -113,7 +124,8 @@
 - Custom Table View 変更時は以下を同時確認:
   - 表示ロジック: `src/bases/CustomTableView.ts`
   - 仮想化ロジック: `src/bases/customTableVirtualization.ts`
+  - 列幅ロジック: `src/bases/tableColumnSizing.ts`
   - 集計ロジック: `src/bases/tableSummary.ts`
   - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`
+  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
 - `AIdocs/obsidian.d.ts` は必要箇所のみ参照し、通読しない。

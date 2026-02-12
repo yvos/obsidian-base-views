@@ -150,7 +150,7 @@
 .tn-tasknotesCustomTable .tn-bases-table-scroll {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
     min-height: 0;
     padding: var(--tn-spacing-sm);
 }
@@ -167,7 +167,7 @@
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-wrapper {
-    overflow-x: auto;
+    overflow-x: visible;
     overflow-y: hidden;
     max-width: 100%;
     border: 1px solid var(--tn-border-color);
@@ -187,7 +187,7 @@
 
 .tn-tasknotesCustomTable .tn-bases-table-virtual-host {
     position: relative;
-    min-width: var(--tn-table-min-width, 640px);
+    min-width: max(100%, var(--tn-table-min-width, 640px));
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-header-row--virtual,
@@ -195,7 +195,7 @@
 .tn-tasknotesCustomTable .tn-bases-table-summary-row--virtual {
     display: grid;
     align-items: center;
-    min-width: var(--tn-table-min-width, 640px);
+    min-width: max(100%, var(--tn-table-min-width, 640px));
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-row--virtual {
@@ -211,10 +211,10 @@
 }
 
 .tn-tasknotesCustomTable .tn-bases-custom-table {
-    width: 100%;
+    width: max-content;
     border-collapse: separate;
     border-spacing: 0;
-    min-width: 640px;
+    min-width: max(100%, var(--tn-table-min-width, 640px));
     table-layout: fixed;
 }
 
@@ -234,6 +234,19 @@
     border-bottom: 1px solid var(--tn-border-color);
     padding: 10px 12px;
     white-space: nowrap;
+    min-width: 0;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-header-cell,
+.tn-tasknotesCustomTable .tn-bases-table-cell,
+.tn-tasknotesCustomTable .tn-bases-table-summary-cell {
+    border-inline-end: 1px solid var(--tn-border-color);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-header-cell:last-child,
+.tn-tasknotesCustomTable .tn-bases-table-cell:last-child,
+.tn-tasknotesCustomTable .tn-bases-table-summary-cell:last-child {
+    border-inline-end: none;
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-row:hover .tn-bases-table-cell {
@@ -306,6 +319,24 @@
     white-space: nowrap;
 }
 
+.tn-tasknotesCustomTable .tn-bases-table-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 4;
+    touch-action: none;
+    background: transparent;
+}
+
+.tn-tasknotesCustomTable.tn-bases-table--resizing,
+.tn-tasknotesCustomTable.tn-bases-table--resizing * {
+    cursor: col-resize !important;
+    user-select: none;
+}
+
 .tn-tasknotesCustomTable .tn-bases-table-group-title-row {
     border-bottom: 1px solid var(--tn-border-color);
     background: var(--tn-bg-secondary);
@@ -338,7 +369,7 @@
 
 @media (max-width: 768px) {
     .tn-tasknotesCustomTable .tn-bases-table-wrapper {
-        overflow-x: auto;
+        overflow-x: visible;
         -webkit-overflow-scrolling: touch;
     }
 }
@@ -452,7 +483,7 @@
     }
 
     .tn-tasknotesCustomTable .tn-bases-custom-table {
-        min-width: 520px;
+        min-width: max(520px, var(--tn-table-min-width, 640px));
     }
 
     .tn-bases-kanban-board {

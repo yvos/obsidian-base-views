@@ -15,6 +15,16 @@ import {
 	shouldUseUngroupedVirtualization,
 	VirtualGroupedItem,
 } from "./customTableVirtualization";
+import {
+	buildColumnTemplateFromWidths,
+	calcTotalColumnWidth,
+	ColumnSizeMap,
+	DEFAULT_TABLE_COLUMN_WIDTH,
+	MIN_TABLE_COLUMN_WIDTH,
+	normalizeColumnSizeMap,
+	resolveColumnWidths,
+	setColumnSizeValue,
+} from "./tableColumnSizing";
 
 type RowHeightOption = "short" | "medium" | "tall" | "extraTall";
 type VirtualMode = "none" | "ungrouped" | "grouped";
@@ -41,6 +51,7 @@ export class CustomTableView extends BasesViewBase {
 	private tableScrollEl: HTMLElement | null = null;
 	private rowHeight: RowHeightOption = "medium";
 	private tableSummaries: Record<string, TableSummaryKey> = {};
+	private columnSize: ColumnSizeMap = {};
 	private configLoaded = false;
 	private hasHandledFirstDataUpdate = false;
 	private lastViewConfigSignature = "";
@@ -53,9 +64,15 @@ export class CustomTableView extends BasesViewBase {
 	private virtualItemsHostEl: HTMLElement | null = null;
 	private virtualHeaderRowEl: HTMLElement | null = null;
 	private virtualFooterRowEl: HTMLElement | null = null;
+	private virtualContainerEl: HTMLElement | null = null;
 	private virtualMenuEntries: EntryLike[] = [];
 	private virtualColumnTemplate = "";
 	private virtualMinWidth = "";
+	private renderedTables: HTMLTableElement[] = [];
+	private activeColumnResizeCleanup: (() => void) | null = null;
+
+	private readonly DEFAULT_COLUMN_WIDTH = DEFAULT_TABLE_COLUMN_WIDTH;
+	private readonly MIN_COLUMN_WIDTH = MIN_TABLE_COLUMN_WIDTH;
 
 	private readonly VIRTUAL_THRESHOLD_UNGROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_UNGROUPED;
 	private readonly VIRTUAL_THRESHOLD_GROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_GROUPED;
@@ -70,6 +87,7 @@ export class CustomTableView extends BasesViewBase {
 		this.readViewOptions();
 		super.onload();
 		this.register(() => this.destroyVirtualScroller());
+		this.register(() => this.stopActiveColumnResize());
 	}
 
 	/**
@@ -113,8 +131,9 @@ export class CustomTableView extends BasesViewBase {
 			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
 			const rowHeight = String(this.config?.get?.("rowHeight") ?? "medium");
 			const summaries = JSON.stringify(this.config?.get?.("tableSummaries") ?? {});
+			const columnSize = JSON.stringify(this.config?.get?.("columnSize") ?? {});
 			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
-			return `${order}|${sort}|${rowHeight}|${summaries}|${grouped}`;
+			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${grouped}`;
 		} catch {
 			return "";
 		}
@@ -157,11 +176,17 @@ export class CustomTableView extends BasesViewBase {
 				this.tableSummaries = {};
 			}
 
+			this.columnSize = normalizeColumnSizeMap(
+				this.config.get("columnSize"),
+				this.MIN_COLUMN_WIDTH
+			);
+
 			this.configLoaded = true;
 		} catch (error) {
 			console.warn("[TaskNotes][CustomTableView] Failed to read view options:", error);
 			this.rowHeight = "medium";
 			this.tableSummaries = {};
+			this.columnSize = {};
 		}
 	}
 
@@ -257,7 +282,9 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private clearRenderedContent(): void {
+		this.stopActiveColumnResize();
 		this.destroyVirtualScroller();
+		this.renderedTables = [];
 		this.tableScrollEl?.empty();
 	}
 
@@ -322,10 +349,14 @@ export class CustomTableView extends BasesViewBase {
 		this.destroyVirtualScroller();
 		if (!this.tableScrollEl) return;
 		this.tableScrollEl.empty();
+		this.renderedTables = [];
 
 		const tableWrapper = this.containerEl.ownerDocument.createElement("div");
 		tableWrapper.className = "tn-bases-table-wrapper";
-		tableWrapper.appendChild(this.createTable(entries, columns, false));
+		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
+		const tableEl = this.createTable(entries, columns, false);
+		this.renderedTables.push(tableEl);
+		tableWrapper.appendChild(tableEl);
 		this.tableScrollEl.appendChild(tableWrapper);
 	}
 
@@ -333,6 +364,7 @@ export class CustomTableView extends BasesViewBase {
 		this.destroyVirtualScroller();
 		if (!this.tableScrollEl) return;
 		this.tableScrollEl.empty();
+		this.renderedTables = [];
 
 		for (const group of groups) {
 			this.renderGroupSection(group.title, group.entries, columns);
@@ -415,11 +447,13 @@ export class CustomTableView extends BasesViewBase {
 			this.virtualMenuEntries = menuEntries;
 			this.virtualColumnTemplate = template;
 			this.virtualMinWidth = minWidth;
+			this.syncVirtualLayoutDimensions();
 			return;
 		}
 
 		this.destroyVirtualScroller();
 		this.tableScrollEl.empty();
+		this.renderedTables = [];
 		this.virtualMenuEntries = menuEntries;
 		this.virtualColumnTemplate = template;
 		this.virtualMinWidth = minWidth;
@@ -429,6 +463,7 @@ export class CustomTableView extends BasesViewBase {
 		virtualContainer.className = "tn-bases-table-wrapper tn-bases-table-virtual";
 		virtualContainer.style.setProperty("--tn-table-columns-template", template);
 		virtualContainer.style.setProperty("--tn-table-min-width", minWidth);
+		virtualContainer.style.minWidth = minWidth;
 
 		const headerRow = this.createVirtualHeaderRow(columns);
 		virtualContainer.appendChild(headerRow);
@@ -449,12 +484,14 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		this.tableScrollEl.appendChild(virtualContainer);
+		this.virtualContainerEl = virtualContainer;
 		this.virtualItemsHostEl = host;
 		this.virtualHeaderRowEl = headerRow;
 		this.virtualFooterRowEl = footerRow;
 		this.virtualMode = mode;
 		this.virtualColumnsKey = columnsKey;
 		this.useVirtualScrolling = true;
+		this.syncVirtualLayoutDimensions();
 	}
 
 	private updateVirtualFooterSummary(entries: EntryLike[], columns: string[]): void {
@@ -469,8 +506,8 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		this.virtualFooterRowEl.style.display = "grid";
-		this.virtualFooterRowEl.style.gridTemplateColumns = this.virtualColumnTemplate;
-		this.virtualFooterRowEl.style.minWidth = this.virtualMinWidth;
+		this.virtualFooterRowEl.style.gridTemplateColumns = "var(--tn-table-columns-template)";
+		this.virtualFooterRowEl.style.minWidth = "var(--tn-table-min-width)";
 
 		for (const propertyId of columns) {
 			const cell = this.containerEl.ownerDocument.createElement("div");
@@ -492,10 +529,11 @@ export class CustomTableView extends BasesViewBase {
 		const row = doc.createElement("div");
 		row.className = "tn-bases-table-header-row tn-bases-table-header-row--virtual";
 		row.style.display = "grid";
-		row.style.gridTemplateColumns = this.virtualColumnTemplate;
-		row.style.minWidth = this.virtualMinWidth;
+		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
+		row.style.minWidth = "var(--tn-table-min-width)";
 
-		for (const propertyId of columns) {
+		for (let index = 0; index < columns.length; index++) {
+			const propertyId = columns[index];
 			const cell = doc.createElement("div");
 			cell.className = "tn-bases-table-header-cell tn-bases-table-header-cell--virtual";
 			cell.setText(this.config?.getDisplayName?.(propertyId) || propertyId);
@@ -503,6 +541,7 @@ export class CustomTableView extends BasesViewBase {
 			cell.addEventListener("contextmenu", (event) =>
 				this.showSummaryMenu(event as MouseEvent, propertyId, this.virtualMenuEntries)
 			);
+			this.appendColumnResizeHandle(cell, columns, propertyId, index === columns.length - 1);
 			row.appendChild(cell);
 		}
 
@@ -514,8 +553,8 @@ export class CustomTableView extends BasesViewBase {
 		const row = doc.createElement("div");
 		row.className = "tn-bases-table-row tn-bases-table-row--virtual";
 		row.style.display = "grid";
-		row.style.gridTemplateColumns = this.virtualColumnTemplate;
-		row.style.minWidth = this.virtualMinWidth;
+		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
+		row.style.minWidth = "var(--tn-table-min-width)";
 
 		for (const propertyId of columns) {
 			const cell = doc.createElement("div");
@@ -532,7 +571,7 @@ export class CustomTableView extends BasesViewBase {
 	): HTMLElement {
 		const row = this.containerEl.ownerDocument.createElement("div");
 		row.className = "tn-bases-table-group-title-row";
-		row.style.minWidth = this.virtualMinWidth;
+		row.style.minWidth = "var(--tn-table-min-width)";
 		row.setText(`${item.title} (${item.count})`);
 		return row;
 	}
@@ -544,8 +583,8 @@ export class CustomTableView extends BasesViewBase {
 		const row = this.containerEl.ownerDocument.createElement("div");
 		row.className = "tn-bases-table-summary-row tn-bases-table-summary-row--group tn-bases-table-summary-row--virtual";
 		row.style.display = "grid";
-		row.style.gridTemplateColumns = this.virtualColumnTemplate;
-		row.style.minWidth = this.virtualMinWidth;
+		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
+		row.style.minWidth = "var(--tn-table-min-width)";
 
 		for (const propertyId of columns) {
 			const cell = this.containerEl.ownerDocument.createElement("div");
@@ -558,12 +597,174 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private getColumnTemplate(columns: string[]): string {
-		const count = Math.max(columns.length, 1);
-		return `repeat(${count}, minmax(160px, 1fr))`;
+		const widths = resolveColumnWidths(
+			columns,
+			this.columnSize,
+			this.DEFAULT_COLUMN_WIDTH,
+			this.MIN_COLUMN_WIDTH
+		);
+		return buildColumnTemplateFromWidths(widths);
 	}
 
 	private getTableMinWidth(columns: string[]): string {
-		return `${Math.max(640, columns.length * 160)}px`;
+		const widths = resolveColumnWidths(
+			columns,
+			this.columnSize,
+			this.DEFAULT_COLUMN_WIDTH,
+			this.MIN_COLUMN_WIDTH
+		);
+		return `${calcTotalColumnWidth(widths)}px`;
+	}
+
+	private syncVirtualLayoutDimensions(): void {
+		if (!this.virtualContainerEl) return;
+		this.virtualContainerEl.style.setProperty("--tn-table-columns-template", this.virtualColumnTemplate);
+		this.virtualContainerEl.style.setProperty("--tn-table-min-width", this.virtualMinWidth);
+		this.virtualContainerEl.style.minWidth = this.virtualMinWidth;
+	}
+
+	private syncNormalTableWidths(columns: string[]): void {
+		const widths = resolveColumnWidths(
+			columns,
+			this.columnSize,
+			this.DEFAULT_COLUMN_WIDTH,
+			this.MIN_COLUMN_WIDTH
+		);
+		const minWidth = `${calcTotalColumnWidth(widths)}px`;
+
+		for (const table of this.renderedTables) {
+			const colEls = table.querySelectorAll("col[data-property-id]");
+			for (let i = 0; i < colEls.length; i++) {
+				const colEl = colEls[i] as HTMLTableColElement;
+				const width = widths[i] ?? this.DEFAULT_COLUMN_WIDTH;
+				colEl.style.width = `${width}px`;
+				colEl.style.minWidth = `${width}px`;
+			}
+			table.style.setProperty("--tn-table-min-width", minWidth);
+			const wrapper = table.parentElement;
+			if (wrapper instanceof HTMLElement) {
+				wrapper.style.minWidth = minWidth;
+			}
+		}
+	}
+
+	private applyColumnWidths(columns: string[]): void {
+		this.virtualColumnTemplate = this.getColumnTemplate(columns);
+		this.virtualMinWidth = this.getTableMinWidth(columns);
+		this.syncVirtualLayoutDimensions();
+		this.syncNormalTableWidths(columns);
+	}
+
+	private appendColumnResizeHandle(
+		headerCell: HTMLElement,
+		columns: string[],
+		propertyId: string,
+		isLastColumn: boolean
+	): void {
+		if (isLastColumn) return;
+
+		const handle = this.containerEl.ownerDocument.createElement("div");
+		handle.className = "tn-bases-table-resize-handle";
+		handle.setAttribute("role", "separator");
+		handle.setAttribute("aria-orientation", "vertical");
+
+		handle.addEventListener("pointerdown", (event) =>
+			this.startColumnResize(event as PointerEvent, columns, propertyId)
+		);
+		handle.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+		});
+		handle.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+		});
+
+		headerCell.appendChild(handle);
+	}
+
+	private startColumnResize(
+		event: PointerEvent,
+		columns: string[],
+		propertyId: string
+	): void {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const doc = this.containerEl.ownerDocument;
+		const win = doc.defaultView || window;
+		const startX = event.clientX;
+		const initialWidth = resolveColumnWidths(
+			[propertyId],
+			this.columnSize,
+			this.DEFAULT_COLUMN_WIDTH,
+			this.MIN_COLUMN_WIDTH
+		)[0];
+		let hasWidthChanged = false;
+
+		this.stopActiveColumnResize();
+		this.rootElement?.classList.add("tn-bases-table--resizing");
+
+		const onPointerMove = (moveEvent: PointerEvent): void => {
+			const deltaX = moveEvent.clientX - startX;
+			const nextWidth = initialWidth + deltaX;
+			const nextSize = setColumnSizeValue(
+				this.columnSize,
+				propertyId,
+				nextWidth,
+				this.DEFAULT_COLUMN_WIDTH,
+				this.MIN_COLUMN_WIDTH
+			);
+
+			const currentWidth = this.columnSize[propertyId] ?? this.DEFAULT_COLUMN_WIDTH;
+			const normalizedCurrent = Math.max(this.MIN_COLUMN_WIDTH, Math.round(currentWidth));
+			const normalizedNext = nextSize[propertyId] ?? this.DEFAULT_COLUMN_WIDTH;
+			if (normalizedCurrent === normalizedNext) return;
+
+			this.columnSize = nextSize;
+			hasWidthChanged = true;
+			this.applyColumnWidths(columns);
+		};
+
+		const onPointerUp = (): void => {
+			this.stopActiveColumnResize();
+			if (hasWidthChanged) {
+				this.persistColumnSize();
+			}
+		};
+
+		doc.addEventListener("pointermove", onPointerMove);
+		doc.addEventListener("pointerup", onPointerUp, { once: true });
+		doc.addEventListener("pointercancel", onPointerUp, { once: true });
+		win.addEventListener("blur", onPointerUp, { once: true });
+
+		this.activeColumnResizeCleanup = () => {
+			doc.removeEventListener("pointermove", onPointerMove);
+			doc.removeEventListener("pointerup", onPointerUp as EventListener);
+			doc.removeEventListener("pointercancel", onPointerUp as EventListener);
+			win.removeEventListener("blur", onPointerUp as EventListener);
+			this.rootElement?.classList.remove("tn-bases-table--resizing");
+			this.activeColumnResizeCleanup = null;
+		};
+	}
+
+	private stopActiveColumnResize(): void {
+		if (this.activeColumnResizeCleanup) {
+			this.activeColumnResizeCleanup();
+		}
+	}
+
+	private persistColumnSize(): void {
+		try {
+			if (!this.config?.set) return;
+			if (Object.keys(this.columnSize).length === 0) {
+				this.config.set("columnSize", {});
+				return;
+			}
+			this.config.set("columnSize", this.columnSize);
+		} catch (error) {
+			console.error("[TaskNotes][CustomTableView] Failed to persist column sizes:", error);
+		}
 	}
 
 	private renderGroupSection(groupTitle: string, entries: EntryLike[], columns: string[]): void {
@@ -580,7 +781,10 @@ export class CustomTableView extends BasesViewBase {
 
 		const tableWrapper = doc.createElement("div");
 		tableWrapper.className = "tn-bases-table-wrapper";
-		tableWrapper.appendChild(this.createTable(entries, columns, true));
+		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
+		const tableEl = this.createTable(entries, columns, true);
+		this.renderedTables.push(tableEl);
+		tableWrapper.appendChild(tableEl);
 		sectionEl.appendChild(tableWrapper);
 
 		this.tableScrollEl.appendChild(sectionEl);
@@ -590,12 +794,30 @@ export class CustomTableView extends BasesViewBase {
 		const doc = this.containerEl.ownerDocument;
 		const tableEl = doc.createElement("table");
 		tableEl.className = "tn-bases-custom-table";
+		tableEl.style.setProperty("--tn-table-min-width", this.getTableMinWidth(columns));
+
+		const widths = resolveColumnWidths(
+			columns,
+			this.columnSize,
+			this.DEFAULT_COLUMN_WIDTH,
+			this.MIN_COLUMN_WIDTH
+		);
+		const colgroupEl = doc.createElement("colgroup");
+		for (let index = 0; index < columns.length; index++) {
+			const colEl = doc.createElement("col");
+			colEl.dataset.propertyId = columns[index];
+			colEl.style.width = `${widths[index]}px`;
+			colEl.style.minWidth = `${widths[index]}px`;
+			colgroupEl.appendChild(colEl);
+		}
+		tableEl.appendChild(colgroupEl);
 
 		const theadEl = tableEl.createTHead();
 		const headerRow = theadEl.insertRow();
 		headerRow.className = "tn-bases-table-header-row";
 
-		for (const propertyId of columns) {
+		for (let index = 0; index < columns.length; index++) {
+			const propertyId = columns[index];
 			const th = doc.createElement("th");
 			th.className = "tn-bases-table-header-cell";
 			th.setText(this.config?.getDisplayName?.(propertyId) || propertyId);
@@ -603,6 +825,7 @@ export class CustomTableView extends BasesViewBase {
 			th.addEventListener("contextmenu", (event) =>
 				this.showSummaryMenu(event as MouseEvent, propertyId, entries)
 			);
+			this.appendColumnResizeHandle(th, columns, propertyId, index === columns.length - 1);
 			headerRow.appendChild(th);
 		}
 
@@ -829,6 +1052,7 @@ export class CustomTableView extends BasesViewBase {
 		this.useVirtualScrolling = false;
 		this.virtualMode = "none";
 		this.virtualColumnsKey = "";
+		this.virtualContainerEl = null;
 		this.virtualItemsHostEl = null;
 		this.virtualHeaderRowEl = null;
 		this.virtualFooterRowEl = null;

@@ -1,0 +1,34 @@
+views:
+  - type: table
+    name: Table
+    order:
+      - file.name
+      - file.ctime
+      - file.ext
+      - file.folder
+      - file.mtime
+    columnSize:
+      file.name: 139
+  - type: tasknotesCustomTable
+    name: custom view
+    filters:
+      and:
+        - file.folder != "Daily"
+    order:
+      - file.name
+      - file.ctime
+      - file.ext
+      - tags
+      - file.basename
+      - file.links
+      - file.backlinks
+    sort:
+      - property: file.basename
+        direction: ASC
+    rowHeight: short
+  - type: tasknotesCustomTable
+    name: ビュー
+    order:
+      - file.name
+      - file.embeds
+    rowHeight: short
