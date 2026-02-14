@@ -220,6 +220,9 @@ export default class TaskNotesPlugin extends Plugin {
 
 	// Bases filter converter for exporting saved views
 	basesFilterConverter: import("./services/BasesFilterConverter").BasesFilterConverter;
+	private basesViewListSidebarService:
+		| import("./bases/BasesViewListSidebarService").BasesViewListSidebarService
+		| null = null;
 
 	// Command localization support
 	private commandDefinitions: TranslatedCommandDefinition[] = [];
@@ -582,6 +585,15 @@ export default class TaskNotesPlugin extends Plugin {
 					console.debug("[TaskNotes][Bases] Registration failed:", e);
 				}
 			}
+
+			// Start Bases view list sidebar manager after layout is ready.
+			if (!this.basesViewListSidebarService) {
+				const { BasesViewListSidebarService } = await import(
+					"./bases/BasesViewListSidebarService"
+				);
+				this.basesViewListSidebarService = new BasesViewListSidebarService(this);
+			}
+			this.basesViewListSidebarService.start();
 		} catch (error) {
 			console.error("Error during post-layout initialization:", error);
 		}
@@ -1069,6 +1081,12 @@ export default class TaskNotesPlugin extends Plugin {
 	}
 
 	onunload() {
+		// Stop Bases view list sidebar service and restore DOM before other teardown.
+		if (this.basesViewListSidebarService) {
+			this.basesViewListSidebarService.stop();
+			this.basesViewListSidebarService = null;
+		}
+
 		// Unregister Bases views
 		if (this.settings?.enableBases) {
 			import("./bases/registration").then(({ unregisterBasesViews }) => {
@@ -1330,8 +1348,16 @@ export default class TaskNotesPlugin extends Plugin {
 		const hasNewCommandMappings = Object.keys(DEFAULT_SETTINGS.commandFileMapping).some(
 			(key) => !loadedData?.commandFileMapping?.[key]
 		);
+		const hasNewBasesSidebarSettings =
+			typeof loadedData?.enableBasesViewListSidebar === "undefined" ||
+			typeof loadedData?.basesViewListDropdownMode === "undefined";
 
-		if (hasNewFields || hasNewCalendarSettings || hasNewCommandMappings) {
+		if (
+			hasNewFields ||
+			hasNewCalendarSettings ||
+			hasNewCommandMappings ||
+			hasNewBasesSidebarSettings
+		) {
 			// Save the migrated settings to include new field mappings (non-blocking)
 			setTimeout(async () => {
 				try {

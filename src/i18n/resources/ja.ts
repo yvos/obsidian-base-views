@@ -1503,6 +1503,23 @@ export const ja: TranslationTree = {
 					resetButton: "リセット",
 					resetTooltip: "デフォルトパスにリセット",
 				},
+				viewListSidebar: {
+					title: "ビュー",
+					enable: {
+						name: "Baseビュー一覧サイドバーを有効にする",
+						description:
+							"Baseコンテンツの左側（狭いレイアウトでは上部）に、クリック可能なビュー一覧を表示します。",
+					},
+					dropdownMode: {
+						name: "ネイティブビューのプルダウン表示",
+						description:
+							"一覧サイドバー有効時に、Bases標準のビュー選択プルダウンを表示するかを選択します。",
+						options: {
+							listOnly: "一覧のみ（プルダウンを隠す）",
+							combined: "併用（一覧 + プルダウン）",
+						},
+					},
+				},
 				autoCreateDefaultFiles: {
 					name: "デフォルトファイルを自動作成",
 					description: "起動時に不足しているデフォルトのBaseビューファイルを自動的に作成します。削除したサンプルファイルが再作成されないようにするには無効にしてください。",

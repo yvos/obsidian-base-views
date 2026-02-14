@@ -21,6 +21,92 @@
 	display: none;
 }
 
+/* ================================================
+   Base View List Sidebar
+   ================================================ */
+
+.tn-bases-view-list-mode-list-only .bases-toolbar-views-menu {
+	display: none;
+}
+
+.tn-bases-view-list-layout {
+	display: grid;
+	grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+	gap: var(--size-4-2);
+	min-height: 0;
+	height: 100%;
+}
+
+.tn-bases-view-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding: var(--size-4-2);
+	border-right: 1px solid var(--background-modifier-border);
+	overflow-y: auto;
+	min-height: 0;
+}
+
+.tn-bases-view-list__title {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	padding: var(--size-2-1) var(--size-2-2);
+}
+
+.tn-bases-view-list__item {
+	display: block;
+	width: 100%;
+	padding: var(--size-2-2) var(--size-2-3);
+	border: 1px solid transparent;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-normal);
+	text-align: left;
+	font-size: var(--font-ui-small);
+	line-height: 1.4;
+	cursor: var(--cursor);
+}
+
+.tn-bases-view-list__item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tn-bases-view-list__item.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.tn-bases-view-list-body {
+	min-width: 0;
+	min-height: 0;
+}
+
+.tn-bases-view-list-body > .bases-view {
+	height: 100%;
+}
+
+@media (max-width: 900px) {
+	.tn-bases-view-list-layout {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+
+	.tn-bases-view-list {
+		flex-direction: row;
+		flex-wrap: wrap;
+		border-right: none;
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.tn-bases-view-list__title {
+		width: 100%;
+	}
+}
+
 /* Bases TaskNotes List View Container */
 .tn-bases-tasknotes-list {
     display: flex;

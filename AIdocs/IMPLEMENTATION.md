@@ -7,6 +7,7 @@
 - 2026-02-09 時点で `tasknotesCustomTable`（Custom Table View）を追加し、テーブル表示と組み込み summary を実装。
 - 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
+- 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -16,6 +17,16 @@
   - `tasknotesKanban`
   - `tasknotesCalendar`
   - `tasknotesMiniCalendar`
+- Bases view一覧サイドバー（`.base` 向け）
+  - 対象: `viewType === "bases"` かつ `file.extension === "base"`
+  - 一覧取得: `getQueryViewNames()` → `query.views[].name` → YAML解析 の順でフォールバック
+  - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
+  - 設定:
+    - `enableBasesViewListSidebar`（ON/OFF）
+    - `basesViewListDropdownMode`（`list-only` / `combined`）
+  - 表示:
+    - 通常幅は左サイドバー表示
+    - `max-width: 900px` で上部表示へ自動切替
 - Custom Table View (`tasknotesCustomTable`)
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
   - `config.getOrder()` に従った列順
@@ -56,12 +67,20 @@
   - summary 判定・集計の純粋関数
 - `src/bases/registration.ts`
   - Bases view の登録/解除
+- `src/bases/BasesViewListSidebarService.ts`
+  - `.base` 表示時のview一覧サイドバー管理（DOM注入・切替・cleanup・設定反映）
 - `src/bases/api.ts`
   - Bases API ラッパー型
 - `src/releaseNotes.ts`
   - リリースノート束ね込みファイルのフォールバック（未生成時のコンパイル用）
 - `styles/bases-views.css`
-  - Bases 系 view のスタイル
+  - Bases 系 view のスタイル（view一覧サイドバー関連スタイルを含む）
+- `src/settings/tabs/generalTab.ts`
+  - Bases view一覧サイドバーの設定UI（トグル/表示モード）
+- `src/settings/defaults.ts`
+  - view一覧サイドバー設定のデフォルト値
+- `src/types/settings.ts`
+  - view一覧サイドバー設定の型定義
 - `tests/unit/bases/tableSummary.test.ts`
   - summary ロジックのユニットテスト
 - `tests/unit/bases/customTableVirtualization.test.ts`
@@ -70,6 +89,8 @@
   - grouped フラット化順序のユニットテスト
 - `tests/unit/bases/tableColumnSizing.test.ts`
   - 列幅ロジックのユニットテスト
+- `tests/unit/bases/BasesViewListSidebarService.test.ts`
+  - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
 
 # 4. データ構造
 - `tableSummaries: Record<propertyId, summaryKey>`
@@ -82,6 +103,10 @@
 - `VirtualGroupedItem`
   - grouped 仮想描画で使用する内部表現
   - `group-header` / `group-summary` / `row` の3種を保持
+- `enableBasesViewListSidebar: boolean`
+  - `.base` 表示時の view一覧サイドバー機能の有効/無効
+- `basesViewListDropdownMode: "list-only" | "combined"`
+  - view一覧とネイティブdropdownの併用可否
 
 # 5. 挙動の詳細や注意点
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
@@ -99,6 +124,9 @@
 - summary は設定された列のみ表示し、未設定列は空セル。
 - セル描画は `Value.renderTo(...)` を試し、失敗時は文字列描画にフォールバック。
 - TaskListView と違い、Custom Table View は TaskNotes 判定で絞り込まず Base の全エントリを表示。
+- view一覧サイドバーは `.bases-view` をレイアウトラッパーで包み、一覧クリック時に view 切替を実行する。
+- `list-only` 設定時は `.bases-toolbar-views-menu` を非表示にし、`combined` では表示維持する。
+- 設定OFFまたは plugin unload 時は注入DOMを除去し、`.bases-view` を元の親へ戻す。
 
 # 6. SPEC との差分、ずれ
 - `AIdocs/SPEC.md` が本リポジトリに存在しないため、差分評価は未実施。
@@ -115,6 +143,7 @@
 - grouped 仮想化ではグループ見出しの「固定表示（sticky）」は未対応。
 - 検証コマンド（`npm run typecheck`, `npm run build`）は、実行環境に `node`/`npm` がないため未実行。
 - `src/releaseNotes.ts` はビルド時に `generate-release-notes-import.mjs` で上書きされる想定。
+- view一覧サイドバーの実機DOM表示確認は、`npm` 不在で `main.js` 再ビルドができないため未完了（内部API/公開API単体動作はObsidian CLIで確認済み）。
 
 # 9. AI向けの注意点
 - Bases 実装の参照優先:
@@ -128,4 +157,10 @@
   - 集計ロジック: `src/bases/tableSummary.ts`
   - スタイル: `styles/bases-views.css`
   - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
+- Bases view一覧サイドバー変更時は以下を同時確認:
+  - サービス: `src/bases/BasesViewListSidebarService.ts`
+  - 設定UI: `src/settings/tabs/generalTab.ts`
+  - 設定型/初期値: `src/types/settings.ts`, `src/settings/defaults.ts`
+  - スタイル: `styles/bases-views.css`
+  - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`
 - `AIdocs/obsidian.d.ts` は必要箇所のみ参照し、通読しない。

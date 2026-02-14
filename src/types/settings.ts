@@ -204,6 +204,8 @@ export interface TaskNotesSettings {
 	// Bases integration settings
 	enableBases: boolean;
 	autoCreateDefaultBasesFiles: boolean; // Auto-create missing default Base files on startup
+	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
+	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': string;

@@ -298,6 +298,53 @@ export function renderGeneralTab(
 					});
 			});
 
+			// Base view list sidebar toggle
+			group.addSetting((setting) =>
+				configureToggleSetting(setting, {
+					name: translate("settings.integrations.basesIntegration.viewListSidebar.enable.name"),
+					desc: translate("settings.integrations.basesIntegration.viewListSidebar.enable.description"),
+					getValue: () => plugin.settings.enableBasesViewListSidebar,
+					setValue: async (value: boolean) => {
+						plugin.settings.enableBasesViewListSidebar = value;
+						await save();
+						renderGeneralTab(container, plugin, save);
+					},
+				})
+			);
+
+			if (plugin.settings.enableBasesViewListSidebar) {
+				group.addSetting((setting) =>
+					configureDropdownSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.description"
+						),
+						options: [
+							{
+								value: "list-only",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.options.listOnly"
+								),
+							},
+							{
+								value: "combined",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.options.combined"
+								),
+							},
+						],
+						getValue: () => plugin.settings.basesViewListDropdownMode,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListDropdownMode =
+								value as "list-only" | "combined";
+							await save();
+						},
+					})
+				);
+			}
+
 			// Create Default Files button
 			group.addSetting((setting) => {
 				setting

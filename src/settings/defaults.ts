@@ -375,6 +375,8 @@ export const DEFAULT_SETTINGS: TaskNotesSettings = {
 	// Bases integration defaults
 	enableBases: true,
 	autoCreateDefaultBasesFiles: true, // Auto-create missing default Base files on startup
+	enableBasesViewListSidebar: true,
+	basesViewListDropdownMode: "list-only",
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': 'TaskNotes/Views/mini-calendar-default.base',

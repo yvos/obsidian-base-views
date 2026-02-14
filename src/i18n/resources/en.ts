@@ -1537,6 +1537,23 @@ export const en: TranslationTree = {
 					resetButton: "Reset",
 					resetTooltip: "Reset to default path",
 				},
+				viewListSidebar: {
+					title: "Views",
+					enable: {
+						name: "Enable base view list sidebar",
+						description:
+							"Show a clickable list of views to the left of base content (or above it on narrow layouts).",
+					},
+					dropdownMode: {
+						name: "Native view dropdown mode",
+						description:
+							"Choose whether to hide the native Bases view dropdown when the sidebar list is enabled.",
+						options: {
+							listOnly: "List only (hide dropdown)",
+							combined: "Combined (list + dropdown)",
+						},
+					},
+				},
 				autoCreateDefaultFiles: {
 					name: "Auto-create default files",
 					description: "Automatically create missing default Base view files on startup. Disable to prevent deleted sample files from being recreated.",
