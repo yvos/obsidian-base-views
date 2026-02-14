@@ -127,6 +127,7 @@
 - view一覧サイドバーは `.bases-view` をレイアウトラッパーで包み、一覧クリック時に view 切替を実行する。
 - `list-only` 設定時は `.bases-toolbar-views-menu` を非表示にし、`combined` では表示維持する。
 - 設定OFFまたは plugin unload 時は注入DOMを除去し、`.bases-view` を元の親へ戻す。
+- レイアウト再同期時は既存ラッパー文脈を再解決し、不正な入れ子ラッパーを自動で解除して1つに正規化する（増殖防止）。
 
 # 6. SPEC との差分、ずれ
 - `AIdocs/SPEC.md` が本リポジトリに存在しないため、差分評価は未実施。

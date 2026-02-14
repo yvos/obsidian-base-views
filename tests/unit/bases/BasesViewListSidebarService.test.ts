@@ -310,4 +310,26 @@ describe("BasesViewListSidebarService", () => {
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
 		expect(setup.basesViewEl.parentElement).toBe(setup.rootEl);
 	});
+
+	it("does not duplicate sidebar layouts on repeated refreshes", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				getQueryViewNames: () => ["Table", "custom view", "ビュー"],
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		for (let i = 0; i < 4; i += 1) {
+			emitter.trigger("settings-changed");
+			await flushTimersAndPromises();
+		}
+
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list-layout")).toHaveLength(1);
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list")).toHaveLength(1);
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__title")).toHaveLength(1);
+	});
 });

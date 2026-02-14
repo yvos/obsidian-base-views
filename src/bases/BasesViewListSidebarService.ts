@@ -226,16 +226,26 @@ export class BasesViewListSidebarService {
 		leaf: WorkspaceLeaf,
 		basesViewEl: HTMLElement
 	): ManagedLeafState | null {
-		const rootEl = basesViewEl.parentElement;
+		let { rootEl, layoutEl, bodyEl } = this.resolveLayoutContext(basesViewEl);
 		if (!rootEl) return null;
+		this.removeOrphanLayouts(rootEl, basesViewEl, layoutEl);
 
 		const existing = this.managedLeaves.get(leaf);
-		if (existing && existing.rootEl !== rootEl) {
+		if (existing && (existing.layoutEl !== layoutEl || existing.rootEl !== rootEl)) {
 			this.cleanupLeaf(leaf);
 		}
 
 		const current = this.managedLeaves.get(leaf);
 		if (current) {
+			current.rootEl = rootEl;
+			if (layoutEl && bodyEl) {
+				current.layoutEl = layoutEl;
+				current.bodyEl = bodyEl;
+				const listEl = this.findListEl(layoutEl);
+				if (listEl) {
+					current.listEl = listEl;
+				}
+			}
 			if (current.basesViewEl !== basesViewEl) {
 				current.bodyEl.appendChild(basesViewEl);
 				current.basesViewEl = basesViewEl;
@@ -243,15 +253,36 @@ export class BasesViewListSidebarService {
 			return current;
 		}
 
+		if (layoutEl && bodyEl) {
+			const listEl = this.findListEl(layoutEl);
+			if (listEl) {
+				const state: ManagedLeafState = {
+					rootEl,
+					layoutEl,
+					listEl,
+					bodyEl,
+					basesViewEl,
+				};
+				this.managedLeaves.set(leaf, state);
+				return state;
+			}
+
+			// Broken wrapper without required children. Reset and rebuild cleanly.
+			this.unwrapLayout(layoutEl, basesViewEl);
+			rootEl = basesViewEl.parentElement;
+			if (!rootEl) return null;
+			this.removeOrphanLayouts(rootEl, basesViewEl, null);
+		}
+
 		const doc = basesViewEl.ownerDocument;
-		const layoutEl = doc.createElement("div");
+		layoutEl = doc.createElement("div");
 		layoutEl.className = CSS_LAYOUT;
 
 		const listEl = doc.createElement("nav");
 		listEl.className = CSS_LIST;
 		listEl.setAttribute("aria-label", this.getListLabel());
 
-		const bodyEl = doc.createElement("div");
+		bodyEl = doc.createElement("div");
 		bodyEl.className = CSS_BODY;
 
 		layoutEl.appendChild(listEl);
@@ -268,6 +299,77 @@ export class BasesViewListSidebarService {
 		};
 		this.managedLeaves.set(leaf, state);
 		return state;
+	}
+
+	private resolveLayoutContext(basesViewEl: HTMLElement): {
+		rootEl: HTMLElement | null;
+		layoutEl: HTMLElement | null;
+		bodyEl: HTMLElement | null;
+	} {
+		let safety = 0;
+		while (safety < 8) {
+			safety += 1;
+			const parentEl = basesViewEl.parentElement;
+			if (!parentEl) {
+				return { rootEl: null, layoutEl: null, bodyEl: null };
+			}
+
+			if (!parentEl.classList.contains(CSS_BODY)) {
+				return { rootEl: parentEl, layoutEl: null, bodyEl: null };
+			}
+
+			const layoutEl = parentEl.parentElement;
+			if (!(layoutEl instanceof HTMLElement) || !layoutEl.classList.contains(CSS_LAYOUT)) {
+				return { rootEl: parentEl, layoutEl: null, bodyEl: null };
+			}
+
+			const layoutParent = layoutEl.parentElement;
+			if (
+				layoutParent instanceof HTMLElement &&
+				!layoutParent.classList.contains(CSS_BODY) &&
+				!layoutParent.classList.contains(CSS_LAYOUT)
+			) {
+				return { rootEl: layoutParent, layoutEl, bodyEl: parentEl };
+			}
+
+			this.unwrapLayout(layoutEl, basesViewEl);
+		}
+
+		return {
+			rootEl: basesViewEl.parentElement,
+			layoutEl: null,
+			bodyEl: null,
+		};
+	}
+
+	private unwrapLayout(layoutEl: HTMLElement, basesViewEl: HTMLElement): void {
+		if (layoutEl.contains(basesViewEl)) {
+			layoutEl.before(basesViewEl);
+		}
+		layoutEl.remove();
+	}
+
+	private removeOrphanLayouts(
+		rootEl: HTMLElement,
+		basesViewEl: HTMLElement,
+		keepLayoutEl: HTMLElement | null
+	): void {
+		for (const child of Array.from(rootEl.children)) {
+			if (!(child instanceof HTMLElement)) continue;
+			if (!child.classList.contains(CSS_LAYOUT)) continue;
+			if (keepLayoutEl && child === keepLayoutEl) continue;
+			if (child.contains(basesViewEl)) continue;
+			child.remove();
+		}
+	}
+
+	private findListEl(layoutEl: HTMLElement): HTMLElement | null {
+		for (const child of Array.from(layoutEl.children)) {
+			if (child instanceof HTMLElement && child.classList.contains(CSS_LIST)) {
+				return child;
+			}
+		}
+		return layoutEl.querySelector<HTMLElement>(`.${CSS_LIST}`);
 	}
 
 	private applyDropdownModeClasses(rootEl: HTMLElement): void {
@@ -292,10 +394,18 @@ export class BasesViewListSidebarService {
 		if (!state) return;
 
 		this.removeDropdownModeClasses(state.rootEl);
+		if (state.layoutEl.parentElement instanceof HTMLElement) {
+			this.removeDropdownModeClasses(state.layoutEl.parentElement);
+		}
 
-		if (state.layoutEl.isConnected && state.layoutEl.parentElement === state.rootEl) {
-			if (state.basesViewEl.isConnected) {
+		if (state.layoutEl.isConnected) {
+			if (state.layoutEl.contains(state.basesViewEl)) {
 				state.layoutEl.before(state.basesViewEl);
+			} else {
+				const currentBasesView = state.layoutEl.querySelector<HTMLElement>(".bases-view");
+				if (currentBasesView) {
+					state.layoutEl.before(currentBasesView);
+				}
 			}
 			state.layoutEl.remove();
 		}
