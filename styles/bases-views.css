@@ -30,9 +30,10 @@
 }
 
 .tn-bases-view-list-layout {
+	--tn-bases-view-list-width: 220px;
 	display: grid;
-	grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
-	gap: var(--size-4-2);
+	grid-template-columns: var(--tn-bases-view-list-width) 6px minmax(0, 1fr);
+	gap: 0;
 	min-height: 0;
 	height: 100%;
 }
@@ -47,17 +48,45 @@
 	min-height: 0;
 }
 
+.tn-bases-view-list__header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
 .tn-bases-view-list__title {
+	flex: 1 1 auto;
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-semibold);
 	color: var(--text-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	padding: var(--size-2-1) var(--size-2-2);
+	padding: var(--size-2-1);
+}
+
+.tn-bases-view-list__close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: var(--cursor);
+	padding: 0;
+}
+
+.tn-bases-view-list__close:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
 }
 
 .tn-bases-view-list__item {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
 	width: 100%;
 	padding: var(--size-2-2) var(--size-2-3);
 	border: 1px solid transparent;
@@ -70,6 +99,15 @@
 	cursor: var(--cursor);
 }
 
+.tn-bases-view-list__item-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	flex: 0 0 16px;
+}
+
 .tn-bases-view-list__item:hover {
 	background: var(--background-modifier-hover);
 }
@@ -80,13 +118,36 @@
 	border-color: var(--interactive-accent);
 }
 
+.tn-bases-view-list__resizer {
+	width: 6px;
+	cursor: col-resize;
+	background: transparent;
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.tn-bases-view-list__resizer:hover {
+	background: var(--background-modifier-hover);
+}
+
 .tn-bases-view-list-body {
 	min-width: 0;
 	min-height: 0;
+	overflow: hidden;
 }
 
 .tn-bases-view-list-body > .bases-view {
 	height: 100%;
+}
+
+.tn-bases-view-list-open-trigger {
+	display: flex;
+	align-items: center;
+}
+
+.tn-bases-view-list-open-trigger .clickable-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 @media (max-width: 900px) {
@@ -100,6 +161,14 @@
 		flex-wrap: wrap;
 		border-right: none;
 		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.tn-bases-view-list__resizer {
+		display: none;
+	}
+
+	.tn-bases-view-list-body {
+		grid-row: 2;
 	}
 
 	.tn-bases-view-list__title {

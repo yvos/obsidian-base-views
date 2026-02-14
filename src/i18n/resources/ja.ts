@@ -1503,23 +1503,39 @@ export const ja: TranslationTree = {
 					resetButton: "リセット",
 					resetTooltip: "デフォルトパスにリセット",
 				},
-				viewListSidebar: {
-					title: "ビュー",
-					enable: {
-						name: "Baseビュー一覧サイドバーを有効にする",
-						description:
-							"Baseコンテンツの左側（狭いレイアウトでは上部）に、クリック可能なビュー一覧を表示します。",
-					},
-					dropdownMode: {
-						name: "ネイティブビューのプルダウン表示",
-						description:
-							"一覧サイドバー有効時に、Bases標準のビュー選択プルダウンを表示するかを選択します。",
-						options: {
-							listOnly: "一覧のみ（プルダウンを隠す）",
-							combined: "併用（一覧 + プルダウン）",
+					viewListSidebar: {
+						title: "ビュー",
+						enable: {
+							name: "Baseビュー一覧サイドバーを有効にする",
+							description:
+								"Baseコンテンツの左側（狭いレイアウトでは上部）に、クリック可能なビュー一覧を表示します。",
+						},
+						dropdownMode: {
+							name: "ネイティブビューのプルダウン表示",
+							description:
+								"一覧サイドバー有効時に、Bases標準のビュー選択プルダウンを表示するかを選択します。",
+							options: {
+								listOnly: "一覧のみ（プルダウンを隠す）",
+								combined: "併用（一覧 + プルダウン）",
+							},
+						},
+						openButton: {
+							ariaLabel: "ビュー一覧を開く",
+							tooltip: "ビュー一覧を開く",
+						},
+						closeButton: {
+							ariaLabel: "ビュー一覧を閉じる",
+							tooltip: "ビュー一覧を閉じる",
+						},
+						resizeHandle: {
+							ariaLabel: "ビュー一覧の幅を変更",
+							tooltip: "ドラッグして幅を変更",
+						},
+						singleViewHidden: {
+							description:
+								"現在のbaseにビューが1つだけの場合、ビュー一覧は自動的に非表示になります。",
 						},
 					},
-				},
 				autoCreateDefaultFiles: {
 					name: "デフォルトファイルを自動作成",
 					description: "起動時に不足しているデフォルトのBaseビューファイルを自動的に作成します。削除したサンプルファイルが再作成されないようにするには無効にしてください。",

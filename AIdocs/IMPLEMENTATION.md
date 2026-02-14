@@ -8,6 +8,7 @@
 - 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
 - 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
+- 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -19,14 +20,19 @@
   - `tasknotesMiniCalendar`
 - Bases view一覧サイドバー（`.base` 向け）
   - 対象: `viewType === "bases"` かつ `file.extension === "base"`
-  - 一覧取得: `getQueryViewNames()` → `query.views[].name` → YAML解析 の順でフォールバック
+  - 一覧取得: `query.views[].{name,type}` → `getQueryViewNames()` → YAML `views[].{name,type}` の順でフォールバック
   - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
   - 設定:
     - `enableBasesViewListSidebar`（ON/OFF）
     - `basesViewListDropdownMode`（`list-only` / `combined`）
+    - `basesViewListCollapsed`（開閉状態のグローバル保存）
+    - `basesViewListWidthPx`（一覧幅pxのグローバル保存）
   - 表示:
-    - 通常幅は左サイドバー表示
-    - `max-width: 900px` で上部表示へ自動切替
+    - viewが1件以下のbaseでは一覧UI/トグルを表示しない（完全非表示）
+    - 通常幅は左サイドバー表示、`max-width: 900px` で上部表示へ自動切替
+    - 一覧ヘッダー左の `x` で閉じる、閉状態ではtoolbar左端の `list-plus` で開く
+    - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
+    - 各view行の先頭に view type 対応アイコンを表示（取得不能時は `list`）
 - Custom Table View (`tasknotesCustomTable`)
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
   - `config.getOrder()` に従った列順
@@ -107,6 +113,10 @@
   - `.base` 表示時の view一覧サイドバー機能の有効/無効
 - `basesViewListDropdownMode: "list-only" | "combined"`
   - view一覧とネイティブdropdownの併用可否
+- `basesViewListCollapsed: boolean`
+  - view一覧サイドバーの開閉状態（グローバル）
+- `basesViewListWidthPx: number`
+  - view一覧サイドバー幅px（グローバル、`140..520` にクランプ）
 
 # 5. 挙動の詳細や注意点
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
@@ -126,8 +136,13 @@
 - TaskListView と違い、Custom Table View は TaskNotes 判定で絞り込まず Base の全エントリを表示。
 - view一覧サイドバーは `.bases-view` をレイアウトラッパーで包み、一覧クリック時に view 切替を実行する。
 - `list-only` 設定時は `.bases-toolbar-views-menu` を非表示にし、`combined` では表示維持する。
+- view数が1件以下のbaseでは、一覧サイドバーとtoolbarの開くトグルを注入しない。
+- 開状態ではヘッダーにcloseボタンを表示し、閉状態ではtoolbar左端にopenボタンを表示する。
+- 一覧幅はリサイズハンドルのドラッグで変更し、pointer終了時に設定へ保存する。
+- view typeアイコンは `bases.registrations[type].icon` を優先し、未知typeは `list` にフォールバックする。
 - 設定OFFまたは plugin unload 時は注入DOMを除去し、`.bases-view` を元の親へ戻す。
 - レイアウト再同期時は既存ラッパー文脈を再解決し、不正な入れ子ラッパーを自動で解除して1つに正規化する（増殖防止）。
+- view一覧サイドバーの詳細実装・切り出し境界は `AIdocs/IMPLEMENTATION-base_view_list.md` を参照。
 
 # 6. SPEC との差分、ずれ
 - `AIdocs/SPEC.md` が本リポジトリに存在しないため、差分評価は未実施。
@@ -144,7 +159,8 @@
 - grouped 仮想化ではグループ見出しの「固定表示（sticky）」は未対応。
 - 検証コマンド（`npm run typecheck`, `npm run build`）は、実行環境に `node`/`npm` がないため未実行。
 - `src/releaseNotes.ts` はビルド時に `generate-release-notes-import.mjs` で上書きされる想定。
-- view一覧サイドバーの実機DOM表示確認は、`npm` 不在で `main.js` 再ビルドができないため未完了（内部API/公開API単体動作はObsidian CLIで確認済み）。
+- view一覧サイドバーの実機DOM表示確認は、`npm` 不在で `main.js` 再ビルドができないため未完了。
+- 本セッションでは Obsidian CLI も `UtilBindVsockAnyPort` エラーで起動不可のため、CLIによるDOM確認は未実施。
 
 # 9. AI向けの注意点
 - Bases 実装の参照優先:
@@ -159,6 +175,7 @@
   - スタイル: `styles/bases-views.css`
   - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
 - Bases view一覧サイドバー変更時は以下を同時確認:
+  - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
   - サービス: `src/bases/BasesViewListSidebarService.ts`
   - 設定UI: `src/settings/tabs/generalTab.ts`
   - 設定型/初期値: `src/types/settings.ts`, `src/settings/defaults.ts`

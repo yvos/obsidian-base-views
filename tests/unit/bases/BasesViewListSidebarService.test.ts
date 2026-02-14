@@ -37,10 +37,11 @@ class MockWorkspace extends MockEventBus {
 	});
 }
 
-const flushTimersAndPromises = async (): Promise<void> => {
-	jest.runOnlyPendingTimers();
-	await Promise.resolve();
-	await Promise.resolve();
+const flushTimersAndPromises = async (rounds = 2): Promise<void> => {
+	for (let i = 0; i < rounds; i += 1) {
+		jest.runOnlyPendingTimers();
+		await Promise.resolve();
+	}
 };
 
 function createBaseLeaf(options: {
@@ -66,7 +67,6 @@ function createBaseLeaf(options: {
 	labelEl.textContent = currentViewName;
 	buttonEl.appendChild(labelEl);
 	viewsMenuEl.appendChild(buttonEl);
-
 	toolbarEl.appendChild(viewsMenuEl);
 	rootEl.appendChild(toolbarEl);
 
@@ -91,7 +91,7 @@ function createBaseLeaf(options: {
 		},
 	};
 
-	return { leaf, rootEl, labelEl, basesViewEl, controller };
+	return { leaf, rootEl, toolbarEl, labelEl, basesViewEl, controller };
 }
 
 describe("BasesViewListSidebarService", () => {
@@ -115,20 +115,46 @@ describe("BasesViewListSidebarService", () => {
 				enableBases: true,
 				enableBasesViewListSidebar: true,
 				basesViewListDropdownMode: "list-only",
+				basesViewListCollapsed: false,
+				basesViewListWidthPx: 220,
 			},
 			app: {
 				workspace,
 				vault: {
 					cachedRead: vaultCachedRead,
 				},
+				internalPlugins: {
+					getEnabledPluginById: jest.fn(() => ({
+						registrations: {
+							table: { icon: "lucide-table" },
+							cards: { icon: "lucide-layout-grid" },
+							list: { icon: "lucide-list" },
+							tasknotesCustomTable: { icon: "table" },
+							invalidIconType: { icon: "not a valid icon !!" },
+						},
+					})),
+				},
 			},
 			emitter,
+			saveSettings: jest.fn().mockResolvedValue(undefined),
 			i18n: {
 				translate: (key: string) => {
-					if (key === "settings.integrations.basesIntegration.viewListSidebar.title") {
-						return "Views";
-					}
-					return key;
+					const translations: Record<string, string> = {
+						"settings.integrations.basesIntegration.viewListSidebar.title": "Views",
+						"settings.integrations.basesIntegration.viewListSidebar.openButton.ariaLabel":
+							"Open view list",
+						"settings.integrations.basesIntegration.viewListSidebar.openButton.tooltip":
+							"Open view list",
+						"settings.integrations.basesIntegration.viewListSidebar.closeButton.ariaLabel":
+							"Close view list",
+						"settings.integrations.basesIntegration.viewListSidebar.closeButton.tooltip":
+							"Close view list",
+						"settings.integrations.basesIntegration.viewListSidebar.resizeHandle.ariaLabel":
+							"Resize view list width",
+						"settings.integrations.basesIntegration.viewListSidebar.resizeHandle.tooltip":
+							"Drag to resize",
+					};
+					return translations[key] ?? key;
 				},
 			},
 		};
@@ -145,82 +171,14 @@ describe("BasesViewListSidebarService", () => {
 		jest.useRealTimers();
 	});
 
-	it("renders view names from internal controller API", async () => {
+	it("renders view entries with icons from registrations", async () => {
 		const setup = createBaseLeaf({
 			controller: {
-				getQueryViewNames: () => ["Table", "custom view", "ビュー"],
-			},
-		});
-		mountedRoots.push(setup.rootEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
-
-		const items = Array.from(
-			setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")
-		);
-		expect(items.map((item) => item.textContent?.trim())).toEqual([
-			"Table",
-			"custom view",
-			"ビュー",
-		]);
-		expect(items[0].classList.contains("is-active")).toBe(true);
-		expect(setup.rootEl.classList.contains("tn-bases-view-list-mode-list-only")).toBe(true);
-	});
-
-	it("falls back to parsing .base YAML when controller names are unavailable", async () => {
-		const setup = createBaseLeaf({
-			controller: {
-				getQueryViewNames: () => [],
-				query: {},
-			},
-		});
-		mountedRoots.push(setup.rootEl);
-		workspace.leaves = [setup.leaf];
-
-		vaultCachedRead.mockResolvedValue(`views:\n  - type: table\n    name: Table\n  - type: tasknotesCustomTable\n    name: custom view`);
-
-		service.start();
-		await flushTimersAndPromises();
-
-		const items = Array.from(
-			setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")
-		);
-		expect(items.map((item) => item.textContent?.trim())).toEqual(["Table", "custom view"]);
-	});
-
-	it("switches view via selectView when available", async () => {
-		const selectView = jest.fn();
-		const setup = createBaseLeaf({
-			controller: {
-				getQueryViewNames: () => ["Table", "custom view"],
-				selectView,
-			},
-		});
-		mountedRoots.push(setup.rootEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
-
-		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(
-			".tn-bases-view-list__item"
-		)[1];
-		targetButton.click();
-		await flushTimersAndPromises();
-
-		expect(selectView).toHaveBeenCalledWith("custom view");
-		expect(workspace.openLinkText).not.toHaveBeenCalled();
-	});
-
-	it("falls back to openLinkText when selectView fails", async () => {
-		const setup = createBaseLeaf({
-			filePath: "Guides/test.base",
-			controller: {
-				getQueryViewNames: () => ["Table", "custom view"],
-				selectView: () => {
-					throw new Error("internal API unavailable");
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "custom view", type: "tasknotesCustomTable" },
+					],
 				},
 			},
 		});
@@ -230,91 +188,294 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(
-			".tn-bases-view-list__item"
-		)[1];
+		const items = Array.from(setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item"));
+		expect(items.map((item) => item.textContent?.trim())).toEqual(["Table", "custom view"]);
+
+		const icons = Array.from(
+			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
+		).map((el) => el.getAttribute("data-icon"));
+		expect(icons).toEqual(["table", "table"]);
+	});
+
+	it("falls back to generic icon when type is unknown", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Unknown", type: "not-registered-type" },
+						{ name: "List", type: "list" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const icons = Array.from(
+			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
+		).map((el) => el.getAttribute("data-icon"));
+		expect(icons[0]).toBe("list");
+		expect(icons[1]).toBe("list");
+	});
+
+	it("falls back to generic icon when registration icon id is invalid", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [{ name: "Invalid", type: "invalidIconType" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const icons = Array.from(
+			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
+		).map((el) => el.getAttribute("data-icon"));
+		expect(icons).toEqual(["list"]);
+	});
+
+	it("falls back to YAML parsing when controller views are unavailable", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {},
+				getQueryViewNames: () => [],
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		vaultCachedRead.mockResolvedValue(
+			`views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards`
+		);
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const items = Array.from(setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item"));
+		expect(items.map((item) => item.textContent?.trim())).toEqual(["Table", "Cards"]);
+	});
+
+	it("switches view via selectView when available", async () => {
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "custom view", type: "tasknotesCustomTable" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[1];
+		targetButton.click();
+		await flushTimersAndPromises();
+
+		expect(selectView).toHaveBeenCalledWith("custom view");
+		expect(workspace.openLinkText).not.toHaveBeenCalled();
+	});
+
+	it("falls back to openLinkText when selectView throws", async () => {
+		const setup = createBaseLeaf({
+			filePath: "Guides/test.base",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "custom view", type: "tasknotesCustomTable" },
+					],
+				},
+				selectView: () => {
+					throw new Error("unavailable");
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[1];
 		targetButton.click();
 		await flushTimersAndPromises();
 
 		expect(workspace.setActiveLeaf).toHaveBeenCalledWith(setup.leaf, { focus: false });
-		expect(workspace.openLinkText).toHaveBeenCalledWith(
-			"Guides/test.base#custom view",
-			"Guides/test.base",
-			false
+		expect(workspace.openLinkText).toHaveBeenCalledWith("Guides/test.base#custom view", "Guides/test.base", false);
+	});
+
+	it("hides sidebar and toolbar trigger when only one view exists", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).toBeNull();
+	});
+
+	it("shows toolbar open trigger when collapsed and reopens on click", async () => {
+		plugin.settings.basesViewListCollapsed = true;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		const triggerButton = setup.rootEl.querySelector<HTMLButtonElement>(
+			".tn-bases-view-list-open-trigger button"
 		);
-	});
+		expect(triggerButton).not.toBeNull();
 
-	it("does nothing when sidebar setting is disabled", async () => {
-		plugin.settings.enableBasesViewListSidebar = false;
+		triggerButton?.click();
+		await flushTimersAndPromises(3);
 
-		const setup = createBaseLeaf({
-			controller: {
-				getQueryViewNames: () => ["Table", "custom view"],
-			},
-		});
-		mountedRoots.push(setup.rootEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
-
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-	});
-
-	it("updates dropdown mode classes and removes DOM when disabled at runtime", async () => {
-		const setup = createBaseLeaf({
-			controller: {
-				getQueryViewNames: () => ["Table", "custom view"],
-			},
-		});
-		mountedRoots.push(setup.rootEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
-		expect(setup.rootEl.classList.contains("tn-bases-view-list-mode-list-only")).toBe(true);
-
-		plugin.settings.basesViewListDropdownMode = "combined";
-		emitter.trigger("settings-changed");
-		await flushTimersAndPromises();
-
-		expect(setup.rootEl.classList.contains("tn-bases-view-list-mode-list-only")).toBe(false);
-		expect(setup.rootEl.classList.contains("tn-bases-view-list-mode-combined")).toBe(true);
-
-		plugin.settings.enableBasesViewListSidebar = false;
-		emitter.trigger("settings-changed");
-		await flushTimersAndPromises();
-
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.basesViewEl.parentElement).toBe(setup.rootEl);
-	});
-
-	it("keeps native layout when view names cannot be resolved", async () => {
-		const setup = createBaseLeaf({
-			controller: {
-				getQueryViewNames: () => ["Table"],
-			},
-		});
-		mountedRoots.push(setup.rootEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
+		expect(plugin.settings.basesViewListCollapsed).toBe(false);
+		expect(plugin.saveSettings).toHaveBeenCalled();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
-
-		(setup.controller as any).getQueryViewNames = () => [];
-		vaultCachedRead.mockResolvedValue("views: []");
-		emitter.trigger("settings-changed");
-		await flushTimersAndPromises();
-
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.basesViewEl.parentElement).toBe(setup.rootEl);
 	});
 
-	it("does not duplicate sidebar layouts on repeated refreshes", async () => {
+	it("closes list via header close button", async () => {
 		const setup = createBaseLeaf({
 			controller: {
-				getQueryViewNames: () => ["Table", "custom view", "ビュー"],
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const closeButton = setup.rootEl.querySelector<HTMLButtonElement>(".tn-bases-view-list__close");
+		expect(closeButton).not.toBeNull();
+
+		closeButton?.click();
+		await flushTimersAndPromises(3);
+
+		expect(plugin.settings.basesViewListCollapsed).toBe(true);
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
+	});
+
+	it("resizes view list width and persists on pointerup", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__resizer");
+		expect(layoutEl).not.toBeNull();
+		expect(resizerEl).not.toBeNull();
+
+		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 220 }));
+		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 320 }));
+		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 320 }));
+		await flushTimersAndPromises(3);
+
+		expect(plugin.settings.basesViewListWidthPx).toBe(320);
+		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
+		expect(plugin.saveSettings).toHaveBeenCalled();
+	});
+
+	it("clamps resized width to min/max bounds", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__resizer");
+		expect(layoutEl).not.toBeNull();
+		expect(resizerEl).not.toBeNull();
+
+		// Drag far right -> max clamp (520)
+		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 220 }));
+		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 2000 }));
+		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 2000 }));
+		await flushTimersAndPromises(3);
+		expect(plugin.settings.basesViewListWidthPx).toBe(520);
+		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("520px");
+
+		// Drag far left -> min clamp (140)
+		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 520 }));
+		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: -2000 }));
+		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: -2000 }));
+		await flushTimersAndPromises(3);
+		expect(plugin.settings.basesViewListWidthPx).toBe(140);
+		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("140px");
+	});
+
+	it("does not duplicate layout or trigger on repeated settings refresh", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "custom view", type: "tasknotesCustomTable" },
+					],
+				},
 			},
 		});
 		mountedRoots.push(setup.rootEl);
@@ -329,7 +490,7 @@ describe("BasesViewListSidebarService", () => {
 		}
 
 		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list-layout")).toHaveLength(1);
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list")).toHaveLength(1);
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__title")).toHaveLength(1);
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list-open-trigger")).toHaveLength(0);
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__resizer")).toHaveLength(1);
 	});
 });

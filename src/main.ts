@@ -1350,7 +1350,9 @@ export default class TaskNotesPlugin extends Plugin {
 		);
 		const hasNewBasesSidebarSettings =
 			typeof loadedData?.enableBasesViewListSidebar === "undefined" ||
-			typeof loadedData?.basesViewListDropdownMode === "undefined";
+			typeof loadedData?.basesViewListDropdownMode === "undefined" ||
+			typeof loadedData?.basesViewListCollapsed === "undefined" ||
+			typeof loadedData?.basesViewListWidthPx === "undefined";
 
 		if (
 			hasNewFields ||

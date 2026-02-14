@@ -206,6 +206,8 @@ export interface TaskNotesSettings {
 	autoCreateDefaultBasesFiles: boolean; // Auto-create missing default Base files on startup
 	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
 	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
+	basesViewListCollapsed: boolean; // Globally collapse/expand base view list sidebar
+	basesViewListWidthPx: number; // Global width for base view list sidebar
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': string;
