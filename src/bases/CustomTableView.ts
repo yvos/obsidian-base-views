@@ -73,11 +73,13 @@ type VirtualNestedGroupedItem =
 		type: "group-summary";
 		id: string;
 		summaryValues: Record<string, string>;
+		nested?: boolean;
 	}
 	| {
 		type: "row";
 		id: string;
 		entry: EntryLike;
+		nested?: boolean;
 	};
 
 interface PropertyMetadataLike {
@@ -298,11 +300,6 @@ export class CustomTableView extends BasesViewBase {
 
 		this.applyRowHeightClass();
 
-		if (!this.data?.data) {
-			this.clearRenderedContent();
-			return;
-		}
-
 		const columns = this.getVisibleColumns();
 		if (columns.length === 0) {
 			this.clearRenderedContent();
@@ -311,7 +308,12 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		const groupedData = this.data?.groupedData || [];
-		const allEntries = (this.data?.data || []) as EntryLike[];
+		const allEntries = this.getAllEntries(groupedData);
+		if (allEntries.length === 0 && groupedData.length === 0) {
+			this.clearRenderedContent();
+			this.renderEmptyState("No rows match the current filters.");
+			return;
+		}
 		const isGrouped = this.dataAdapter.isGrouped();
 		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId();
 		const shouldRenderGrouped =
@@ -361,6 +363,39 @@ export class CustomTableView extends BasesViewBase {
 		} else {
 			this.renderUngroupedNormal(entries, columns);
 		}
+	}
+
+	private getAllEntries(groupedData: any[]): EntryLike[] {
+		const directEntries = (this.data?.data || []) as EntryLike[];
+		if (directEntries.length > 0) {
+			return directEntries;
+		}
+
+		if (!Array.isArray(groupedData) || groupedData.length === 0) {
+			return [];
+		}
+
+		const result: EntryLike[] = [];
+		const seenPaths = new Set<string>();
+		const seenEntries = new Set<EntryLike>();
+
+		for (const group of groupedData) {
+			const entries = (group?.entries || []) as EntryLike[];
+			for (const entry of entries) {
+				const path = entry?.file?.path;
+				if (typeof path === "string" && path.length > 0) {
+					if (seenPaths.has(path)) continue;
+					seenPaths.add(path);
+					result.push(entry);
+					continue;
+				}
+				if (seenEntries.has(entry)) continue;
+				seenEntries.add(entry);
+				result.push(entry);
+			}
+		}
+
+		return result;
 	}
 
 	private clearRenderedContent(): void {
@@ -512,6 +547,7 @@ export class CustomTableView extends BasesViewBase {
 							type: "group-summary",
 							id: `summary:${primary.id}:${subGroup.id}`,
 							summaryValues: this.buildSummaryValues(subGroup.entries, columns),
+							nested: true,
 						});
 					}
 
@@ -520,6 +556,7 @@ export class CustomTableView extends BasesViewBase {
 							type: "row",
 							id: `row:${primary.id}:${subGroup.id}:${index}`,
 							entry: subGroup.entries[index],
+							nested: true,
 						});
 					}
 				}
@@ -585,16 +622,20 @@ export class CustomTableView extends BasesViewBase {
 		subtitleEl.className = "tn-bases-table-subgroup-title";
 		subtitleEl.setText(`${subGroup.title} (${subGroup.entries.length})`);
 		sectionEl.appendChild(subtitleEl);
-		this.renderGroupTableIntoSection(sectionEl, subGroup.entries, columns);
+		this.renderGroupTableIntoSection(sectionEl, subGroup.entries, columns, true);
 	}
 
 	private renderGroupTableIntoSection(
 		sectionEl: HTMLElement,
 		entries: EntryLike[],
-		columns: string[]
+		columns: string[],
+		nested = false
 	): void {
 		const tableWrapper = this.containerEl.ownerDocument.createElement("div");
 		tableWrapper.className = "tn-bases-table-wrapper";
+		if (nested) {
+			tableWrapper.classList.add("tn-bases-table-wrapper--nested");
+		}
 		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
 		const tableEl = this.createTable(entries, columns, true);
 		this.renderedTables.push(tableEl);
@@ -623,9 +664,9 @@ export class CustomTableView extends BasesViewBase {
 						return this.createVirtualSecondaryHeaderRow(item);
 					}
 					if (item.type === "group-summary") {
-						return this.createVirtualSummaryRow(item.summaryValues, columns);
+						return this.createVirtualSummaryRow(item.summaryValues, columns, !!item.nested);
 					}
-					return this.createVirtualRow(item.entry, columns);
+					return this.createVirtualRow(item.entry, columns, !!item.nested);
 				},
 				getItemKey: (item) => item.id,
 			});
@@ -895,10 +936,17 @@ export class CustomTableView extends BasesViewBase {
 		return row;
 	}
 
-	private createVirtualRow(entry: EntryLike, columns: string[]): HTMLElement {
+	private createVirtualRow(
+		entry: EntryLike,
+		columns: string[],
+		nested = false
+	): HTMLElement {
 		const doc = this.containerEl.ownerDocument;
 		const row = doc.createElement("div");
 		row.className = "tn-bases-table-row tn-bases-table-row--virtual";
+		if (nested) {
+			row.classList.add("tn-bases-table-row--nested");
+		}
 		row.style.display = "grid";
 		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
 		row.style.minWidth = "var(--tn-table-min-width)";
@@ -931,10 +979,14 @@ export class CustomTableView extends BasesViewBase {
 
 	private createVirtualSummaryRow(
 		summaryValues: Record<string, string>,
-		columns: string[]
+		columns: string[],
+		nested = false
 	): HTMLElement {
 		const row = this.containerEl.ownerDocument.createElement("div");
 		row.className = "tn-bases-table-summary-row tn-bases-table-summary-row--group tn-bases-table-summary-row--virtual";
+		if (nested) {
+			row.classList.add("tn-bases-table-summary-row--nested");
+		}
 		row.style.display = "grid";
 		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
 		row.style.minWidth = "var(--tn-table-min-width)";

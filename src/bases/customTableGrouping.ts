@@ -83,6 +83,9 @@ export function extractListValues(value: unknown): unknown[] | null {
 	if (Array.isArray(asRecord.value)) {
 		return asRecord.value;
 	}
+	if (Array.isArray(asRecord.data)) {
+		return asRecord.data;
+	}
 
 	const lenFn = asRecord.length;
 	const atFn = asRecord.at;
@@ -131,6 +134,14 @@ export function toGroupKeyString(value: unknown, noneLabel = "None"): string {
 			const month = String(objectValue.date.getMonth() + 1).padStart(2, "0");
 			const day = String(objectValue.date.getDate()).padStart(2, "0");
 			return `${year}-${month}-${day}`;
+		}
+
+		if (Object.prototype.hasOwnProperty.call(objectValue, "data")) {
+			const rawData = objectValue.data;
+			if (rawData == null) return noneLabel;
+			if (rawData !== value) {
+				return toGroupKeyString(rawData, noneLabel);
+			}
 		}
 	}
 

@@ -36,6 +36,15 @@ describe("customTableGrouping", () => {
 
 		expect(extractListValues(listLike)).toEqual(["A", "B"]);
 		expect(extractListValues({ value: ["X", "Y"] })).toEqual(["X", "Y"]);
+		expect(extractListValues({ data: ["L1", "L2"] })).toEqual(["L1", "L2"]);
+	});
+
+	test("extractGroupKeys: supports Bases Value objects with data list payload", () => {
+		const value = {
+			data: [{ data: "#DNO" }, { data: "#MNO" }],
+		};
+		expect(extractGroupKeys(value, { unnest: true })).toEqual(["#DNO", "#MNO"]);
+		expect(extractGroupKeys(value, { unnest: false })).toEqual(["#DNO, #MNO"]);
 	});
 
 	test("groupEntriesByValue: unnest duplicates entries across multiple groups", () => {
@@ -62,5 +71,9 @@ describe("customTableGrouping", () => {
 	test("toGroupKeyString: Date-like values are normalized", () => {
 		const value = { date: new Date("2026-02-15T12:34:56.000Z") };
 		expect(toGroupKeyString(value)).toBe("2026-02-15");
+	});
+
+	test("toGroupKeyString: unwraps data payloads", () => {
+		expect(toGroupKeyString({ data: "#tag-a" })).toBe("#tag-a");
 	});
 });
