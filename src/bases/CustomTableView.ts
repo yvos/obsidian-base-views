@@ -25,6 +25,10 @@ import {
 	resolveColumnWidths,
 	setColumnSizeValue,
 } from "./tableColumnSizing";
+import {
+	groupEntriesByValue,
+	hasAnyMultiValueEntries,
+} from "./customTableGrouping";
 
 type RowHeightOption = "short" | "medium" | "tall" | "extraTall";
 type VirtualMode = "none" | "ungrouped" | "grouped";
@@ -44,6 +48,37 @@ interface RenderableGroup {
 	title: string;
 	entries: EntryLike[];
 }
+
+interface RenderableNestedGroup {
+	id: string;
+	title: string;
+	entries: EntryLike[];
+	subGroups: RenderableGroup[];
+}
+
+type VirtualNestedGroupedItem =
+	| {
+		type: "primary-header";
+		id: string;
+		title: string;
+		count: number;
+	}
+	| {
+		type: "secondary-header";
+		id: string;
+		title: string;
+		count: number;
+	}
+	| {
+		type: "group-summary";
+		id: string;
+		summaryValues: Record<string, string>;
+	}
+	| {
+		type: "row";
+		id: string;
+		entry: EntryLike;
+	};
 
 interface PropertyMetadataLike {
 	icon?: unknown;
@@ -91,6 +126,9 @@ export class CustomTableView extends BasesViewBase {
 	private virtualMinWidth = "";
 	private renderedTables: HTMLTableElement[] = [];
 	private activeColumnResizeCleanup: (() => void) | null = null;
+	private basesController: any = null;
+	private subGroupPropertyId: string | null = null;
+	private unnestMultiValueGroup = true;
 
 	private readonly DEFAULT_COLUMN_WIDTH = DEFAULT_TABLE_COLUMN_WIDTH;
 	private readonly MIN_COLUMN_WIDTH = MIN_TABLE_COLUMN_WIDTH;
@@ -102,6 +140,7 @@ export class CustomTableView extends BasesViewBase {
 	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
 		super(controller, containerEl, plugin);
 		(this.dataAdapter as any).basesView = this;
+		this.basesController = controller;
 	}
 
 	onload(): void {
@@ -153,8 +192,11 @@ export class CustomTableView extends BasesViewBase {
 			const rowHeight = String(this.config?.get?.("rowHeight") ?? "medium");
 			const summaries = JSON.stringify(this.config?.get?.("tableSummaries") ?? {});
 			const columnSize = JSON.stringify(this.config?.get?.("columnSize") ?? {});
+			const subGroup = String(this.config?.getAsPropertyId?.("subGroup") ?? "");
+			const unnest = String(this.config?.get?.("unnestMultiValueGroup") ?? true);
+			const primaryGroupBy = this.getPrimaryGroupByPropertyId() ?? "";
 			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
-			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${grouped}`;
+			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${grouped}`;
 		} catch {
 			return "";
 		}
@@ -202,12 +244,23 @@ export class CustomTableView extends BasesViewBase {
 				this.MIN_COLUMN_WIDTH
 			);
 
+			const subGroupValue = this.config.getAsPropertyId?.("subGroup");
+			this.subGroupPropertyId =
+				typeof subGroupValue === "string" && subGroupValue.trim().length > 0
+					? subGroupValue.trim()
+					: null;
+
+			const unnestValue = this.config.get("unnestMultiValueGroup");
+			this.unnestMultiValueGroup = unnestValue !== false;
+
 			this.configLoaded = true;
 		} catch (error) {
 			console.warn("[TaskNotes][CustomTableView] Failed to read view options:", error);
 			this.rowHeight = "medium";
 			this.tableSummaries = {};
 			this.columnSize = {};
+			this.subGroupPropertyId = null;
+			this.unnestMultiValueGroup = true;
 		}
 	}
 
@@ -258,32 +311,40 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		const groupedData = this.data?.groupedData || [];
+		const allEntries = (this.data?.data || []) as EntryLike[];
 		const isGrouped = this.dataAdapter.isGrouped();
+		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId();
+		const shouldRenderGrouped =
+			isGrouped || !!primaryGroupByPropertyId || !!this.subGroupPropertyId;
 
-		if (isGrouped) {
-			const groups = this.extractRenderableGroups(groupedData);
-			if (groups.length === 0) {
+		if (shouldRenderGrouped) {
+			const nestedGroups = this.buildRenderableNestedGroups(
+				groupedData,
+				allEntries,
+				isGrouped,
+				primaryGroupByPropertyId
+			);
+			if (nestedGroups.length === 0) {
 				this.clearRenderedContent();
 				this.renderEmptyState("No rows match the current filters.");
 				return;
 			}
 
-			const groupedSources = this.buildGroupedVirtualSources(groups, columns);
-			const flattenedItems = flattenGroupedVirtualItems(groupedSources);
+			const enhancedItems = this.flattenNestedGroupsForVirtual(nestedGroups, columns);
 			const shouldVirtual = shouldUseGroupedVirtualization(
-				flattenedItems.length,
+				enhancedItems.length,
 				this.VIRTUAL_THRESHOLD_GROUPED
 			);
 
 			if (shouldVirtual) {
-				await this.renderGroupedVirtual(flattenedItems, columns, this.collectEntriesFromGroups(groups));
+				await this.renderNestedGroupedVirtual(enhancedItems, columns, allEntries);
 			} else {
-				this.renderGroupedNormal(groups, columns);
+				this.renderNestedGroupedNormal(nestedGroups, columns);
 			}
 			return;
 		}
 
-		const entries = (groupedData[0]?.entries || this.data?.data || []) as EntryLike[];
+		const entries = (groupedData[0]?.entries || allEntries || []) as EntryLike[];
 		if (entries.length === 0) {
 			this.clearRenderedContent();
 			this.renderEmptyState("No rows match the current filters.");
@@ -307,6 +368,271 @@ export class CustomTableView extends BasesViewBase {
 		this.destroyVirtualScroller();
 		this.renderedTables = [];
 		this.tableScrollEl?.empty();
+	}
+
+	private getPrimaryGroupByPropertyId(): string | null {
+		const controller = this.basesController;
+		if (!controller?.query?.views || !controller?.viewName) return null;
+
+		const views = controller.query.views;
+		if (!Array.isArray(views)) return null;
+		const currentViewName = controller.viewName;
+		for (const view of views) {
+			if (!view || view.name !== currentViewName) continue;
+			const groupBy = view.groupBy;
+			if (!groupBy) return null;
+			if (typeof groupBy === "string") return groupBy;
+			if (typeof groupBy === "object" && typeof groupBy.property === "string") {
+				return groupBy.property;
+			}
+			return null;
+		}
+
+		return null;
+	}
+
+	private buildRenderableNestedGroups(
+		groupedData: any[],
+		allEntries: EntryLike[],
+		isGrouped: boolean,
+		primaryGroupByPropertyId: string | null
+	): RenderableNestedGroup[] {
+		const hasPrimaryGroupBy = typeof primaryGroupByPropertyId === "string" && primaryGroupByPropertyId.length > 0;
+		const canUnnestPrimary =
+			this.unnestMultiValueGroup &&
+			hasPrimaryGroupBy &&
+			hasAnyMultiValueEntries(allEntries, (entry) => this.safeGetValue(entry, primaryGroupByPropertyId!));
+		const useSubGroupAsPrimary =
+			!hasPrimaryGroupBy && !isGrouped && typeof this.subGroupPropertyId === "string" && this.subGroupPropertyId.length > 0;
+
+		let primaryGroups: RenderableGroup[] = [];
+
+		if (useSubGroupAsPrimary) {
+			primaryGroups = this.buildGroupsFromProperty(
+				allEntries,
+				this.subGroupPropertyId!,
+				this.unnestMultiValueGroup
+			);
+		} else if (hasPrimaryGroupBy) {
+			if (!canUnnestPrimary && isGrouped) {
+				primaryGroups = this.extractRenderableGroups(groupedData);
+			} else {
+				primaryGroups = this.buildGroupsFromProperty(
+					allEntries,
+					primaryGroupByPropertyId!,
+					this.unnestMultiValueGroup
+				);
+			}
+		} else if (isGrouped) {
+			primaryGroups = this.extractRenderableGroups(groupedData);
+		} else {
+			primaryGroups = [
+				{
+					id: "all",
+					title: "All",
+					entries: allEntries,
+				},
+			];
+		}
+
+		const shouldApplySubGroup =
+			typeof this.subGroupPropertyId === "string" &&
+			this.subGroupPropertyId.length > 0 &&
+			!useSubGroupAsPrimary &&
+			this.subGroupPropertyId !== primaryGroupByPropertyId;
+
+		const result: RenderableNestedGroup[] = [];
+		for (let index = 0; index < primaryGroups.length; index++) {
+			const primary = primaryGroups[index];
+			if (primary.entries.length === 0) continue;
+
+			const subGroups = shouldApplySubGroup
+				? this.buildGroupsFromProperty(
+					primary.entries,
+					this.subGroupPropertyId!,
+					this.unnestMultiValueGroup,
+					`${primary.id}:sub`
+				)
+				: [];
+
+			result.push({
+				id: primary.id || `primary:${index}`,
+				title: primary.title,
+				entries: primary.entries,
+				subGroups,
+			});
+		}
+
+		return result;
+	}
+
+	private buildGroupsFromProperty(
+		entries: EntryLike[],
+		propertyId: string,
+		unnest: boolean,
+		idPrefix = "group"
+	): RenderableGroup[] {
+		const grouped = groupEntriesByValue(entries, (entry) => this.safeGetValue(entry, propertyId), {
+			unnest,
+			noneLabel: "None",
+		});
+		return grouped.map((bucket, index) => ({
+			id: `${idPrefix}:${index}:${bucket.key}`,
+			title: bucket.key,
+			entries: bucket.entries,
+		}));
+	}
+
+	private flattenNestedGroupsForVirtual(
+		nestedGroups: RenderableNestedGroup[],
+		columns: string[]
+	): VirtualNestedGroupedItem[] {
+		const hasSummary = hasAnyTableSummary(columns, this.tableSummaries);
+		const items: VirtualNestedGroupedItem[] = [];
+
+		for (const primary of nestedGroups) {
+			items.push({
+				type: "primary-header",
+				id: `primary-header:${primary.id}`,
+				title: primary.title,
+				count: primary.entries.length,
+			});
+
+			if (primary.subGroups.length > 0) {
+				for (const subGroup of primary.subGroups) {
+					items.push({
+						type: "secondary-header",
+						id: `secondary-header:${primary.id}:${subGroup.id}`,
+						title: subGroup.title,
+						count: subGroup.entries.length,
+					});
+
+					if (hasSummary) {
+						items.push({
+							type: "group-summary",
+							id: `summary:${primary.id}:${subGroup.id}`,
+							summaryValues: this.buildSummaryValues(subGroup.entries, columns),
+						});
+					}
+
+					for (let index = 0; index < subGroup.entries.length; index++) {
+						items.push({
+							type: "row",
+							id: `row:${primary.id}:${subGroup.id}:${index}`,
+							entry: subGroup.entries[index],
+						});
+					}
+				}
+				continue;
+			}
+
+			if (hasSummary) {
+				items.push({
+					type: "group-summary",
+					id: `summary:${primary.id}`,
+					summaryValues: this.buildSummaryValues(primary.entries, columns),
+				});
+			}
+
+			for (let index = 0; index < primary.entries.length; index++) {
+				items.push({
+					type: "row",
+					id: `row:${primary.id}:${index}`,
+					entry: primary.entries[index],
+				});
+			}
+		}
+
+		return items;
+	}
+
+	private renderNestedGroupedNormal(
+		nestedGroups: RenderableNestedGroup[],
+		columns: string[]
+	): void {
+		this.destroyVirtualScroller();
+		if (!this.tableScrollEl) return;
+		this.tableScrollEl.empty();
+		this.renderedTables = [];
+
+		for (const primary of nestedGroups) {
+			const sectionEl = this.containerEl.ownerDocument.createElement("section");
+			sectionEl.className = "tn-bases-table-group";
+
+			const titleEl = this.containerEl.ownerDocument.createElement("h3");
+			titleEl.className = "tn-bases-table-group-title";
+			titleEl.setText(`${primary.title} (${primary.entries.length})`);
+			sectionEl.appendChild(titleEl);
+
+			if (primary.subGroups.length > 0) {
+				for (const subGroup of primary.subGroups) {
+					this.renderSubGroupSection(sectionEl, subGroup, columns);
+				}
+			} else {
+				this.renderGroupTableIntoSection(sectionEl, primary.entries, columns);
+			}
+
+			this.tableScrollEl.appendChild(sectionEl);
+		}
+	}
+
+	private renderSubGroupSection(
+		sectionEl: HTMLElement,
+		subGroup: RenderableGroup,
+		columns: string[]
+	): void {
+		const subtitleEl = this.containerEl.ownerDocument.createElement("h4");
+		subtitleEl.className = "tn-bases-table-subgroup-title";
+		subtitleEl.setText(`${subGroup.title} (${subGroup.entries.length})`);
+		sectionEl.appendChild(subtitleEl);
+		this.renderGroupTableIntoSection(sectionEl, subGroup.entries, columns);
+	}
+
+	private renderGroupTableIntoSection(
+		sectionEl: HTMLElement,
+		entries: EntryLike[],
+		columns: string[]
+	): void {
+		const tableWrapper = this.containerEl.ownerDocument.createElement("div");
+		tableWrapper.className = "tn-bases-table-wrapper";
+		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
+		const tableEl = this.createTable(entries, columns, true);
+		this.renderedTables.push(tableEl);
+		tableWrapper.appendChild(tableEl);
+		sectionEl.appendChild(tableWrapper);
+	}
+
+	private async renderNestedGroupedVirtual(
+		items: VirtualNestedGroupedItem[],
+		columns: string[],
+		menuEntries: EntryLike[]
+	): Promise<void> {
+		this.ensureVirtualLayout("grouped", columns, menuEntries, false);
+		if (!this.virtualItemsHostEl) return;
+
+		if (!this.virtualScroller) {
+			this.virtualScroller = new VirtualScroller<VirtualNestedGroupedItem>({
+				container: this.virtualItemsHostEl,
+				items,
+				overscan: this.VIRTUAL_OVERSCAN,
+				renderItem: (item) => {
+					if (item.type === "primary-header") {
+						return this.createVirtualPrimaryHeaderRow(item);
+					}
+					if (item.type === "secondary-header") {
+						return this.createVirtualSecondaryHeaderRow(item);
+					}
+					if (item.type === "group-summary") {
+						return this.createVirtualSummaryRow(item.summaryValues, columns);
+					}
+					return this.createVirtualRow(item.entry, columns);
+				},
+				getItemKey: (item) => item.id,
+			});
+			setTimeout(() => this.virtualScroller?.recalculate(), 0);
+		} else {
+			this.virtualScroller.updateItems(items);
+		}
 	}
 
 	private extractRenderableGroups(groups: any[]): RenderableGroup[] {
@@ -587,18 +913,24 @@ export class CustomTableView extends BasesViewBase {
 		return row;
 	}
 
-	private createVirtualGroupHeaderRow(
-		item: Extract<VirtualGroupedItem<EntryLike>, { type: "group-header" }>
-	): HTMLElement {
+	private createVirtualPrimaryHeaderRow(item: { title: string; count: number }): HTMLElement {
 		const row = this.containerEl.ownerDocument.createElement("div");
-		row.className = "tn-bases-table-group-title-row";
+		row.className = "tn-bases-table-group-title-row tn-bases-table-group-title-row--primary";
 		row.style.minWidth = "var(--tn-table-min-width)";
 		row.setText(`${item.title} (${item.count})`);
 		return row;
 	}
 
-	private createVirtualGroupSummaryRow(
-		item: Extract<VirtualGroupedItem<EntryLike>, { type: "group-summary" }>,
+	private createVirtualSecondaryHeaderRow(item: { title: string; count: number }): HTMLElement {
+		const row = this.containerEl.ownerDocument.createElement("div");
+		row.className = "tn-bases-table-group-title-row tn-bases-table-group-title-row--secondary";
+		row.style.minWidth = "var(--tn-table-min-width)";
+		row.setText(`${item.title} (${item.count})`);
+		return row;
+	}
+
+	private createVirtualSummaryRow(
+		summaryValues: Record<string, string>,
 		columns: string[]
 	): HTMLElement {
 		const row = this.containerEl.ownerDocument.createElement("div");
@@ -610,11 +942,24 @@ export class CustomTableView extends BasesViewBase {
 		for (const propertyId of columns) {
 			const cell = this.containerEl.ownerDocument.createElement("div");
 			cell.className = "tn-bases-table-summary-cell";
-			cell.setText(item.summaryValues[propertyId] || "");
+			cell.setText(summaryValues[propertyId] || "");
 			row.appendChild(cell);
 		}
 
 		return row;
+	}
+
+	private createVirtualGroupHeaderRow(
+		item: Extract<VirtualGroupedItem<EntryLike>, { type: "group-header" }>
+	): HTMLElement {
+		return this.createVirtualPrimaryHeaderRow(item);
+	}
+
+	private createVirtualGroupSummaryRow(
+		item: Extract<VirtualGroupedItem<EntryLike>, { type: "group-summary" }>,
+		columns: string[]
+	): HTMLElement {
+		return this.createVirtualSummaryRow(item.summaryValues, columns);
 	}
 
 	private getColumnTemplate(columns: string[]): string {

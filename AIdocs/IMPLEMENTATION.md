@@ -9,6 +9,7 @@
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
 - 2026-02-15 時点で `tasknotesCustomTable` の仮想スクロール時に縦スクロール範囲が短くなる不具合を修正（`tn-bases-table-virtual` の縦overflowを可視化）。
 - 2026-02-15 時点で `tasknotesCustomTable` の viewアイコンを `table-cells-merge` に変更し、Custom Table の列ヘッダーにプロパティアイコン表示を追加。
+- 2026-02-15 時点で `tasknotesCustomTable` に2段階グルーピング（Sub-group by）と multi-value group unnest（ON/OFF、デフォルトON）を追加。
 - 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
 - 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
 - 2026-02-14 時点で view一覧サイドバーをさらに改善（left/top配置切替、右クリックメニュー切替、プロパティ2行表示、フォントサイズ選択、左配置時の自動幅短縮）を実装。
@@ -65,6 +66,9 @@
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
   - `config.getOrder()` に従った列順
   - grouped / ungrouped 両対応
+  - Grouping options
+    - `subGroup`（property）で2段階グルーピングを有効化
+    - `unnestMultiValueGroup`（toggle, default: true）で list 値のグループ展開を切替
   - `file.name` 列のリンク描画（クリックでノートを開く）
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
   - 列ヘッダー表示
@@ -86,7 +90,8 @@
     - overscan: `6`
     - 閾値未満は従来描画を維持
   - grouped 仮想化の内部モデル
-    - `group-header -> group-summary -> row` の順でフラット化して描画
+    - 1段階: `group-header -> group-summary -> row`
+    - 2段階: `primary-header -> secondary-header -> group-summary -> row`
 - 組み込み summary
   - 共通: `empty`, `filled`, `unique`
   - 数値: `sum`, `avg`, `min`, `max`
@@ -98,6 +103,8 @@
   - Custom Table View 本体
 - `src/bases/customTableVirtualization.ts`
   - 仮想化判定と grouped フラット化ロジック
+- `src/bases/customTableGrouping.ts`
+  - group key 正規化、list値の unnest、entry のグルーピング純粋関数
 - `src/bases/tableColumnSizing.ts`
   - 列幅正規化・テンプレート生成・合計幅計算の純粋関数
 - `src/bases/tableSummary.ts`
@@ -124,6 +131,8 @@
   - summary ロジックのユニットテスト
 - `tests/unit/bases/customTableVirtualization.test.ts`
   - 仮想化閾値判定ロジックのユニットテスト
+- `tests/unit/bases/customTableGrouping.test.ts`
+  - group key抽出・unnest・grouping純粋関数のユニットテスト
 - `tests/unit/bases/customTableGroupedFlatten.test.ts`
   - grouped フラット化順序のユニットテスト
 - `tests/unit/bases/tableColumnSizing.test.ts`
@@ -141,6 +150,10 @@
   - View option から取得する行高設定
 - `columnSize: Record<propertyId, number>`
   - 列幅の永続化設定（変更列のみ）
+- `subGroupPropertyId: string | null`
+  - Custom Table の2段目グルーピング対象プロパティ
+- `unnestMultiValueGroup: boolean`
+  - list値の group key を個別展開するかの設定（デフォルトON）
 - `VirtualGroupedItem`
   - grouped 仮想描画で使用する内部表現
   - `group-header` / `group-summary` / `row` の3種を保持
@@ -173,6 +186,9 @@
 
 # 5. 挙動の詳細や注意点
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
+- `subGroup` 設定時は `primary group -> sub group` の2段構造で表示し、summary は sub group 単位で表示する。
+- `unnestMultiValueGroup=true` のとき、group key が list 値なら各値ごとに展開して同一レコードを複数グループに表示する。
+- `unnestMultiValueGroup=false` のとき、list 値は結合キー（例: `A, B`）として単一グループに表示する。
 - ungrouped 時はテーブル下部（tfoot）に summary 行を表示。
 - 仮想描画時も summary を維持する。
   - ungrouped: 仮想リスト下部に全体 summary 行
@@ -239,11 +255,12 @@
   - `src/bases/api.ts`
 - Custom Table View 変更時は以下を同時確認:
   - 表示ロジック: `src/bases/CustomTableView.ts`
+  - グルーピングロジック: `src/bases/customTableGrouping.ts`
   - 仮想化ロジック: `src/bases/customTableVirtualization.ts`
   - 列幅ロジック: `src/bases/tableColumnSizing.ts`
   - 集計ロジック: `src/bases/tableSummary.ts`
   - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
+  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/customTableGrouping.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
 - Bases view一覧サイドバー変更時は以下を同時確認:
   - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
   - サービス: `src/bases/BasesViewListSidebarService.ts`

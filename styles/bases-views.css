@@ -706,6 +706,20 @@ button.tn-bases-view-list__item {
     color: var(--tn-text-muted);
 }
 
+.tn-tasknotesCustomTable .tn-bases-table-group-title-row--secondary {
+    background: var(--tn-bg-primary);
+    font-size: var(--tn-font-size-xs);
+    padding: 6px 12px;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-subgroup-title {
+    margin: 10px 0 6px;
+    padding: 0 2px;
+    font-size: var(--tn-font-size-xs);
+    font-weight: var(--tn-font-weight-medium);
+    color: var(--tn-text-muted);
+}
+
 /* Row height options */
 .tn-tasknotesCustomTable.tn-bases-table-row-height-short {
     --tn-bases-row-height: 32px;

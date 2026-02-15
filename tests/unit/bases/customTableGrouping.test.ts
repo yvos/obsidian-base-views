@@ -1,0 +1,66 @@
+import {
+	extractGroupKeys,
+	extractListValues,
+	groupEntriesByValue,
+	hasAnyMultiValueEntries,
+	toGroupKeyString,
+} from "../../../src/bases/customTableGrouping";
+
+describe("customTableGrouping", () => {
+	test("extractGroupKeys: scalar values are grouped as single key", () => {
+		expect(extractGroupKeys("A", { unnest: true })).toEqual(["A"]);
+		expect(extractGroupKeys(1, { unnest: true })).toEqual(["1"]);
+		expect(extractGroupKeys(false, { unnest: true })).toEqual(["False"]);
+		expect(extractGroupKeys(null, { unnest: true })).toEqual(["None"]);
+	});
+
+	test("extractGroupKeys: list values are unnested when enabled", () => {
+		expect(extractGroupKeys(["A", "B"], { unnest: true })).toEqual(["A", "B"]);
+		expect(extractGroupKeys(["A", "A", "B"], { unnest: true })).toEqual(["A", "B"]);
+	});
+
+	test("extractGroupKeys: list values are combined when unnest is disabled", () => {
+		expect(extractGroupKeys(["A", "B"], { unnest: false })).toEqual(["A, B"]);
+		expect(extractGroupKeys([], { unnest: false })).toEqual(["None"]);
+	});
+
+	test("extractListValues: supports Bases ListValue-like objects", () => {
+		const listLike = {
+			length() {
+				return 2;
+			},
+			at(index: number) {
+				return index === 0 ? "A" : "B";
+			},
+		};
+
+		expect(extractListValues(listLike)).toEqual(["A", "B"]);
+		expect(extractListValues({ value: ["X", "Y"] })).toEqual(["X", "Y"]);
+	});
+
+	test("groupEntriesByValue: unnest duplicates entries across multiple groups", () => {
+		const entries = [
+			{ id: "1", value: ["A", "B"] },
+			{ id: "2", value: ["B"] },
+		];
+
+		const grouped = groupEntriesByValue(entries, (entry) => entry.value, { unnest: true });
+
+		expect(grouped.map((group) => group.key)).toEqual(["A", "B"]);
+		expect(grouped[0].entries.map((entry) => entry.id)).toEqual(["1"]);
+		expect(grouped[1].entries.map((entry) => entry.id)).toEqual(["1", "2"]);
+	});
+
+	test("hasAnyMultiValueEntries: detects list values", () => {
+		const flat = [{ value: "A" }, { value: "B" }];
+		const multi = [{ value: "A" }, { value: ["B", "C"] }];
+
+		expect(hasAnyMultiValueEntries(flat, (entry) => entry.value)).toBe(false);
+		expect(hasAnyMultiValueEntries(multi, (entry) => entry.value)).toBe(true);
+	});
+
+	test("toGroupKeyString: Date-like values are normalized", () => {
+		const value = { date: new Date("2026-02-15T12:34:56.000Z") };
+		expect(toGroupKeyString(value)).toBe("2026-02-15");
+	});
+});

@@ -51,6 +51,21 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 				factory: buildCustomTableViewFactory(plugin),
 				options: () => [
 					{
+						type: "property",
+						key: "subGroup",
+						displayName: "Sub-group by",
+						placeholder: "Select property for sub-grouping (optional)",
+						filter: (prop: string) => {
+							return prop.startsWith("note.") || prop.startsWith("task.") || prop.startsWith("formula.");
+						},
+					},
+					{
+						type: "toggle",
+						key: "unnestMultiValueGroup",
+						displayName: "Unnest multi-value groups",
+						default: true,
+					},
+					{
 						type: "dropdown",
 						key: "rowHeight",
 						displayName: "Row height",
