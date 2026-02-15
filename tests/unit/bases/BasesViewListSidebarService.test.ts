@@ -156,7 +156,7 @@ describe("BasesViewListSidebarService", () => {
 							table: { icon: "lucide-table" },
 							cards: { icon: "lucide-layout-grid" },
 							list: { icon: "lucide-list" },
-							tasknotesCustomTable: { icon: "table" },
+							tasknotesCustomTable: { icon: "table-cells-merge" },
 							invalidIconType: { icon: "not a valid icon !!" },
 						},
 					})),
@@ -194,6 +194,14 @@ describe("BasesViewListSidebarService", () => {
 							"Hide native toolbar",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription":
 							"Edit description",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeDefault":
+							"Font size: Default",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeSmall":
+							"Font size: Small",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeVerySmall":
+							"Font size: Very Small",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.redrawViewList":
+							"Redraw view list",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.title":
 							"Edit description: {viewName}",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.placeholder":
@@ -245,7 +253,7 @@ describe("BasesViewListSidebarService", () => {
 		const icons = Array.from(
 			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
 		).map((el) => el.getAttribute("data-icon"));
-		expect(icons).toEqual(["table", "table"]);
+		expect(icons).toEqual(["table", "table-cells-merge"]);
 	});
 
 	it("falls back to generic icon when type is unknown", async () => {
@@ -915,13 +923,17 @@ describe("BasesViewListSidebarService", () => {
 		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
 		const menuInstance = lastResult?.value as any;
 		expect(menuInstance).toBeTruthy();
-		expect(menuInstance.addItem).toHaveBeenCalledTimes(4);
-		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(1);
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(8);
+		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(3);
 		expect(menuInstance.showAtMouseEvent).toHaveBeenCalled();
 		expect(menuInstance.items[0]?.setTitle).toHaveBeenCalled();
 		expect(menuInstance.items[1]?.setTitle).toHaveBeenCalled();
 		expect(menuInstance.items[3]?.setTitle).toHaveBeenCalled();
 		expect(menuInstance.items[4]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[5]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[7]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[9]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[10]?.setTitle).toHaveBeenCalled();
 	});
 
 	it("shows edit-description item on view-row context menu and updates YAML", async () => {
@@ -952,8 +964,8 @@ describe("BasesViewListSidebarService", () => {
 		const menuMock = Menu as unknown as jest.Mock;
 		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
 		const menuInstance = lastResult?.value as any;
-		expect(menuInstance.addItem).toHaveBeenCalledTimes(5);
-		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(2);
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(9);
+		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(4);
 
 		const editItem = menuInstance.items[0];
 		const onClickHandler = editItem?.onClick?.mock?.calls?.[0]?.[0];
@@ -1047,6 +1059,83 @@ describe("BasesViewListSidebarService", () => {
 		expect(plugin.settings.basesViewListShowNativeToolbar).toBe(false);
 		expect(plugin.saveSettings).toHaveBeenCalled();
 		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(true);
+	});
+
+	it("changes font size from view-list context menu", async () => {
+		plugin.settings.basesViewListFontSize = "m";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "A" },
+						{ name: "Cards", type: "cards", description: "B" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		const fontSmallItem = menuInstance.items[4];
+		const onClickHandler = fontSmallItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(plugin.settings.basesViewListFontSize).toBe("s");
+		expect(plugin.saveSettings).toHaveBeenCalled();
+		const nextListEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(nextListEl?.classList.contains("tn-bases-view-list-font-s")).toBe(true);
+	});
+
+	it("redraws view list from context menu action", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "A" },
+						{ name: "Cards", type: "cards", description: "B" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemsBefore = setup.rootEl.querySelectorAll(".tn-bases-view-list__item");
+		expect(itemsBefore.length).toBe(2);
+		itemsBefore[0]?.remove();
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(1);
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		const redrawItem = menuInstance.items[7];
+		const onClickHandler = redrawItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(2);
 	});
 
 	it("deletes description when edit modal confirms empty value", async () => {

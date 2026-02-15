@@ -1624,6 +1624,10 @@ export const en: TranslationTree = {
 							showNativeToolbar: "Show native toolbar",
 							hideNativeToolbar: "Hide native toolbar",
 							editDescription: "Edit description",
+							fontSizeDefault: "Font size: Default",
+							fontSizeSmall: "Font size: Small",
+							fontSizeVerySmall: "Font size: Very Small",
+							redrawViewList: "Redraw view list",
 						},
 						editDescriptionModal: {
 							title: "Edit description: {viewName}",

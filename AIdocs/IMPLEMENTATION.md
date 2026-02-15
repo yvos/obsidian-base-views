@@ -8,12 +8,14 @@
 - 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
 - 2026-02-15 時点で `tasknotesCustomTable` の仮想スクロール時に縦スクロール範囲が短くなる不具合を修正（`tn-bases-table-virtual` の縦overflowを可視化）。
+- 2026-02-15 時点で `tasknotesCustomTable` の viewアイコンを `table-cells-merge` に変更し、Custom Table の列ヘッダーにプロパティアイコン表示を追加。
 - 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
 - 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
 - 2026-02-14 時点で view一覧サイドバーをさらに改善（left/top配置切替、右クリックメニュー切替、プロパティ2行表示、フォントサイズ選択、左配置時の自動幅短縮）を実装。
 - 2026-02-15 時点で view一覧サイドバーを追加改善（アイコン表示ON/OFF、top表示のwrap/scroll切替、狭幅時挙動設定、`formulas.viewListSize` のファイル別保存、view行のdescription編集）を実装。
 - 2026-02-15 時点で view一覧サイドバーを仕様調整（`viewListSize` の文字列保存、top配置時のプロパティ行高統一、右クリックでプロパティ表示ON/OFF、グローバル幅保持廃止）を実装。
 - 2026-02-15 時点で view一覧サイドバーを表示調整3（フォントサイズ表示ラベルの変更、button既定height競合の修正、狭幅`top`時の常時scroll強制、ネイティブツールバー表示切替の再実装）を実装。
+- 2026-02-15 時点で view一覧サイドバーの右クリックメニューを拡張（フォントサイズ切替、view一覧の再描画）を実装。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -49,11 +51,13 @@
     - 一覧領域の右クリックメニューで `left/top` を切替可能
     - 一覧領域の右クリックメニューでプロパティ表示ON/OFFを切替可能
     - 一覧領域の右クリックメニューでネイティブツールバー表示ON/OFFを切替可能
+    - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
+    - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
     - view行右クリックで `description` 編集 + 配置切替メニューを表示
     - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
     - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
     - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
-    - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`）
+    - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`、`tasknotesCustomTable` は `table-cells-merge`）
     - 設定ON時は view名の下にプロパティ行を表示（配列はカンマ区切り、空値は非表示）
     - 狭幅時は設定に応じて `none/top/hide` を適用
     - 一覧が非表示状態（collapsed / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
@@ -63,6 +67,9 @@
   - grouped / ungrouped 両対応
   - `file.name` 列のリンク描画（クリックでノートを開く）
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
+  - 列ヘッダー表示
+    - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）
+    - `metadataTypeManager.properties` の `icon/type/widget` を優先し、未取得時は `propertyId` 規則でフォールバック
   - 行高設定（`short` / `medium` / `tall` / `extraTall`）
     - 固定行高として適用（`short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
   - 列幅設定（`columnSize` 互換形式）
@@ -201,7 +208,8 @@
 - top配置時は `wrap/scroll` 設定を適用し、狭幅 + `narrowBehavior=top` ではユーザー配置が `left/top` のどちらでも `scroll` を強制する。
 - 狭幅判定は leaf container 幅を使い、`ResizeObserver` で変化を追従する。
 - 保存幅が初期値のときのみ自動幅短縮を適用する（ユーザー幅を上書きしない）。
-- view typeアイコンは `bases.registrations[type].icon` を優先し、未知typeは `list` にフォールバックする。
+- view typeアイコンは `bases.registrations[type].icon` を優先し、未知typeは `list` にフォールバックする（`tasknotesCustomTable` 既知fallbackは `table-cells-merge`）。
+- Custom Table の列ヘッダーは「アイコン + 表示名」で描画し、メタデータ定義が無い場合でも `propertyId` 規則でアイコンを補完する。
 - 設定OFFまたは plugin unload 時は注入DOMを除去し、`.bases-view` を元の親へ戻す。
 - レイアウト再同期時は既存ラッパー文脈を再解決し、不正な入れ子ラッパーを自動で解除して1つに正規化する（増殖防止）。
 - view一覧サイドバーの詳細実装・切り出し境界は `AIdocs/IMPLEMENTATION-base_view_list.md` を参照。

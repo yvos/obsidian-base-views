@@ -47,7 +47,7 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 			// Register Custom Table view using public API
 			const customTableSuccess = registerBasesView(plugin, "tasknotesCustomTable", {
 				name: "TaskNotes Table",
-				icon: "table",
+				icon: "table-cells-merge",
 				factory: buildCustomTableViewFactory(plugin),
 				options: () => [
 					{

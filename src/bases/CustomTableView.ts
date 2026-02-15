@@ -1,4 +1,4 @@
-import { Keymap, Menu, Notice } from "obsidian";
+import { Keymap, Menu, Notice, setIcon } from "obsidian";
 import TaskNotesPlugin from "../main";
 import { BasesViewBase } from "./BasesViewBase";
 import { TaskInfo } from "../types";
@@ -44,6 +44,27 @@ interface RenderableGroup {
 	title: string;
 	entries: EntryLike[];
 }
+
+interface PropertyMetadataLike {
+	icon?: unknown;
+	type?: unknown;
+	widget?: unknown;
+}
+
+const PROPERTY_TYPE_ICON_MAP: Record<string, string> = {
+	checkbox: "check-square",
+	boolean: "check-square",
+	date: "calendar",
+	datetime: "calendar-clock",
+	time: "clock",
+	status: "circle",
+	link: "link-2",
+	url: "link-2",
+	file: "file-text",
+	related: "link-2",
+	relation: "link-2",
+	formula: "table-cells-merge",
+};
 
 export class CustomTableView extends BasesViewBase {
 	type = "tasknotesCustomTable";
@@ -536,7 +557,7 @@ export class CustomTableView extends BasesViewBase {
 			const propertyId = columns[index];
 			const cell = doc.createElement("div");
 			cell.className = "tn-bases-table-header-cell tn-bases-table-header-cell--virtual";
-			cell.setText(this.config?.getDisplayName?.(propertyId) || propertyId);
+			cell.appendChild(this.createHeaderCellLabel(propertyId));
 			cell.dataset.propertyId = propertyId;
 			cell.addEventListener("contextmenu", (event) =>
 				this.showSummaryMenu(event as MouseEvent, propertyId, this.virtualMenuEntries)
@@ -820,7 +841,7 @@ export class CustomTableView extends BasesViewBase {
 			const propertyId = columns[index];
 			const th = doc.createElement("th");
 			th.className = "tn-bases-table-header-cell";
-			th.setText(this.config?.getDisplayName?.(propertyId) || propertyId);
+			th.appendChild(this.createHeaderCellLabel(propertyId));
 			th.dataset.propertyId = propertyId;
 			th.addEventListener("contextmenu", (event) =>
 				this.showSummaryMenu(event as MouseEvent, propertyId, entries)
@@ -851,6 +872,117 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		return tableEl;
+	}
+
+	private createHeaderCellLabel(propertyId: string): HTMLElement {
+		const doc = this.containerEl.ownerDocument;
+		const wrapper = doc.createElement("span");
+		wrapper.className = "tn-bases-table-header-label";
+
+		const iconEl = doc.createElement("span");
+		iconEl.className = "tn-bases-table-header-icon";
+		iconEl.setAttribute("aria-hidden", "true");
+		this.renderHeaderIcon(iconEl, propertyId);
+		wrapper.appendChild(iconEl);
+
+		const textEl = doc.createElement("span");
+		textEl.className = "tn-bases-table-header-text";
+		textEl.setText(this.getPropertyDisplayName(propertyId));
+		wrapper.appendChild(textEl);
+
+		return wrapper;
+	}
+
+	private renderHeaderIcon(iconEl: HTMLElement, propertyId: string): void {
+		const iconName = this.resolvePropertyHeaderIcon(propertyId);
+		try {
+			setIcon(iconEl, iconName);
+		} catch {
+			setIcon(iconEl, "list");
+		}
+	}
+
+	private getPropertyDisplayName(propertyId: string): string {
+		return this.config?.getDisplayName?.(propertyId) || propertyId;
+	}
+
+	private resolvePropertyHeaderIcon(propertyId: string): string {
+		const metadataIcon = this.resolvePropertyIconFromMetadata(propertyId);
+		if (metadataIcon) return metadataIcon;
+
+		const [scope, rawName] = propertyId.split(".", 2);
+		const name = (rawName ?? propertyId).toLowerCase();
+
+		if (scope === "file") return "file-text";
+		if (scope === "task") return "check-square";
+		if (scope === "formula") return "table-cells-merge";
+		if (scope === "note" && (name.includes("link") || name.includes("url"))) return "link-2";
+		if (name.includes("status")) return "circle";
+		if (name.includes("priority")) return "star";
+		if (
+			name.includes("date") ||
+			name.includes("scheduled") ||
+			name.includes("due") ||
+			name.includes("deadline") ||
+			name.includes("start") ||
+			name.includes("end")
+		) {
+			return "calendar";
+		}
+		if (name.includes("time") || name.includes("duration")) return "clock";
+		if (name.includes("link") || name.includes("url")) return "link-2";
+		if (name.includes("project") || name.includes("folder")) return "folder-tree";
+		if (name.includes("tag")) return "list";
+		return "file-text";
+	}
+
+	private resolvePropertyIconFromMetadata(propertyId: string): string | null {
+		const [scope, rawName] = propertyId.split(".", 2);
+		const candidates = new Set<string>();
+		candidates.add(propertyId.toLowerCase());
+		candidates.add(propertyId);
+		if (rawName) {
+			candidates.add(rawName.toLowerCase());
+			candidates.add(rawName);
+		}
+		if (scope) {
+			candidates.add(scope.toLowerCase());
+		}
+
+		const metadataTypeManager = (this.app as any)?.metadataTypeManager;
+		const properties = metadataTypeManager?.properties;
+		if (!properties || typeof properties !== "object") return null;
+
+		for (const key of candidates) {
+			const propertyDef = properties[key] as PropertyMetadataLike | undefined;
+			if (!propertyDef || typeof propertyDef !== "object") continue;
+
+			const explicitIcon = this.asNonEmptyString(propertyDef.icon);
+			if (explicitIcon) return explicitIcon;
+
+			const mappedByType = this.resolveIconFromPropertyType(
+				this.asNonEmptyString(propertyDef.type),
+				this.asNonEmptyString(propertyDef.widget)
+			);
+			if (mappedByType) return mappedByType;
+		}
+
+		return null;
+	}
+
+	private resolveIconFromPropertyType(...values: Array<string | null>): string | null {
+		for (const value of values) {
+			if (!value) continue;
+			const mapped = PROPERTY_TYPE_ICON_MAP[value.toLowerCase()];
+			if (mapped) return mapped;
+		}
+		return null;
+	}
+
+	private asNonEmptyString(value: unknown): string | null {
+		if (typeof value !== "string") return null;
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : null;
 	}
 
 	private appendSummaryRow(

@@ -24,6 +24,7 @@
 - アイコン表示:
   - `bases.registrations[type].icon` 優先
   - 既知typeマップ fallback
+    - `tasknotesCustomTable` は `table-cells-merge`
   - 未知は `list`
   - 設定でON/OFF切替可能（OFF時は行先頭アイコンを描画しない）
 - 開閉UI:
@@ -51,6 +52,8 @@
   - 空値は2行目を出さない
   - view行右クリックで `description` 編集モーダルを表示可能
   - 一覧右クリックでプロパティ表示ON/OFFを切替可能（配置切替と共存）
+  - 一覧右クリックでフォントサイズ（`Default/Small/Very Small`）を切替可能
+  - 一覧右クリックで view一覧の再描画を実行可能
   - 編集モーダルは既存descriptionをplaceholder表示し、空文字で確定すると `description` キー削除
 - フォントサイズ:
   - 内部値 `m/s/xs`（表示ラベルは `Default / Small / Very Small`）を設定で選択
@@ -137,6 +140,7 @@
   - 自動幅短縮（初期幅時のみ）
   - 右クリックメニュー生成（view行でdescription編集項目が追加）
   - 右クリックメニューでプロパティ表示ON/OFF・ネイティブツールバーON/OFFトグル
+  - 右クリックメニューでフォントサイズ切替と再描画アクション
   - 開閉トグルの保存挙動
   - 幅ドラッグ更新とclamp（`formulas.viewListSize` 保存/削除）
   - refresh連打での非増殖

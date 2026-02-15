@@ -1585,6 +1585,10 @@ export const ja: TranslationTree = {
 							showNativeToolbar: "ネイティブツールバーを表示",
 							hideNativeToolbar: "ネイティブツールバーを非表示",
 							editDescription: "descriptionの編集",
+							fontSizeDefault: "フォントサイズ: Default",
+							fontSizeSmall: "フォントサイズ: Small",
+							fontSizeVerySmall: "フォントサイズ: Very Small",
+							redrawViewList: "ビュー一覧を再描画",
 						},
 						editDescriptionModal: {
 							title: "descriptionを編集: {viewName}",

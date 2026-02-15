@@ -125,7 +125,7 @@ const KNOWN_VIEW_ICONS: Record<string, string> = {
 	table: "table",
 	cards: "layout-grid",
 	list: "list",
-	tasknotesCustomTable: "table",
+	tasknotesCustomTable: "table-cells-merge",
 	tasknotesTaskList: "list",
 	tasknotesKanban: "layout-columns",
 	tasknotesCalendar: "calendar",
@@ -1058,14 +1058,14 @@ export class BasesViewListSidebarService {
 					return;
 				}
 			}
-			this.showPlacementContextMenu(evt);
+			this.showPlacementContextMenu(evt, leaf);
 		};
 	}
 
-	private showPlacementContextMenu(event: MouseEvent): void {
+	private showPlacementContextMenu(event: MouseEvent, leaf: WorkspaceLeaf): void {
 		const current = this.getPlacement();
 		const menu = new Menu();
-		this.addViewListContextMenuItems(menu, current);
+		this.addViewListContextMenuItems(menu, current, leaf);
 		menu.showAtMouseEvent(event);
 	}
 
@@ -1083,13 +1083,18 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
-		this.addViewListContextMenuItems(menu, current);
+		this.addViewListContextMenuItems(menu, current, leaf);
 		menu.showAtMouseEvent(event);
 	}
 
-	private addViewListContextMenuItems(menu: Menu, current: LayoutPlacement): void {
+	private addViewListContextMenuItems(
+		menu: Menu,
+		current: LayoutPlacement,
+		leaf: WorkspaceLeaf
+	): void {
 		const showProperty = this.plugin.settings.basesViewListShowProperty === true;
 		const showNativeToolbar = this.shouldShowNativeToolbar();
+		const fontSize = this.getFontSize();
 		menu.addItem((item) => {
 			item.setTitle(
 				showProperty
@@ -1111,7 +1116,49 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
+		this.addFontSizeMenuItems(menu, fontSize);
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(this.getContextMenuRedrawViewListLabel());
+			item.onClick(() => {
+				void this.redrawViewList(leaf);
+			});
+		});
+		menu.addSeparator();
 		this.addPlacementMenuItems(menu, current);
+	}
+
+	private addFontSizeMenuItems(menu: Menu, current: FontSizeOption): void {
+		menu.addItem((item) => {
+			item.setTitle(
+				current === "m"
+					? `✓ ${this.getContextMenuFontSizeDefaultLabel()}`
+					: this.getContextMenuFontSizeDefaultLabel()
+			);
+			item.onClick(() => {
+				void this.setFontSize("m");
+			});
+		});
+		menu.addItem((item) => {
+			item.setTitle(
+				current === "s"
+					? `✓ ${this.getContextMenuFontSizeSmallLabel()}`
+					: this.getContextMenuFontSizeSmallLabel()
+			);
+			item.onClick(() => {
+				void this.setFontSize("s");
+			});
+		});
+		menu.addItem((item) => {
+			item.setTitle(
+				current === "xs"
+					? `✓ ${this.getContextMenuFontSizeVerySmallLabel()}`
+					: this.getContextMenuFontSizeVerySmallLabel()
+			);
+			item.onClick(() => {
+				void this.setFontSize("xs");
+			});
+		});
 	}
 
 	private addPlacementMenuItems(menu: Menu, current: LayoutPlacement): void {
@@ -1281,6 +1328,34 @@ export class BasesViewListSidebarService {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideNativeToolbar",
 			"Hide native toolbar"
+		);
+	}
+
+	private getContextMenuFontSizeDefaultLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeDefault",
+			"Font size: Default"
+		);
+	}
+
+	private getContextMenuFontSizeSmallLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeSmall",
+			"Font size: Small"
+		);
+	}
+
+	private getContextMenuFontSizeVerySmallLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeVerySmall",
+			"Font size: Very Small"
+		);
+	}
+
+	private getContextMenuRedrawViewListLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.redrawViewList",
+			"Redraw view list"
 		);
 	}
 
@@ -1955,6 +2030,20 @@ export class BasesViewListSidebarService {
 		this.plugin.settings.basesViewListShowNativeToolbar = show;
 		this.scheduleRefresh(0);
 		await this.persistSettings();
+	}
+
+	private async setFontSize(fontSize: FontSizeOption): Promise<void> {
+		if (this.getFontSize() === fontSize) return;
+		this.plugin.settings.basesViewListFontSize = fontSize;
+		this.scheduleRefresh(0);
+		await this.persistSettings();
+	}
+
+	private async redrawViewList(leaf: WorkspaceLeaf): Promise<void> {
+		if (!this.running) return;
+		this.cleanupLeaf(leaf);
+		this.removeToolbarOpenTrigger(leaf);
+		await this.refreshLeaf(leaf);
 	}
 
 	private async persistWidthForLeaf(leaf: WorkspaceLeaf, widthPx: number): Promise<void> {
