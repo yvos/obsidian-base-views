@@ -26,7 +26,7 @@ describe("BaseViewListYamlStore", () => {
 
 	it("reads formulas.viewListSize ratio from a base file", async () => {
 		cachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: 0.8\nviews:\n  - type: table\n    name: Table\n"
+			"formulas:\n  viewListSize: \"0.8\"\nviews:\n  - type: table\n    name: Table\n"
 		);
 
 		const ratio = await store.getViewListSizeRatio(file);
@@ -42,13 +42,14 @@ describe("BaseViewListYamlStore", () => {
 		expect(updated).toBe(true);
 		expect(modify).toHaveBeenCalled();
 
-		const nextText = modify.mock.calls[0][1] as string;
-		expect(nextText).toContain("viewListSize: 1.455");
+		const parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
+		expect(parsed.formulas.viewListSize).toBe("1.455");
+		expect(typeof parsed.formulas.viewListSize).toBe("string");
 	});
 
 	it("removes formulas.viewListSize when ratio is null", async () => {
 		cachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: 0.9\nviews:\n  - type: table\n    name: Table\n"
+			"formulas:\n  viewListSize: \"0.9\"\nviews:\n  - type: table\n    name: Table\n"
 		);
 
 		const updated = await store.setViewListSizeRatio(file, null);

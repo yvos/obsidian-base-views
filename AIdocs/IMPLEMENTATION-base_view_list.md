@@ -43,23 +43,24 @@
 - view行表示:
   - view名は常に左寄せ
   - 設定ON時は2行目に viewプロパティを表示
+  - top配置 + プロパティ表示ON時は、空値viewにも空行を描画して行高を統一
   - 配列値は `, ` 区切り
   - 空値は2行目を出さない
   - view行右クリックで `description` 編集モーダルを表示可能
+  - 一覧右クリックでプロパティ表示ON/OFFを切替可能（配置切替と共存）
   - 編集モーダルは既存descriptionをplaceholder表示し、空文字で確定すると `description` キー削除
 - フォントサイズ:
   - `M / S / XS` を設定で選択（view名 + プロパティ行 + アイコンサイズ + 行高）
 - 幅リサイズ:
   - 右端ハンドルのドラッグで幅変更
   - 保存範囲: `140..520px`（初期値 `220px`）
-  - 保存先は `.base` の `formulas.viewListSize`（ファイル別優先）
+  - 保存先は `.base` の `formulas.viewListSize`（文字列として保存）
 - 自動幅短縮:
-  - left配置かつ保存幅が初期値（220px）のときのみ有効
+  - left配置かつ `viewListSize` 未設定時（実質初期幅220px）のときのみ有効
   - 表示内容（view名 + プロパティ）に応じて `140..220px` へ短縮
   - 自動短縮値は非永続
 - 永続化:
   - `basesViewListCollapsed`（global）
-  - `basesViewListWidthPx`（global fallback）
   - `basesViewListPlacement`（global）
   - `basesViewListFontSize`（global）
   - `basesViewListShowProperty`（global）
@@ -108,7 +109,8 @@
 ## 5. 既知制約
 - 内部API依存のため、Obsidian/Bases更新で挙動変更の可能性あり。
 - `bases.registrations` 未取得時はアイコン精度が落ちる（`list` fallback）。
-- 開閉状態はグローバル保存、幅は `.base` 側 `formulas.viewListSize` が優先される（なければグローバルfallback）。
+- 開閉状態はグローバル保存、幅は `.base` 側 `formulas.viewListSize` のみを永続値として使用する。
+- `formulas.viewListSize` は Bases 側仕様に合わせて文字列値で保存し、利用時に数値へ変換する。
 - 自動幅短縮は推定幅ロジックであり、テーマ/フォント差で厳密値ではない。
 - top配置の挿入先は `bases-header` 優先で、DOM差異時は toolbar直前へフォールバックする。
 - YAML書き戻しは `parseYaml/stringifyYaml` ベースのため、フォーマット差分が発生する場合がある。
@@ -121,11 +123,13 @@
   - closeボタン小型クラス
   - フォントサイズクラス（M/S/XS）
   - property表示ON/OFF・空値非表示・配列のカンマ区切り
+  - top配置 + プロパティ表示ON時の行高統一（空値行の空行描画）
   - icon表示ON/OFF
   - top overflow (`wrap/scroll`)
   - 狭幅挙動 (`none/top/hide`) と閾値
   - 自動幅短縮（初期幅時のみ）
   - 右クリックメニュー生成（view行でdescription編集項目が追加）
+  - 右クリックメニューでプロパティ表示ON/OFFトグル
   - 開閉トグルの保存挙動
   - 幅ドラッグ更新とclamp（`formulas.viewListSize` 保存/削除）
   - refresh連打での非増殖

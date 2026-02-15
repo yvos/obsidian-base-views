@@ -1575,6 +1575,8 @@ export const ja: TranslationTree = {
 						contextMenu: {
 							showLeft: "左に表示",
 							showTop: "上に表示",
+							showProperty: "プロパティを表示",
+							hideProperty: "プロパティを非表示",
 							editDescription: "descriptionの編集",
 						},
 						editDescriptionModal: {

@@ -32,7 +32,7 @@ export class BaseViewListYamlStore {
 			const root = await this.readRoot(file);
 			const formulas = this.asRecord(root.formulas);
 			if (!formulas) return null;
-			return this.normalizePositiveNumber(formulas[VIEW_LIST_SIZE_KEY]);
+			return this.parsePositiveRatio(formulas[VIEW_LIST_SIZE_KEY]);
 		} catch {
 			return null;
 		}
@@ -43,18 +43,22 @@ export class BaseViewListYamlStore {
 			const root = await this.readRoot(file);
 			const formulas = this.asRecord(root.formulas) ?? {};
 			const normalizedRatio = ratio == null ? null : this.roundRatio(ratio);
-			const previousRatio = this.normalizePositiveNumber(formulas[VIEW_LIST_SIZE_KEY]);
+			const nextRatioText =
+				normalizedRatio == null ? null : this.formatRatioString(normalizedRatio);
+			const currentRaw = formulas[VIEW_LIST_SIZE_KEY];
+			const previousRatioText = this.normalizeRatioText(currentRaw);
 
-			if (normalizedRatio == null) {
+			if (nextRatioText == null) {
 				if (typeof formulas[VIEW_LIST_SIZE_KEY] === "undefined") {
 					return false;
 				}
 				delete formulas[VIEW_LIST_SIZE_KEY];
 			} else {
-				if (previousRatio === normalizedRatio) {
+				// Keep formulas.viewListSize as string to satisfy Bases schema.
+				if (typeof currentRaw === "string" && previousRatioText === nextRatioText) {
 					return false;
 				}
-				formulas[VIEW_LIST_SIZE_KEY] = normalizedRatio;
+				formulas[VIEW_LIST_SIZE_KEY] = nextRatioText;
 			}
 
 			if (Object.keys(formulas).length === 0) {
@@ -201,20 +205,30 @@ export class BaseViewListYamlStore {
 		return text.length > 0 ? text : null;
 	}
 
-	private normalizePositiveNumber(value: unknown): number | null {
-		if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-			return value;
-		}
+	private parsePositiveRatio(value: unknown): number | null {
 		if (typeof value === "string") {
 			const parsed = Number.parseFloat(value);
 			if (Number.isFinite(parsed) && parsed > 0) {
 				return parsed;
 			}
 		}
+		if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+			return value;
+		}
 		return null;
+	}
+
+	private normalizeRatioText(value: unknown): string | null {
+		const parsed = this.parsePositiveRatio(value);
+		if (parsed == null) return null;
+		return this.formatRatioString(this.roundRatio(parsed));
 	}
 
 	private roundRatio(value: number): number {
 		return Math.round(value * 1000) / 1000;
+	}
+
+	private formatRatioString(value: number): string {
+		return value.toFixed(3).replace(/\.?0+$/, "");
 	}
 }

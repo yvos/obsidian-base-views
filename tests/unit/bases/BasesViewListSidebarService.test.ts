@@ -1,4 +1,4 @@
-import { Menu, TFile } from "obsidian";
+import { Menu, TFile, parseYaml } from "obsidian";
 import { BasesViewListSidebarService } from "../../../src/bases/BasesViewListSidebarService";
 import { showTextInputModal } from "../../../src/modals/TextInputModal";
 
@@ -184,6 +184,10 @@ describe("BasesViewListSidebarService", () => {
 							"Show on left",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showTop":
 							"Show on top",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showProperty":
+							"Show property",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideProperty":
+							"Hide property",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription":
 							"Edit description",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.title":
@@ -602,8 +606,41 @@ describe("BasesViewListSidebarService", () => {
 		);
 	});
 
+	it("keeps top-list row heights uniform when property display is enabled", async () => {
+		plugin.settings.basesViewListPlacement = "top";
+		plugin.settings.basesViewListShowProperty = true;
+		plugin.settings.basesViewListPropertyKey = "description";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "Has value" },
+						{ name: "Cards", type: "cards", description: "" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const items = Array.from(
+			setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")
+		);
+		expect(items).toHaveLength(2);
+		expect(items.every((item) => item.classList.contains("tn-bases-view-list__item--with-property"))).toBe(
+			true
+		);
+
+		const placeholders = setup.rootEl.querySelectorAll(
+			".tn-bases-view-list__item-property--placeholder"
+		);
+		expect(placeholders).toHaveLength(1);
+	});
+
 	it("resizes view list width and persists formulas.viewListSize on pointerup", async () => {
-		plugin.settings.basesViewListWidthPx = 260;
 		vaultCachedRead.mockResolvedValue(
 			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
 		);
@@ -636,12 +673,12 @@ describe("BasesViewListSidebarService", () => {
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
 		expect(vaultModify).toHaveBeenCalled();
 		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		expect(modifiedText).toContain("viewListSize: 1.455");
-		expect(plugin.settings.basesViewListWidthPx).toBe(260);
+		const parsed = parseYaml(modifiedText) as any;
+		expect(parsed.formulas.viewListSize).toBe("1.455");
+		expect(typeof parsed.formulas.viewListSize).toBe("string");
 	});
 
 	it("clamps resized width to min/max bounds", async () => {
-		plugin.settings.basesViewListWidthPx = 260;
 		vaultCachedRead.mockResolvedValue(
 			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
 		);
@@ -671,23 +708,31 @@ describe("BasesViewListSidebarService", () => {
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 2000 }));
 		await flushTimersAndPromises(3);
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("520px");
-		expect(vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1]).toContain(
-			"viewListSize: 2.364"
-		);
+		{
+			const parsed = parseYaml(
+				vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string
+			) as any;
+			expect(parsed.formulas.viewListSize).toBe("2.364");
+			expect(typeof parsed.formulas.viewListSize).toBe("string");
+		}
 
 		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 520 }));
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: -2000 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: -2000 }));
 		await flushTimersAndPromises(3);
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("140px");
-		expect(vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1]).toContain(
-			"viewListSize: 0.636"
-		);
+		{
+			const parsed = parseYaml(
+				vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string
+			) as any;
+			expect(parsed.formulas.viewListSize).toBe("0.636");
+			expect(typeof parsed.formulas.viewListSize).toBe("string");
+		}
 	});
 
 	it("removes formulas.viewListSize when width is reset to default", async () => {
 		vaultCachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: 1.455\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+			"formulas:\n  viewListSize: \"1.455\"\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
 		);
 		const setup = createBaseLeaf({
 			controller: {
@@ -744,8 +789,10 @@ describe("BasesViewListSidebarService", () => {
 		expect(width).toBeGreaterThanOrEqual(140);
 	});
 
-	it("does not auto-shrink width when user has saved a custom width", async () => {
-		plugin.settings.basesViewListWidthPx = 320;
+	it("does not auto-shrink width when file has saved viewListSize ratio", async () => {
+		vaultCachedRead.mockResolvedValue(
+			"formulas:\n  viewListSize: \"1.455\"\nviews:\n  - type: table\n    name: A\n    description: x\n  - type: cards\n    name: B\n    description: y\n"
+		);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -766,10 +813,9 @@ describe("BasesViewListSidebarService", () => {
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
 	});
 
-	it("prefers per-file formulas.viewListSize over global width setting", async () => {
-		plugin.settings.basesViewListWidthPx = 320;
+	it("applies per-file formulas.viewListSize when present", async () => {
 		vaultCachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: 0.8\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+			"formulas:\n  viewListSize: \"0.8\"\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
 		);
 		const setup = createBaseLeaf({
 			controller: {
@@ -791,7 +837,7 @@ describe("BasesViewListSidebarService", () => {
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("176px");
 	});
 
-	it("opens placement context menu with left/top items on right click", async () => {
+	it("opens view-list context menu with property toggle and left/top items on right click", async () => {
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -819,10 +865,12 @@ describe("BasesViewListSidebarService", () => {
 		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
 		const menuInstance = lastResult?.value as any;
 		expect(menuInstance).toBeTruthy();
-		expect(menuInstance.addItem).toHaveBeenCalledTimes(2);
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(3);
+		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(1);
 		expect(menuInstance.showAtMouseEvent).toHaveBeenCalled();
 		expect(menuInstance.items[0]?.setTitle).toHaveBeenCalled();
-		expect(menuInstance.items[1]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[2]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[3]?.setTitle).toHaveBeenCalled();
 	});
 
 	it("shows edit-description item on view-row context menu and updates YAML", async () => {
@@ -853,8 +901,8 @@ describe("BasesViewListSidebarService", () => {
 		const menuMock = Menu as unknown as jest.Mock;
 		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
 		const menuInstance = lastResult?.value as any;
-		expect(menuInstance.addItem).toHaveBeenCalledTimes(3);
-		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(1);
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(4);
+		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(2);
 
 		const editItem = menuInstance.items[0];
 		const onClickHandler = editItem?.onClick?.mock?.calls?.[0]?.[0];
@@ -874,6 +922,43 @@ describe("BasesViewListSidebarService", () => {
 		expect(vaultModify).toHaveBeenCalled();
 		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
 		expect(modifiedText).toContain("description: Updated desc");
+	});
+
+	it("toggles property display from view-list context menu", async () => {
+		plugin.settings.basesViewListShowProperty = true;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "A" },
+						{ name: "Cards", type: "cards", description: "B" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		const toggleItem = menuInstance.items[0];
+		const onClickHandler = toggleItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(plugin.settings.basesViewListShowProperty).toBe(false);
+		expect(plugin.saveSettings).toHaveBeenCalled();
+		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-property")).toBeNull();
 	});
 
 	it("deletes description when edit modal confirms empty value", async () => {

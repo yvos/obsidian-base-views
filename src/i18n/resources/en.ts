@@ -1614,6 +1614,8 @@ export const en: TranslationTree = {
 						contextMenu: {
 							showLeft: "Show on left",
 							showTop: "Show on top",
+							showProperty: "Show property",
+							hideProperty: "Hide property",
 							editDescription: "Edit description",
 						},
 						editDescriptionModal: {

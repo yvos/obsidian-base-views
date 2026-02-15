@@ -207,7 +207,6 @@ export interface TaskNotesSettings {
 	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
 	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
 	basesViewListCollapsed: boolean; // Globally collapse/expand base view list sidebar
-	basesViewListWidthPx: number; // Global width for base view list sidebar
 	basesViewListPlacement: "left" | "top"; // Placement of base view list sidebar
 	basesViewListFontSize: "m" | "s" | "xs"; // Font size for view rows
 	basesViewListShowProperty: boolean; // Show secondary property text under view name

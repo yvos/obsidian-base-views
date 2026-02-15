@@ -219,6 +219,10 @@
 	opacity: 0.95;
 }
 
+.tn-bases-view-list__item-property--placeholder {
+	visibility: hidden;
+}
+
 .tn-bases-view-list-font-m {
 	--tn-bvl-name-font-size: var(--font-ui-small);
 	--tn-bvl-property-font-size: calc(var(--font-ui-small) * 0.82);

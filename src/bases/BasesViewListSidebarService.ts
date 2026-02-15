@@ -81,7 +81,7 @@ interface EffectiveLayoutResolution {
 
 interface PreferredWidthResult {
 	widthPx: number;
-	source: "file" | "global";
+	source: "file" | "default";
 }
 
 const CSS_LAYOUT = "tn-bases-view-list-layout";
@@ -99,6 +99,7 @@ const CSS_ITEM_ICON = "tn-bases-view-list__item-icon";
 const CSS_ITEM_CONTENT = "tn-bases-view-list__item-content";
 const CSS_ITEM_NAME = "tn-bases-view-list__item-name";
 const CSS_ITEM_PROPERTY = "tn-bases-view-list__item-property";
+const CSS_ITEM_PROPERTY_PLACEHOLDER = "tn-bases-view-list__item-property--placeholder";
 const CSS_HEADER = "tn-bases-view-list__header";
 const CSS_HEADER_TOP = "tn-bases-view-list__header--top";
 const CSS_TITLE = "tn-bases-view-list__title";
@@ -415,10 +416,6 @@ export class BasesViewListSidebarService {
 	private getPropertyKey(): string {
 		const key = this.plugin.settings.basesViewListPropertyKey;
 		return typeof key === "string" ? key.trim() : "";
-	}
-
-	private getSavedWidthPx(): number {
-		return this.clampWidth(this.plugin.settings.basesViewListWidthPx ?? WIDTH_DEFAULT);
 	}
 
 	private clampWidth(widthPx: number): number {
@@ -835,7 +832,7 @@ export class BasesViewListSidebarService {
 			const parsed = Number.parseInt(fromVar.slice(0, -2), 10);
 			if (Number.isFinite(parsed)) return this.clampWidth(parsed);
 		}
-		return this.getSavedWidthPx();
+		return WIDTH_DEFAULT;
 	}
 
 	private ensureResizeHandle(leaf: WorkspaceLeaf, state: ManagedLeafState): void {
@@ -1025,7 +1022,7 @@ export class BasesViewListSidebarService {
 	private showPlacementContextMenu(event: MouseEvent): void {
 		const current = this.getPlacement();
 		const menu = new Menu();
-		this.addPlacementMenuItems(menu, current);
+		this.addViewListContextMenuItems(menu, current);
 		menu.showAtMouseEvent(event);
 	}
 
@@ -1043,8 +1040,24 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
-		this.addPlacementMenuItems(menu, current);
+		this.addViewListContextMenuItems(menu, current);
 		menu.showAtMouseEvent(event);
+	}
+
+	private addViewListContextMenuItems(menu: Menu, current: LayoutPlacement): void {
+		const showProperty = this.plugin.settings.basesViewListShowProperty === true;
+		menu.addItem((item) => {
+			item.setTitle(
+				showProperty
+					? this.getContextMenuHidePropertyLabel()
+					: this.getContextMenuShowPropertyLabel()
+			);
+			item.onClick(() => {
+				void this.setShowProperty(!showProperty);
+			});
+		});
+		menu.addSeparator();
+		this.addPlacementMenuItems(menu, current);
 	}
 
 	private addPlacementMenuItems(menu: Menu, current: LayoutPlacement): void {
@@ -1186,6 +1199,20 @@ export class BasesViewListSidebarService {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription",
 			"Edit description"
+		);
+	}
+
+	private getContextMenuShowPropertyLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showProperty",
+			"Show property"
+		);
+	}
+
+	private getContextMenuHidePropertyLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideProperty",
+			"Hide property"
 		);
 	}
 
@@ -1350,6 +1377,7 @@ export class BasesViewListSidebarService {
 
 		const shouldShowProperty = this.shouldShowProperty();
 		const shouldShowIcons = this.shouldShowIcons();
+		const shouldForcePropertyLineInTop = state.placement === "top" && shouldShowProperty;
 		for (const entry of viewEntries) {
 			const button = doc.createElement("button");
 			button.type = "button";
@@ -1365,12 +1393,19 @@ export class BasesViewListSidebarService {
 			nameEl.textContent = entry.name;
 			contentEl.appendChild(nameEl);
 
-			const shouldRenderProperty = shouldShowProperty && !!entry.propertyText;
+			const hasPropertyText = !!entry.propertyText;
+			const shouldRenderProperty =
+				shouldShowProperty && (hasPropertyText || shouldForcePropertyLineInTop);
 			if (shouldRenderProperty) {
 				button.classList.add(CSS_ITEM_WITH_PROPERTY);
 				const propertyEl = doc.createElement("span");
 				propertyEl.className = CSS_ITEM_PROPERTY;
-				propertyEl.textContent = entry.propertyText;
+				if (hasPropertyText) {
+					propertyEl.textContent = entry.propertyText;
+				} else {
+					propertyEl.classList.add(CSS_ITEM_PROPERTY_PLACEHOLDER);
+					propertyEl.textContent = "\u00A0";
+				}
 				contentEl.appendChild(propertyEl);
 			}
 
@@ -1403,7 +1438,7 @@ export class BasesViewListSidebarService {
 		if (state.placement !== "left") return;
 		if (this.isLeafNarrow(leaf)) return;
 		if (this.resizeDrag?.leaf === leaf) return;
-		if (preferredWidth.source !== "global") return;
+		if (preferredWidth.source !== "default") return;
 		if (preferredWidth.widthPx !== WIDTH_DEFAULT) return;
 
 		const autoWidth = this.computeAutoShrinkWidthPx(leaf, viewEntries);
@@ -1547,8 +1582,8 @@ export class BasesViewListSidebarService {
 		const file = this.getLeafFile(leaf);
 		if (!file) {
 			return {
-				widthPx: this.getSavedWidthPx(),
-				source: "global",
+				widthPx: WIDTH_DEFAULT,
+				source: "default",
 			};
 		}
 
@@ -1561,8 +1596,8 @@ export class BasesViewListSidebarService {
 		}
 
 		return {
-			widthPx: this.getSavedWidthPx(),
-			source: "global",
+			widthPx: WIDTH_DEFAULT,
+			source: "default",
 		};
 	}
 
@@ -1836,6 +1871,13 @@ export class BasesViewListSidebarService {
 	private async setPlacement(placement: LayoutPlacement): Promise<void> {
 		if (this.getPlacement() === placement) return;
 		this.plugin.settings.basesViewListPlacement = placement;
+		this.scheduleRefresh(0);
+		await this.persistSettings();
+	}
+
+	private async setShowProperty(show: boolean): Promise<void> {
+		if (this.plugin.settings.basesViewListShowProperty === show) return;
+		this.plugin.settings.basesViewListShowProperty = show;
 		this.scheduleRefresh(0);
 		await this.persistSettings();
 	}

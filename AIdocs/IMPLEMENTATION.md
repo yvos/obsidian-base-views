@@ -11,6 +11,7 @@
 - 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
 - 2026-02-14 時点で view一覧サイドバーをさらに改善（left/top配置切替、右クリックメニュー切替、プロパティ2行表示、フォントサイズM/S/XS、左配置時の自動幅短縮）を実装。
 - 2026-02-15 時点で view一覧サイドバーを追加改善（アイコン表示ON/OFF、top表示のwrap/scroll切替、狭幅時挙動設定、`formulas.viewListSize` のファイル別保存、view行のdescription編集）を実装。
+- 2026-02-15 時点で view一覧サイドバーを仕様調整（`viewListSize` の文字列保存、top配置時のプロパティ行高統一、右クリックでプロパティ表示ON/OFF、グローバル幅保持廃止）を実装。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -28,7 +29,6 @@
     - `enableBasesViewListSidebar`（ON/OFF）
     - `basesViewListDropdownMode`（`list-only` / `combined`）
     - `basesViewListCollapsed`（開閉状態のグローバル保存）
-    - `basesViewListWidthPx`（一覧幅pxのグローバルfallback）
     - `basesViewListPlacement`（`left` / `top`）
     - `basesViewListFontSize`（`m` / `s` / `xs`）
     - `basesViewListShowProperty`（viewプロパティ行表示ON/OFF）
@@ -44,6 +44,7 @@
     - 一覧ヘッダー左の `x` で閉じる、閉状態ではtoolbar左端の `list-plus` で開く
     - `top` ではタイトル文字列を出さず close のみ表示
     - 一覧領域の右クリックメニューで `left/top` を切替可能
+    - 一覧領域の右クリックメニューでプロパティ表示ON/OFFを切替可能
     - view行右クリックで `description` 編集 + 配置切替メニューを表示
     - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
     - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
@@ -137,8 +138,6 @@
   - view一覧とネイティブdropdownの併用可否
 - `basesViewListCollapsed: boolean`
   - view一覧サイドバーの開閉状態（グローバル）
-- `basesViewListWidthPx: number`
-  - view一覧サイドバー幅px（グローバルfallback、`140..520` にクランプ）
 - `basesViewListPlacement: "left" | "top"`
   - view一覧の配置モード（左配置/上配置）
 - `basesViewListFontSize: "m" | "s" | "xs"`
@@ -155,8 +154,8 @@
   - 狭幅時の挙動
 - `basesViewListNarrowThresholdPx: number`
   - 狭幅判定閾値px
-- `.base formulas.viewListSize: number`
-  - view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、手動リサイズ時に保存）
+- `.base formulas.viewListSize: string`
+  - view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、手動リサイズ時に文字列として保存）
 
 # 5. 挙動の詳細や注意点
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
@@ -179,13 +178,15 @@
 - view数が1件以下のbaseでは、一覧サイドバーとtoolbarの開くトグルを注入しない。
 - 開状態ではヘッダーにcloseボタンを表示し、閉状態ではtoolbar左端にopenボタンを表示する。
 - 一覧幅はリサイズハンドルのドラッグで変更し、pointer終了時に `.base formulas.viewListSize` へ保存する。
+- `formulas.viewListSize` は文字列として保存し、利用時に数値変換して計算する（Bases仕様対応）。
 - closeボタンは小型表示に調整して視覚ノイズを抑えている。
 - left配置ヘッダーのタイトルは `base` ファイル名（拡張子除く）を表示する。
 - top配置では一覧を `bases-header` 直下へ挿入し、ヘッダー文字列は表示しない。
 - view名は左寄せで統一し、必要に応じて2行目プロパティ行を描画する。
 - プロパティ値が配列の場合はカンマ区切りで表示し、空値なら2行目を描画しない。
+- top配置でプロパティ表示ON時は、空値viewも空行を入れて高さを揃える。
 - フォントサイズは `m/s/xs` クラスで切替し、文字サイズに連動してアイコンと行高も調整する。
-- 一覧領域の右クリックメニューで `left/top` を即時切替できる。
+- 一覧領域の右クリックメニューで `left/top` とプロパティ表示ON/OFFを即時切替できる。
 - view行右クリックでは `description` 編集項目を追加表示する。
 - top配置時は `wrap/scroll` 設定を適用し、狭幅強制top時は `scroll` を強制する。
 - 狭幅判定は leaf container 幅を使い、`ResizeObserver` で変化を追従する。

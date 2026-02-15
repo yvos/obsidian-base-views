@@ -1240,10 +1240,17 @@ export default class TaskNotesPlugin extends Plugin {
 
 	async loadSettings() {
 		const loadedData = await this.loadData();
+		let removedDeprecatedBasesWidthSetting = false;
 
 		// Migration: Remove old useNativeMetadataCache setting if it exists
 		if (loadedData && "useNativeMetadataCache" in loadedData) {
 			delete loadedData.useNativeMetadataCache;
+		}
+
+		// Migration: Remove deprecated global Bases view-list width setting.
+		if (loadedData && "basesViewListWidthPx" in loadedData) {
+			delete loadedData.basesViewListWidthPx;
+			removedDeprecatedBasesWidthSetting = true;
 		}
 
 		// Migration: Add API settings defaults if they don't exist
@@ -1352,7 +1359,6 @@ export default class TaskNotesPlugin extends Plugin {
 			typeof loadedData?.enableBasesViewListSidebar === "undefined" ||
 			typeof loadedData?.basesViewListDropdownMode === "undefined" ||
 			typeof loadedData?.basesViewListCollapsed === "undefined" ||
-			typeof loadedData?.basesViewListWidthPx === "undefined" ||
 			typeof loadedData?.basesViewListPlacement === "undefined" ||
 			typeof loadedData?.basesViewListFontSize === "undefined" ||
 			typeof loadedData?.basesViewListShowProperty === "undefined" ||
@@ -1366,7 +1372,8 @@ export default class TaskNotesPlugin extends Plugin {
 			hasNewFields ||
 			hasNewCalendarSettings ||
 			hasNewCommandMappings ||
-			hasNewBasesSidebarSettings
+			hasNewBasesSidebarSettings ||
+			removedDeprecatedBasesWidthSetting
 		) {
 			// Save the migrated settings to include new field mappings (non-blocking)
 			setTimeout(async () => {
