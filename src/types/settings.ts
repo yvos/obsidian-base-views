@@ -211,6 +211,7 @@ export interface TaskNotesSettings {
 	basesViewListFontSize: "m" | "s" | "xs"; // Font size for view rows
 	basesViewListShowProperty: boolean; // Show secondary property text under view name
 	basesViewListPropertyKey: string; // Key used to render per-view property text
+	basesViewListShowNativeToolbar: boolean; // Show/hide native Bases header+toolbar when list is visible
 	basesViewListShowIcons: boolean; // Show/hide view icons in the list
 	basesViewListTopOverflowMode: "wrap" | "scroll"; // Top layout overflow behavior
 	basesViewListNarrowBehavior: "none" | "top" | "hide"; // Behavior when pane width is narrow

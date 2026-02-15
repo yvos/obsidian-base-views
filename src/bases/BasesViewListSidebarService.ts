@@ -109,6 +109,7 @@ const CSS_RESIZER = "tn-bases-view-list__resizer";
 const CSS_OPEN_TRIGGER = "tn-bases-view-list-open-trigger";
 const CSS_MODE_LIST_ONLY = "tn-bases-view-list-mode-list-only";
 const CSS_MODE_COMBINED = "tn-bases-view-list-mode-combined";
+const CSS_NATIVE_TOOLBAR_HIDDEN = "tn-bases-native-toolbar-hidden";
 const CSS_FONT_M = "tn-bases-view-list-font-m";
 const CSS_FONT_S = "tn-bases-view-list-font-s";
 const CSS_FONT_XS = "tn-bases-view-list-font-xs";
@@ -170,6 +171,8 @@ export class BasesViewListSidebarService {
 		this.cleanupAllResizeObservers();
 		this.cleanupAllLeaves();
 		this.cleanupAllToolbarOpenTriggers();
+		this.clearModeClassesFromAllBaseLeaves();
+		this.clearNativeToolbarClassesFromAllBaseLeaves();
 		this.yamlStore.clearCache();
 	}
 
@@ -249,6 +252,7 @@ export class BasesViewListSidebarService {
 			this.cleanupAllToolbarOpenTriggers();
 			this.cleanupAllResizeObservers();
 			this.clearModeClassesFromAllBaseLeaves();
+			this.clearNativeToolbarClassesFromAllBaseLeaves();
 			return;
 		}
 
@@ -283,6 +287,7 @@ export class BasesViewListSidebarService {
 			this.cleanupLeaf(leaf);
 			this.removeToolbarOpenTrigger(leaf);
 			this.removeResizeObserverForLeaf(leaf);
+			this.removeNativeToolbarClassesForLeaf(leaf);
 			return;
 		}
 
@@ -294,11 +299,13 @@ export class BasesViewListSidebarService {
 		const toolbarEl = this.findToolbarEl(leaf);
 		const viewEntries = await this.getViewEntries(leaf);
 		if (!this.running) return;
+		const rootEl = this.resolveRootEl(leaf, basesViewEl);
 
 		if (viewEntries.length <= 1) {
 			this.cleanupLeaf(leaf);
 			this.removeToolbarOpenTrigger(leaf);
 			this.removeModeClassesForLeaf(leaf, basesViewEl);
+			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
 			return;
 		}
 
@@ -306,8 +313,8 @@ export class BasesViewListSidebarService {
 		if (layoutResolution.temporaryHidden) {
 			this.cleanupLeaf(leaf);
 			this.removeToolbarOpenTrigger(leaf);
-			const rootEl = this.resolveRootEl(leaf, basesViewEl);
 			if (rootEl) this.applyDropdownModeClasses(rootEl);
+			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
 			return;
 		}
 
@@ -316,8 +323,8 @@ export class BasesViewListSidebarService {
 			if (toolbarEl) {
 				this.ensureToolbarOpenTrigger(leaf, toolbarEl);
 			}
-			const rootEl = this.resolveRootEl(leaf, basesViewEl);
 			if (rootEl) this.applyDropdownModeClasses(rootEl);
+			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
 			return;
 		}
 
@@ -338,6 +345,7 @@ export class BasesViewListSidebarService {
 		if (!state) return;
 
 		this.applyDropdownModeClasses(state.rootEl);
+		this.applyNativeToolbarVisibility(state.rootEl, !this.shouldShowNativeToolbar());
 		this.applyFontSizeClasses(state.listEl);
 		this.applyIconVisibilityClasses(state.listEl);
 		this.applyTopOverflowClasses(
@@ -388,6 +396,10 @@ export class BasesViewListSidebarService {
 
 	private shouldShowIcons(): boolean {
 		return this.plugin.settings.basesViewListShowIcons !== false;
+	}
+
+	private shouldShowNativeToolbar(): boolean {
+		return this.plugin.settings.basesViewListShowNativeToolbar !== false;
 	}
 
 	private getTopOverflowMode(): TopOverflowMode {
@@ -463,6 +475,13 @@ export class BasesViewListSidebarService {
 			};
 		}
 		if (behavior === "top" && userPlacement === "left") {
+			return {
+				placement: "top",
+				forceTopScroll: true,
+				temporaryHidden: false,
+			};
+		}
+		if (behavior === "top") {
 			return {
 				placement: "top",
 				forceTopScroll: true,
@@ -945,10 +964,12 @@ export class BasesViewListSidebarService {
 		const containerEl = this.getLeafView(leaf)?.containerEl;
 		if (containerEl) {
 			this.removeDropdownModeClasses(containerEl);
+			this.applyNativeToolbarVisibility(containerEl, false);
 		}
 		const { rootEl } = this.resolveLayoutContext(basesViewEl);
 		if (rootEl) {
 			this.removeDropdownModeClasses(rootEl);
+			this.applyNativeToolbarVisibility(rootEl, false);
 		}
 	}
 
@@ -963,6 +984,28 @@ export class BasesViewListSidebarService {
 			if (!basesViewEl) continue;
 			const { rootEl } = this.resolveLayoutContext(basesViewEl);
 			if (rootEl) this.removeDropdownModeClasses(rootEl);
+		}
+	}
+
+	private applyNativeToolbarVisibility(rootEl: HTMLElement, hidden: boolean): void {
+		rootEl.classList.toggle(CSS_NATIVE_TOOLBAR_HIDDEN, hidden);
+	}
+
+	private removeNativeToolbarClassesForLeaf(leaf: WorkspaceLeaf): void {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (containerEl) {
+			this.applyNativeToolbarVisibility(containerEl, false);
+		}
+		const basesViewEl = this.findBasesViewEl(leaf);
+		if (!basesViewEl) return;
+		const { rootEl } = this.resolveLayoutContext(basesViewEl);
+		if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
+	}
+
+	private clearNativeToolbarClassesFromAllBaseLeaves(): void {
+		const leaves = this.plugin.app.workspace.getLeavesOfType("bases") as WorkspaceLeaf[];
+		for (const leaf of leaves) {
+			this.removeNativeToolbarClassesForLeaf(leaf);
 		}
 	}
 
@@ -1046,6 +1089,7 @@ export class BasesViewListSidebarService {
 
 	private addViewListContextMenuItems(menu: Menu, current: LayoutPlacement): void {
 		const showProperty = this.plugin.settings.basesViewListShowProperty === true;
+		const showNativeToolbar = this.shouldShowNativeToolbar();
 		menu.addItem((item) => {
 			item.setTitle(
 				showProperty
@@ -1054,6 +1098,16 @@ export class BasesViewListSidebarService {
 			);
 			item.onClick(() => {
 				void this.setShowProperty(!showProperty);
+			});
+		});
+		menu.addItem((item) => {
+			item.setTitle(
+				showNativeToolbar
+					? this.getContextMenuHideNativeToolbarLabel()
+					: this.getContextMenuShowNativeToolbarLabel()
+			);
+			item.onClick(() => {
+				void this.setShowNativeToolbar(!showNativeToolbar);
 			});
 		});
 		menu.addSeparator();
@@ -1213,6 +1267,20 @@ export class BasesViewListSidebarService {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideProperty",
 			"Hide property"
+		);
+	}
+
+	private getContextMenuShowNativeToolbarLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showNativeToolbar",
+			"Show native toolbar"
+		);
+	}
+
+	private getContextMenuHideNativeToolbarLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideNativeToolbar",
+			"Hide native toolbar"
 		);
 	}
 
@@ -1878,6 +1946,13 @@ export class BasesViewListSidebarService {
 	private async setShowProperty(show: boolean): Promise<void> {
 		if (this.plugin.settings.basesViewListShowProperty === show) return;
 		this.plugin.settings.basesViewListShowProperty = show;
+		this.scheduleRefresh(0);
+		await this.persistSettings();
+	}
+
+	private async setShowNativeToolbar(show: boolean): Promise<void> {
+		if (this.plugin.settings.basesViewListShowNativeToolbar === show) return;
+		this.plugin.settings.basesViewListShowNativeToolbar = show;
 		this.scheduleRefresh(0);
 		await this.persistSettings();
 	}

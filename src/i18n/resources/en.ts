@@ -1566,10 +1566,15 @@ export const en: TranslationTree = {
 							name: "View list font size",
 							description: "Adjust the font size for view names and property text.",
 							options: {
-								m: "M",
-								s: "S",
-								xs: "XS",
+								m: "Default",
+								s: "Small",
+								xs: "Very Small",
 							},
+						},
+						nativeToolbar: {
+							name: "Show native Bases toolbar",
+							description:
+								"Show native Bases header and toolbar while the view list is visible.",
 						},
 						showIcons: {
 							name: "Show view icons",
@@ -1616,6 +1621,8 @@ export const en: TranslationTree = {
 							showTop: "Show on top",
 							showProperty: "Show property",
 							hideProperty: "Hide property",
+							showNativeToolbar: "Show native toolbar",
+							hideNativeToolbar: "Hide native toolbar",
 							editDescription: "Edit description",
 						},
 						editDescriptionModal: {

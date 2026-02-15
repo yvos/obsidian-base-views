@@ -38,8 +38,11 @@
   - `top` の並べ方は `wrap/scroll` を設定で切替可能
   - 切替導線: 設定 + 一覧領域の右クリックメニュー
   - 狭幅時は設定に応じて `none/top/hide` を適用
-    - `top`: left指定時のみ一時的にtop表示（1行横スクロール強制）
+    - `top`: ユーザー配置が `left/top` のどちらでも一時的にtop表示（1行横スクロール強制）
     - `hide`: 狭幅中のみ一時非表示（閾値復帰で自動再表示）
+  - ネイティブツールバー表示:
+    - 設定 `basesViewListShowNativeToolbar` で `.bases-header` と `.bases-toolbar` の表示/非表示を切替
+    - 一覧が非表示状態（collapsed / 単一view / 狭幅hide / 機能OFF）では復帰導線維持のため強制表示
 - view行表示:
   - view名は常に左寄せ
   - 設定ON時は2行目に viewプロパティを表示
@@ -50,7 +53,8 @@
   - 一覧右クリックでプロパティ表示ON/OFFを切替可能（配置切替と共存）
   - 編集モーダルは既存descriptionをplaceholder表示し、空文字で確定すると `description` キー削除
 - フォントサイズ:
-  - `M / S / XS` を設定で選択（view名 + プロパティ行 + アイコンサイズ + 行高）
+  - 内部値 `m/s/xs`（表示ラベルは `Default / Small / Very Small`）を設定で選択
+  - view名 + プロパティ行 + アイコンサイズ + 行高を連動
 - 幅リサイズ:
   - 右端ハンドルのドラッグで幅変更
   - 保存範囲: `140..520px`（初期値 `220px`）
@@ -65,6 +69,7 @@
   - `basesViewListFontSize`（global）
   - `basesViewListShowProperty`（global）
   - `basesViewListPropertyKey`（global）
+  - `basesViewListShowNativeToolbar`（global）
   - `basesViewListShowIcons`（global）
   - `basesViewListTopOverflowMode`（global）
   - `basesViewListNarrowBehavior`（global）
@@ -94,7 +99,7 @@
 
 ## 4. 切り出し時に残す最小インターフェース
 - 設定I/O境界
-  - `getSettings(): { enabled, dropdownMode, collapsed, widthPx, placement, fontSize, showProperty, propertyKey, showIcons, topOverflowMode, narrowBehavior, narrowThresholdPx }`
+  - `getSettings(): { enabled, dropdownMode, collapsed, placement, fontSize, showProperty, propertyKey, showNativeToolbar, showIcons, topOverflowMode, narrowBehavior, narrowThresholdPx }`
   - `setSettings(partial): Promise<void>`
 - i18n境界
   - 必須キーのみ提供する `t(key, fallback)`
@@ -110,6 +115,7 @@
 - 内部API依存のため、Obsidian/Bases更新で挙動変更の可能性あり。
 - `bases.registrations` 未取得時はアイコン精度が落ちる（`list` fallback）。
 - 開閉状態はグローバル保存、幅は `.base` 側 `formulas.viewListSize` のみを永続値として使用する。
+- `basesViewListDropdownMode` は views dropdown の表示制御のみを担当し、ネイティブツールバー全体の表示制御は `basesViewListShowNativeToolbar` が担当する。
 - `formulas.viewListSize` は Bases 側仕様に合わせて文字列値で保存し、利用時に数値へ変換する。
 - 自動幅短縮は推定幅ロジックであり、テーマ/フォント差で厳密値ではない。
 - top配置の挿入先は `bases-header` 優先で、DOM差異時は toolbar直前へフォールバックする。
@@ -127,9 +133,10 @@
   - icon表示ON/OFF
   - top overflow (`wrap/scroll`)
   - 狭幅挙動 (`none/top/hide`) と閾値
+  - ネイティブツールバー表示ON/OFFと一覧非表示時の強制表示
   - 自動幅短縮（初期幅時のみ）
   - 右クリックメニュー生成（view行でdescription編集項目が追加）
-  - 右クリックメニューでプロパティ表示ON/OFFトグル
+  - 右クリックメニューでプロパティ表示ON/OFF・ネイティブツールバーON/OFFトグル
   - 開閉トグルの保存挙動
   - 幅ドラッグ更新とclamp（`formulas.viewListSize` 保存/削除）
   - refresh連打での非増殖

@@ -1531,10 +1531,15 @@ export const ja: TranslationTree = {
 							name: "ビュー一覧のフォントサイズ",
 							description: "ビュー名とプロパティ行の文字サイズを変更します。",
 							options: {
-								m: "M",
-								s: "S",
-								xs: "XS",
+								m: "Default",
+								s: "Small",
+								xs: "Very Small",
 							},
+						},
+						nativeToolbar: {
+							name: "ネイティブBasesツールバーを表示",
+							description:
+								"view一覧が表示されている間、Bases標準のヘッダーとツールバーを表示します。",
 						},
 						showIcons: {
 							name: "view一覧のアイコンを表示",
@@ -1577,6 +1582,8 @@ export const ja: TranslationTree = {
 							showTop: "上に表示",
 							showProperty: "プロパティを表示",
 							hideProperty: "プロパティを非表示",
+							showNativeToolbar: "ネイティブツールバーを表示",
+							hideNativeToolbar: "ネイティブツールバーを非表示",
 							editDescription: "descriptionの編集",
 						},
 						editDescriptionModal: {

@@ -414,6 +414,22 @@ export function renderGeneralTab(
 				group.addSetting((setting) =>
 					configureToggleSetting(setting, {
 						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.nativeToolbar.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.nativeToolbar.description"
+						),
+						getValue: () => plugin.settings.basesViewListShowNativeToolbar,
+						setValue: async (value: boolean) => {
+							plugin.settings.basesViewListShowNativeToolbar = value;
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureToggleSetting(setting, {
+						name: translate(
 							"settings.integrations.basesIntegration.viewListSidebar.showIcons.name"
 						),
 						desc: translate(

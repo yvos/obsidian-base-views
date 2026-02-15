@@ -134,11 +134,11 @@ describe("BasesViewListSidebarService", () => {
 				enableBasesViewListSidebar: true,
 				basesViewListDropdownMode: "list-only",
 				basesViewListCollapsed: false,
-				basesViewListWidthPx: 220,
 				basesViewListPlacement: "left",
 				basesViewListFontSize: "m",
 				basesViewListShowProperty: true,
 				basesViewListPropertyKey: "description",
+				basesViewListShowNativeToolbar: true,
 				basesViewListShowIcons: true,
 				basesViewListTopOverflowMode: "wrap",
 				basesViewListNarrowBehavior: "top",
@@ -188,6 +188,10 @@ describe("BasesViewListSidebarService", () => {
 							"Show property",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideProperty":
 							"Hide property",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showNativeToolbar":
+							"Show native toolbar",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideNativeToolbar":
+							"Hide native toolbar",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription":
 							"Edit description",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.title":
@@ -377,6 +381,7 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("hides sidebar and toolbar trigger when only one view exists", async () => {
+		plugin.settings.basesViewListShowNativeToolbar = false;
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -393,6 +398,7 @@ describe("BasesViewListSidebarService", () => {
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).toBeNull();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).toBeNull();
+		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(false);
 	});
 
 	it("shows toolbar open trigger when collapsed and reopens on click", async () => {
@@ -425,6 +431,29 @@ describe("BasesViewListSidebarService", () => {
 		expect(plugin.settings.basesViewListCollapsed).toBe(false);
 		expect(plugin.saveSettings).toHaveBeenCalled();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
+	});
+
+	it("forces native toolbar visible when list is collapsed even if toolbar setting is off", async () => {
+		plugin.settings.basesViewListShowNativeToolbar = false;
+		plugin.settings.basesViewListCollapsed = true;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(false);
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
 	});
 
 	it("renders left header title as base filename and uses small close icon class", async () => {
@@ -522,6 +551,27 @@ describe("BasesViewListSidebarService", () => {
 
 		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
 		expect(listEl?.classList.contains("tn-bases-view-list-font-xs")).toBe(true);
+	});
+
+	it("hides native toolbar while list is visible when toolbar setting is off", async () => {
+		plugin.settings.basesViewListShowNativeToolbar = false;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(true);
 	});
 
 	it("hides icons when icon display setting is off", async () => {
@@ -837,7 +887,7 @@ describe("BasesViewListSidebarService", () => {
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("176px");
 	});
 
-	it("opens view-list context menu with property toggle and left/top items on right click", async () => {
+	it("opens view-list context menu with property/native-toolbar toggles and left/top items on right click", async () => {
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -865,12 +915,13 @@ describe("BasesViewListSidebarService", () => {
 		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
 		const menuInstance = lastResult?.value as any;
 		expect(menuInstance).toBeTruthy();
-		expect(menuInstance.addItem).toHaveBeenCalledTimes(3);
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(4);
 		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(1);
 		expect(menuInstance.showAtMouseEvent).toHaveBeenCalled();
 		expect(menuInstance.items[0]?.setTitle).toHaveBeenCalled();
-		expect(menuInstance.items[2]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[1]?.setTitle).toHaveBeenCalled();
 		expect(menuInstance.items[3]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[4]?.setTitle).toHaveBeenCalled();
 	});
 
 	it("shows edit-description item on view-row context menu and updates YAML", async () => {
@@ -901,7 +952,7 @@ describe("BasesViewListSidebarService", () => {
 		const menuMock = Menu as unknown as jest.Mock;
 		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
 		const menuInstance = lastResult?.value as any;
-		expect(menuInstance.addItem).toHaveBeenCalledTimes(4);
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(5);
 		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(2);
 
 		const editItem = menuInstance.items[0];
@@ -959,6 +1010,43 @@ describe("BasesViewListSidebarService", () => {
 		expect(plugin.settings.basesViewListShowProperty).toBe(false);
 		expect(plugin.saveSettings).toHaveBeenCalled();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-property")).toBeNull();
+	});
+
+	it("toggles native toolbar display from view-list context menu", async () => {
+		plugin.settings.basesViewListShowNativeToolbar = true;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "A" },
+						{ name: "Cards", type: "cards", description: "B" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		const toggleItem = menuInstance.items[1];
+		const onClickHandler = toggleItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(plugin.settings.basesViewListShowNativeToolbar).toBe(false);
+		expect(plugin.saveSettings).toHaveBeenCalled();
+		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(true);
 	});
 
 	it("deletes description when edit modal confirms empty value", async () => {
@@ -1023,6 +1111,34 @@ describe("BasesViewListSidebarService", () => {
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).not.toBeNull();
 		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
 		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
+	});
+
+	it("forces top+scroll on narrow pane even when user placement is already top", async () => {
+		plugin.settings.basesViewListPlacement = "top";
+		plugin.settings.basesViewListTopOverflowMode = "wrap";
+		plugin.settings.basesViewListNarrowBehavior = "top";
+		plugin.settings.basesViewListNarrowThresholdPx = 1500;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		setLeafWidth(setup.rootEl, 900);
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises(3);
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(listEl?.classList.contains("tn-bases-view-list--top")).toBe(true);
+		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
+		expect(listEl?.classList.contains("tn-bases-view-list--top-wrap")).toBe(false);
 	});
 
 	it("temporarily hides list on narrow pane when behavior is hide and restores when wide", async () => {

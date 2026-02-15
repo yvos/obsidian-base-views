@@ -1363,6 +1363,7 @@ export default class TaskNotesPlugin extends Plugin {
 			typeof loadedData?.basesViewListFontSize === "undefined" ||
 			typeof loadedData?.basesViewListShowProperty === "undefined" ||
 			typeof loadedData?.basesViewListPropertyKey === "undefined" ||
+			typeof loadedData?.basesViewListShowNativeToolbar === "undefined" ||
 			typeof loadedData?.basesViewListShowIcons === "undefined" ||
 			typeof loadedData?.basesViewListTopOverflowMode === "undefined" ||
 			typeof loadedData?.basesViewListNarrowBehavior === "undefined" ||

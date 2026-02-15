@@ -382,6 +382,7 @@ export const DEFAULT_SETTINGS: TaskNotesSettings = {
 	basesViewListFontSize: "m",
 	basesViewListShowProperty: true,
 	basesViewListPropertyKey: "description",
+	basesViewListShowNativeToolbar: true,
 	basesViewListShowIcons: true,
 	basesViewListTopOverflowMode: "wrap",
 	basesViewListNarrowBehavior: "top",
