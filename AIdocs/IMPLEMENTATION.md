@@ -7,6 +7,7 @@
 - 2026-02-09 時点で `tasknotesCustomTable`（Custom Table View）を追加し、テーブル表示と組み込み summary を実装。
 - 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
+- 2026-02-15 時点で `tasknotesCustomTable` の仮想スクロール時に縦スクロール範囲が短くなる不具合を修正（`tn-bases-table-virtual` の縦overflowを可視化）。
 - 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
 - 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
 - 2026-02-14 時点で view一覧サイドバーをさらに改善（left/top配置切替、右クリックメニュー切替、プロパティ2行表示、フォントサイズ選択、左配置時の自動幅短縮）を実装。
@@ -171,6 +172,7 @@
   - grouped: 各グループ header 直下に group summary 行
 - 仮想行は `display: grid` をインラインでも指定し、テーマやCSS競合時の列崩れを抑制している。
 - スクロール責務は `tn-bases-table-scroll` が主担当（縦・横）で、`tn-bases-table-wrapper` はレイアウト枠として機能する。
+- 仮想描画時は `tn-bases-table-wrapper.tn-bases-table-virtual` の `overflow-y` を `visible` にして、`virtual-scroller__spacer` の全高が外側スクロール領域へ反映されるようにしている。
 - 仮想レイアウト再構築時は `virtualColumnTemplate` / `virtualMinWidth` を再設定してからヘッダー/行を生成する実装となっている。
 - 仮想行の区切り線は行単位で描画し、セル単位の高さ差で罫線がずれないようにしている。
 - 列幅はヘッダー境界ドラッグで変更でき、通常描画（colgroup）と仮想描画（grid template）に同時反映する。

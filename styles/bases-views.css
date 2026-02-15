@@ -506,6 +506,7 @@ button.tn-bases-view-list__item {
 .tn-tasknotesCustomTable .tn-bases-table-virtual {
     display: flex;
     flex-direction: column;
+    overflow-y: visible;
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-virtual-viewport {
