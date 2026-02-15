@@ -9,6 +9,8 @@
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
 - 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
 - 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
+- 2026-02-14 時点で view一覧サイドバーをさらに改善（left/top配置切替、右クリックメニュー切替、プロパティ2行表示、フォントサイズM/S/XS、左配置時の自動幅短縮）を実装。
+- 2026-02-15 時点で view一覧サイドバーを追加改善（アイコン表示ON/OFF、top表示のwrap/scroll切替、狭幅時挙動設定、`formulas.viewListSize` のファイル別保存、view行のdescription編集）を実装。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -20,19 +22,35 @@
   - `tasknotesMiniCalendar`
 - Bases view一覧サイドバー（`.base` 向け）
   - 対象: `viewType === "bases"` かつ `file.extension === "base"`
-  - 一覧取得: `query.views[].{name,type}` → `getQueryViewNames()` → YAML `views[].{name,type}` の順でフォールバック
+  - 一覧取得: `query.views[].{name,type,property}` → `getQueryViewNames()` → YAML `views[].{name,type,property}` の順でフォールバック
   - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
   - 設定:
     - `enableBasesViewListSidebar`（ON/OFF）
     - `basesViewListDropdownMode`（`list-only` / `combined`）
     - `basesViewListCollapsed`（開閉状態のグローバル保存）
-    - `basesViewListWidthPx`（一覧幅pxのグローバル保存）
+    - `basesViewListWidthPx`（一覧幅pxのグローバルfallback）
+    - `basesViewListPlacement`（`left` / `top`）
+    - `basesViewListFontSize`（`m` / `s` / `xs`）
+    - `basesViewListShowProperty`（viewプロパティ行表示ON/OFF）
+    - `basesViewListPropertyKey`（表示対象のプロパティキー）
+    - `basesViewListShowIcons`（viewアイコン表示ON/OFF）
+    - `basesViewListTopOverflowMode`（`wrap` / `scroll`）
+    - `basesViewListNarrowBehavior`（`none` / `top` / `hide`）
+    - `basesViewListNarrowThresholdPx`（狭幅判定閾値px）
   - 表示:
     - viewが1件以下のbaseでは一覧UI/トグルを表示しない（完全非表示）
-    - 通常幅は左サイドバー表示、`max-width: 900px` で上部表示へ自動切替
+    - `left` は左サイドバー表示
+    - `top` は `bases-header` 直下（fallback: toolbar直前）に横並び表示
     - 一覧ヘッダー左の `x` で閉じる、閉状態ではtoolbar左端の `list-plus` で開く
+    - `top` ではタイトル文字列を出さず close のみ表示
+    - 一覧領域の右クリックメニューで `left/top` を切替可能
+    - view行右クリックで `description` 編集 + 配置切替メニューを表示
     - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
-    - 各view行の先頭に view type 対応アイコンを表示（取得不能時は `list`）
+    - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
+    - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
+    - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`）
+    - 設定ON時は view名の下にプロパティ行を表示（配列はカンマ区切り、空値は非表示）
+    - 狭幅時は設定に応じて `none/top/hide` を適用
 - Custom Table View (`tasknotesCustomTable`)
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
   - `config.getOrder()` に従った列順
@@ -75,6 +93,8 @@
   - Bases view の登録/解除
 - `src/bases/BasesViewListSidebarService.ts`
   - `.base` 表示時のview一覧サイドバー管理（DOM注入・切替・cleanup・設定反映）
+- `src/bases/BaseViewListYamlStore.ts`
+  - `.base` YAML の `formulas.viewListSize` / `views[].description` 読み書き補助
 - `src/bases/api.ts`
   - Bases API ラッパー型
 - `src/releaseNotes.ts`
@@ -82,7 +102,7 @@
 - `styles/bases-views.css`
   - Bases 系 view のスタイル（view一覧サイドバー関連スタイルを含む）
 - `src/settings/tabs/generalTab.ts`
-  - Bases view一覧サイドバーの設定UI（トグル/表示モード）
+  - Bases view一覧サイドバーの設定UI（トグル/表示モード/配置/フォントサイズ/プロパティ/アイコン/top overflow/狭幅挙動）
 - `src/settings/defaults.ts`
   - view一覧サイドバー設定のデフォルト値
 - `src/types/settings.ts`
@@ -97,6 +117,8 @@
   - 列幅ロジックのユニットテスト
 - `tests/unit/bases/BasesViewListSidebarService.test.ts`
   - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
+- `tests/unit/bases/BaseViewListYamlStore.test.ts`
+  - `viewListSize` / `description` YAML更新のユニットテスト
 
 # 4. データ構造
 - `tableSummaries: Record<propertyId, summaryKey>`
@@ -116,7 +138,25 @@
 - `basesViewListCollapsed: boolean`
   - view一覧サイドバーの開閉状態（グローバル）
 - `basesViewListWidthPx: number`
-  - view一覧サイドバー幅px（グローバル、`140..520` にクランプ）
+  - view一覧サイドバー幅px（グローバルfallback、`140..520` にクランプ）
+- `basesViewListPlacement: "left" | "top"`
+  - view一覧の配置モード（左配置/上配置）
+- `basesViewListFontSize: "m" | "s" | "xs"`
+  - view一覧の文字サイズ
+- `basesViewListShowProperty: boolean`
+  - 各viewの2行目プロパティ表示のON/OFF
+- `basesViewListPropertyKey: string`
+  - 2行目に表示するプロパティキー（例: `description`）
+- `basesViewListShowIcons: boolean`
+  - view一覧のアイコン表示ON/OFF
+- `basesViewListTopOverflowMode: "wrap" | "scroll"`
+  - top配置時の並び方（折返し/1行横スクロール）
+- `basesViewListNarrowBehavior: "none" | "top" | "hide"`
+  - 狭幅時の挙動
+- `basesViewListNarrowThresholdPx: number`
+  - 狭幅判定閾値px
+- `.base formulas.viewListSize: number`
+  - view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、手動リサイズ時に保存）
 
 # 5. 挙動の詳細や注意点
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
@@ -138,7 +178,18 @@
 - `list-only` 設定時は `.bases-toolbar-views-menu` を非表示にし、`combined` では表示維持する。
 - view数が1件以下のbaseでは、一覧サイドバーとtoolbarの開くトグルを注入しない。
 - 開状態ではヘッダーにcloseボタンを表示し、閉状態ではtoolbar左端にopenボタンを表示する。
-- 一覧幅はリサイズハンドルのドラッグで変更し、pointer終了時に設定へ保存する。
+- 一覧幅はリサイズハンドルのドラッグで変更し、pointer終了時に `.base formulas.viewListSize` へ保存する。
+- closeボタンは小型表示に調整して視覚ノイズを抑えている。
+- left配置ヘッダーのタイトルは `base` ファイル名（拡張子除く）を表示する。
+- top配置では一覧を `bases-header` 直下へ挿入し、ヘッダー文字列は表示しない。
+- view名は左寄せで統一し、必要に応じて2行目プロパティ行を描画する。
+- プロパティ値が配列の場合はカンマ区切りで表示し、空値なら2行目を描画しない。
+- フォントサイズは `m/s/xs` クラスで切替し、文字サイズに連動してアイコンと行高も調整する。
+- 一覧領域の右クリックメニューで `left/top` を即時切替できる。
+- view行右クリックでは `description` 編集項目を追加表示する。
+- top配置時は `wrap/scroll` 設定を適用し、狭幅強制top時は `scroll` を強制する。
+- 狭幅判定は leaf container 幅を使い、`ResizeObserver` で変化を追従する。
+- 保存幅が初期値のときのみ自動幅短縮を適用する（ユーザー幅を上書きしない）。
 - view typeアイコンは `bases.registrations[type].icon` を優先し、未知typeは `list` にフォールバックする。
 - 設定OFFまたは plugin unload 時は注入DOMを除去し、`.bases-view` を元の親へ戻す。
 - レイアウト再同期時は既存ラッパー文脈を再解決し、不正な入れ子ラッパーを自動で解除して1つに正規化する（増殖防止）。

@@ -1,11 +1,19 @@
-import { EventRef, TFile, WorkspaceLeaf, parseYaml, setIcon } from "obsidian";
+import { EventRef, Menu, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import TaskNotesPlugin from "../main";
+import { showTextInputModal } from "../modals/TextInputModal";
+import { BaseViewListYamlStore } from "./BaseViewListYamlStore";
 
 type DropdownMode = "list-only" | "combined";
+type LayoutPlacement = "left" | "top";
+type FontSizeOption = "m" | "s" | "xs";
+type TopOverflowMode = "wrap" | "scroll";
+type NarrowBehavior = "none" | "top" | "hide";
 
 interface BasesSubViewLike {
 	name?: unknown;
 	type?: unknown;
+	get?: (key: string) => unknown;
+	[key: string]: unknown;
 }
 
 interface BasesQueryLike {
@@ -30,14 +38,17 @@ interface ViewEntry {
 	name: string;
 	type: string | null;
 	icon: string;
+	propertyText: string | null;
+	descriptionText: string | null;
 }
 
 interface ManagedLeafState {
 	rootEl: HTMLElement;
+	placement: LayoutPlacement;
 	layoutEl: HTMLElement;
 	listEl: HTMLElement;
-	bodyEl: HTMLElement;
-	resizerEl: HTMLElement;
+	bodyEl: HTMLElement | null;
+	resizerEl: HTMLElement | null;
 	basesViewEl: HTMLElement;
 }
 
@@ -55,23 +66,58 @@ interface ResizeDragState {
 	lastWidth: number;
 }
 
+interface PartialViewEntry {
+	name?: unknown;
+	type?: unknown;
+	propertyText?: string | null;
+	descriptionText?: string | null;
+}
+
+interface EffectiveLayoutResolution {
+	placement: LayoutPlacement;
+	forceTopScroll: boolean;
+	temporaryHidden: boolean;
+}
+
+interface PreferredWidthResult {
+	widthPx: number;
+	source: "file" | "global";
+}
+
 const CSS_LAYOUT = "tn-bases-view-list-layout";
+const CSS_LAYOUT_TOP = "tn-bases-view-list-top-layout";
 const CSS_LIST = "tn-bases-view-list";
+const CSS_LIST_TOP = "tn-bases-view-list--top";
+const CSS_LIST_TOP_WRAP = "tn-bases-view-list--top-wrap";
+const CSS_LIST_TOP_SCROLL = "tn-bases-view-list--top-scroll";
+const CSS_LIST_ICONS_OFF = "tn-bases-view-list--icons-off";
 const CSS_BODY = "tn-bases-view-list-body";
 const CSS_ITEM = "tn-bases-view-list__item";
 const CSS_ITEM_ACTIVE = "is-active";
+const CSS_ITEM_WITH_PROPERTY = "tn-bases-view-list__item--with-property";
 const CSS_ITEM_ICON = "tn-bases-view-list__item-icon";
+const CSS_ITEM_CONTENT = "tn-bases-view-list__item-content";
+const CSS_ITEM_NAME = "tn-bases-view-list__item-name";
+const CSS_ITEM_PROPERTY = "tn-bases-view-list__item-property";
 const CSS_HEADER = "tn-bases-view-list__header";
+const CSS_HEADER_TOP = "tn-bases-view-list__header--top";
 const CSS_TITLE = "tn-bases-view-list__title";
 const CSS_CLOSE = "tn-bases-view-list__close";
+const CSS_CLOSE_SMALL = "tn-bases-view-list__close--small";
 const CSS_RESIZER = "tn-bases-view-list__resizer";
 const CSS_OPEN_TRIGGER = "tn-bases-view-list-open-trigger";
 const CSS_MODE_LIST_ONLY = "tn-bases-view-list-mode-list-only";
 const CSS_MODE_COMBINED = "tn-bases-view-list-mode-combined";
+const CSS_FONT_M = "tn-bases-view-list-font-m";
+const CSS_FONT_S = "tn-bases-view-list-font-s";
+const CSS_FONT_XS = "tn-bases-view-list-font-xs";
 
 const WIDTH_MIN = 140;
 const WIDTH_MAX = 520;
 const WIDTH_DEFAULT = 220;
+const NARROW_THRESHOLD_MIN = 320;
+const NARROW_THRESHOLD_MAX = 2400;
+const NARROW_THRESHOLD_DEFAULT = 800;
 
 const KNOWN_VIEW_ICONS: Record<string, string> = {
 	table: "table",
@@ -89,6 +135,8 @@ export class BasesViewListSidebarService {
 	private emitterRefs: EventRef[] = [];
 	private managedLeaves = new Map<WorkspaceLeaf, ManagedLeafState>();
 	private toolbarTriggers = new Map<WorkspaceLeaf, HTMLElement>();
+	private resizeObservers = new Map<WorkspaceLeaf, ResizeObserver>();
+	private yamlStore: BaseViewListYamlStore;
 	private refreshTimer: number | null = null;
 	private resizeDrag: ResizeDragState | null = null;
 	private running = false;
@@ -101,7 +149,9 @@ export class BasesViewListSidebarService {
 		void this.endResizeDrag(true);
 	};
 
-	constructor(private plugin: TaskNotesPlugin) {}
+	constructor(private plugin: TaskNotesPlugin) {
+		this.yamlStore = new BaseViewListYamlStore(plugin);
+	}
 
 	start(): void {
 		if (this.running) return;
@@ -116,8 +166,10 @@ export class BasesViewListSidebarService {
 		this.clearRefreshTimer();
 		this.detachResizeDragListeners();
 		this.unbindEvents();
+		this.cleanupAllResizeObservers();
 		this.cleanupAllLeaves();
 		this.cleanupAllToolbarOpenTriggers();
+		this.yamlStore.clearCache();
 	}
 
 	private bindEvents(): void {
@@ -145,6 +197,7 @@ export class BasesViewListSidebarService {
 				if (!this.isFeatureEnabled()) {
 					this.cleanupAllLeaves();
 					this.cleanupAllToolbarOpenTriggers();
+					this.cleanupAllResizeObservers();
 					this.clearModeClassesFromAllBaseLeaves();
 					return;
 				}
@@ -193,6 +246,7 @@ export class BasesViewListSidebarService {
 		if (!this.isFeatureEnabled()) {
 			this.cleanupAllLeaves();
 			this.cleanupAllToolbarOpenTriggers();
+			this.cleanupAllResizeObservers();
 			this.clearModeClassesFromAllBaseLeaves();
 			return;
 		}
@@ -212,6 +266,12 @@ export class BasesViewListSidebarService {
 			}
 		}
 
+		for (const leaf of Array.from(this.resizeObservers.keys())) {
+			if (!activeLeaves.has(leaf)) {
+				this.removeResizeObserverForLeaf(leaf);
+			}
+		}
+
 		await Promise.all(leaves.map((leaf) => this.refreshLeaf(leaf)));
 	}
 
@@ -221,8 +281,11 @@ export class BasesViewListSidebarService {
 		if (!this.isTargetBaseLeaf(leaf)) {
 			this.cleanupLeaf(leaf);
 			this.removeToolbarOpenTrigger(leaf);
+			this.removeResizeObserverForLeaf(leaf);
 			return;
 		}
+
+		this.ensureResizeObserverForLeaf(leaf);
 
 		const basesViewEl = this.findBasesViewEl(leaf);
 		if (!basesViewEl) return;
@@ -234,8 +297,16 @@ export class BasesViewListSidebarService {
 		if (viewEntries.length <= 1) {
 			this.cleanupLeaf(leaf);
 			this.removeToolbarOpenTrigger(leaf);
-			const { rootEl } = this.resolveLayoutContext(basesViewEl);
-			if (rootEl) this.removeDropdownModeClasses(rootEl);
+			this.removeModeClassesForLeaf(leaf, basesViewEl);
+			return;
+		}
+
+		const layoutResolution = this.resolveEffectiveLayout(leaf);
+		if (layoutResolution.temporaryHidden) {
+			this.cleanupLeaf(leaf);
+			this.removeToolbarOpenTrigger(leaf);
+			const rootEl = this.resolveRootEl(leaf, basesViewEl);
+			if (rootEl) this.applyDropdownModeClasses(rootEl);
 			return;
 		}
 
@@ -244,22 +315,56 @@ export class BasesViewListSidebarService {
 			if (toolbarEl) {
 				this.ensureToolbarOpenTrigger(leaf, toolbarEl);
 			}
-			const { rootEl } = this.resolveLayoutContext(basesViewEl);
+			const rootEl = this.resolveRootEl(leaf, basesViewEl);
 			if (rootEl) this.applyDropdownModeClasses(rootEl);
 			return;
 		}
 
 		this.removeToolbarOpenTrigger(leaf);
 
-		const state = this.ensureManagedLayout(leaf, basesViewEl);
+		const placement = layoutResolution.placement;
+		const existing = this.managedLeaves.get(leaf);
+		if (existing && existing.placement !== placement) {
+			this.cleanupLeaf(leaf);
+		}
+
+		let state: ManagedLeafState | null = null;
+		if (placement === "top") {
+			state = this.ensureManagedLayoutTop(leaf, basesViewEl);
+		} else {
+			state = this.ensureManagedLayoutLeft(leaf, basesViewEl);
+		}
 		if (!state) return;
 
 		this.applyDropdownModeClasses(state.rootEl);
-		this.applyLayoutWidth(state.layoutEl, this.getSavedWidthPx());
-		this.ensureResizeHandle(leaf, state);
+		this.applyFontSizeClasses(state.listEl);
+		this.applyIconVisibilityClasses(state.listEl);
+		this.applyTopOverflowClasses(
+			state.listEl,
+			state.placement,
+			layoutResolution.forceTopScroll ? "scroll" : this.getTopOverflowMode()
+		);
+
+		let preferredWidth: PreferredWidthResult | null = null;
+
+		if (state.placement === "left") {
+			preferredWidth = await this.getPreferredWidth(leaf);
+			if (!this.running) return;
+			this.applyLayoutWidth(state.layoutEl, preferredWidth.widthPx);
+			this.ensureResizeHandle(leaf, state);
+		} else {
+			if (this.resizeDrag?.leaf === leaf) {
+				this.detachResizeDragListeners();
+			}
+		}
 
 		const currentViewName = this.getCurrentViewName(leaf);
 		this.renderViewList(leaf, state, viewEntries, currentViewName);
+		this.ensureListContextMenu(leaf, state.listEl, viewEntries);
+
+		if (state.placement === "left" && preferredWidth) {
+			this.applyAutoShrinkWidthIfEligible(leaf, state, viewEntries, preferredWidth);
+		}
 	}
 
 	private isFeatureEnabled(): boolean {
@@ -268,6 +373,48 @@ export class BasesViewListSidebarService {
 
 	private isCollapsed(): boolean {
 		return this.plugin.settings.basesViewListCollapsed === true;
+	}
+
+	private getPlacement(): LayoutPlacement {
+		return this.plugin.settings.basesViewListPlacement === "top" ? "top" : "left";
+	}
+
+	private getFontSize(): FontSizeOption {
+		const value = this.plugin.settings.basesViewListFontSize;
+		if (value === "s" || value === "xs") return value;
+		return "m";
+	}
+
+	private shouldShowIcons(): boolean {
+		return this.plugin.settings.basesViewListShowIcons !== false;
+	}
+
+	private getTopOverflowMode(): TopOverflowMode {
+		return this.plugin.settings.basesViewListTopOverflowMode === "scroll" ? "scroll" : "wrap";
+	}
+
+	private getNarrowBehavior(): NarrowBehavior {
+		const value = this.plugin.settings.basesViewListNarrowBehavior;
+		if (value === "none" || value === "hide") return value;
+		return "top";
+	}
+
+	private getNarrowThresholdPx(): number {
+		const raw = this.plugin.settings.basesViewListNarrowThresholdPx;
+		if (!Number.isFinite(raw)) return NARROW_THRESHOLD_DEFAULT;
+		return Math.max(
+			NARROW_THRESHOLD_MIN,
+			Math.min(NARROW_THRESHOLD_MAX, Math.round(raw))
+		);
+	}
+
+	private shouldShowProperty(): boolean {
+		return this.plugin.settings.basesViewListShowProperty === true && this.getPropertyKey().length > 0;
+	}
+
+	private getPropertyKey(): string {
+		const key = this.plugin.settings.basesViewListPropertyKey;
+		return typeof key === "string" ? key.trim() : "";
 	}
 
 	private getSavedWidthPx(): number {
@@ -279,12 +426,58 @@ export class BasesViewListSidebarService {
 		return Math.max(WIDTH_MIN, Math.min(WIDTH_MAX, Math.round(widthPx)));
 	}
 
-	private isNarrowLayout(): boolean {
-		try {
-			return window.matchMedia?.("(max-width: 900px)")?.matches ?? false;
-		} catch {
-			return false;
+	private getLeafContainerWidth(leaf: WorkspaceLeaf): number {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (containerEl && containerEl.clientWidth > 0) {
+			return containerEl.clientWidth;
 		}
+
+		const basesViewEl = this.findBasesViewEl(leaf);
+		if (basesViewEl && basesViewEl.clientWidth > 0) {
+			return basesViewEl.clientWidth;
+		}
+
+		return typeof window.innerWidth === "number" ? window.innerWidth : 0;
+	}
+
+	private isLeafNarrow(leaf: WorkspaceLeaf): boolean {
+		const width = this.getLeafContainerWidth(leaf);
+		if (width <= 0) return false;
+		return width <= this.getNarrowThresholdPx();
+	}
+
+	private resolveEffectiveLayout(leaf: WorkspaceLeaf): EffectiveLayoutResolution {
+		const userPlacement = this.getPlacement();
+		const isNarrow = this.isLeafNarrow(leaf);
+		if (!isNarrow) {
+			return {
+				placement: userPlacement,
+				forceTopScroll: false,
+				temporaryHidden: false,
+			};
+		}
+
+		const behavior = this.getNarrowBehavior();
+		if (behavior === "hide") {
+			return {
+				placement: userPlacement,
+				forceTopScroll: false,
+				temporaryHidden: true,
+			};
+		}
+		if (behavior === "top" && userPlacement === "left") {
+			return {
+				placement: "top",
+				forceTopScroll: true,
+				temporaryHidden: false,
+			};
+		}
+
+		return {
+			placement: userPlacement,
+			forceTopScroll: false,
+			temporaryHidden: false,
+		};
 	}
 
 	private isTargetBaseLeaf(leaf: WorkspaceLeaf): boolean {
@@ -330,21 +523,39 @@ export class BasesViewListSidebarService {
 		return containerEl.querySelector<HTMLElement>(".bases-toolbar");
 	}
 
-	private ensureManagedLayout(
+	private findHeaderEl(leaf: WorkspaceLeaf): HTMLElement | null {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (!containerEl) return null;
+		return containerEl.querySelector<HTMLElement>(".bases-header");
+	}
+
+	private resolveRootEl(leaf: WorkspaceLeaf, basesViewEl: HTMLElement): HTMLElement | null {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (containerEl) return containerEl;
+		const { rootEl } = this.resolveLayoutContext(basesViewEl);
+		return rootEl;
+	}
+
+	private ensureManagedLayoutLeft(
 		leaf: WorkspaceLeaf,
 		basesViewEl: HTMLElement
 	): ManagedLeafState | null {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (containerEl) {
+			this.removeAllTopLayouts(containerEl);
+		}
+
 		let { rootEl, layoutEl, bodyEl } = this.resolveLayoutContext(basesViewEl);
 		if (!rootEl) return null;
 		this.removeOrphanLayouts(rootEl, basesViewEl, layoutEl);
 
 		const existing = this.managedLeaves.get(leaf);
-		if (existing && (existing.layoutEl !== layoutEl || existing.rootEl !== rootEl)) {
+		if (existing && existing.placement !== "left") {
 			this.cleanupLeaf(leaf);
 		}
 
 		const current = this.managedLeaves.get(leaf);
-		if (current) {
+		if (current && current.placement === "left") {
 			current.rootEl = rootEl;
 			if (layoutEl && bodyEl) {
 				const listEl = this.findListEl(layoutEl);
@@ -356,10 +567,11 @@ export class BasesViewListSidebarService {
 					current.resizerEl = resizerEl;
 				}
 			}
-			if (current.basesViewEl !== basesViewEl) {
+			if (current.basesViewEl !== basesViewEl && current.bodyEl) {
 				current.bodyEl.appendChild(basesViewEl);
 				current.basesViewEl = basesViewEl;
 			}
+			current.listEl.classList.remove(CSS_LIST_TOP);
 			return current;
 		}
 
@@ -371,8 +583,10 @@ export class BasesViewListSidebarService {
 				bodyEl.before(resizerEl);
 			}
 			if (listEl && resizerEl) {
+				listEl.classList.remove(CSS_LIST_TOP);
 				const state: ManagedLeafState = {
 					rootEl,
+					placement: "left",
 					layoutEl,
 					listEl,
 					bodyEl,
@@ -386,7 +600,6 @@ export class BasesViewListSidebarService {
 				return state;
 			}
 
-			// Broken wrapper without required children. Reset and rebuild cleanly.
 			this.unwrapLayout(layoutEl, basesViewEl);
 			rootEl = basesViewEl.parentElement;
 			if (!rootEl) return null;
@@ -399,7 +612,7 @@ export class BasesViewListSidebarService {
 
 		const listEl = doc.createElement("nav");
 		listEl.className = CSS_LIST;
-		listEl.setAttribute("aria-label", this.getListLabel());
+		listEl.setAttribute("aria-label", this.getListAriaLabel(leaf));
 
 		const resizerEl = this.createResizerEl(doc);
 
@@ -414,6 +627,7 @@ export class BasesViewListSidebarService {
 
 		const state: ManagedLeafState = {
 			rootEl,
+			placement: "left",
 			layoutEl,
 			listEl,
 			bodyEl,
@@ -422,6 +636,97 @@ export class BasesViewListSidebarService {
 		};
 		this.managedLeaves.set(leaf, state);
 		return state;
+	}
+
+	private ensureManagedLayoutTop(
+		leaf: WorkspaceLeaf,
+		basesViewEl: HTMLElement
+	): ManagedLeafState | null {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (!containerEl) return null;
+
+		const leftContext = this.resolveLayoutContext(basesViewEl);
+		if (leftContext.layoutEl) {
+			this.unwrapLayout(leftContext.layoutEl, basesViewEl);
+		}
+
+		const existing = this.managedLeaves.get(leaf);
+		if (existing && existing.placement !== "top") {
+			this.cleanupLeaf(leaf);
+		}
+
+		const topLayouts = Array.from(containerEl.querySelectorAll<HTMLElement>(`.${CSS_LAYOUT_TOP}`));
+		let layoutEl = topLayouts[0] ?? null;
+		for (const duplicate of topLayouts.slice(1)) {
+			duplicate.remove();
+		}
+
+		const current = this.managedLeaves.get(leaf);
+		if (current && current.placement === "top") {
+			if (layoutEl) {
+				current.layoutEl = layoutEl;
+			}
+			this.ensureTopLayoutPosition(leaf, current.layoutEl, basesViewEl);
+			let listEl = this.findListEl(current.layoutEl);
+			if (!listEl) {
+				listEl = current.layoutEl.ownerDocument.createElement("nav");
+				listEl.className = CSS_LIST;
+				current.layoutEl.appendChild(listEl);
+			}
+			current.listEl = listEl;
+			current.listEl.classList.add(CSS_LIST_TOP);
+			current.listEl.setAttribute("aria-label", this.getListAriaLabel(leaf));
+			current.rootEl = containerEl;
+			current.basesViewEl = basesViewEl;
+			return current;
+		}
+
+		if (!layoutEl) {
+			layoutEl = containerEl.ownerDocument.createElement("div");
+			layoutEl.className = CSS_LAYOUT_TOP;
+		}
+
+		let listEl = this.findListEl(layoutEl);
+		if (!listEl) {
+			listEl = layoutEl.ownerDocument.createElement("nav");
+			listEl.className = CSS_LIST;
+			layoutEl.appendChild(listEl);
+		}
+		listEl.classList.add(CSS_LIST_TOP);
+		listEl.setAttribute("aria-label", this.getListAriaLabel(leaf));
+		this.ensureTopLayoutPosition(leaf, layoutEl, basesViewEl);
+
+		const state: ManagedLeafState = {
+			rootEl: containerEl,
+			placement: "top",
+			layoutEl,
+			listEl,
+			bodyEl: null,
+			resizerEl: null,
+			basesViewEl,
+		};
+		this.managedLeaves.set(leaf, state);
+		return state;
+	}
+
+	private ensureTopLayoutPosition(
+		leaf: WorkspaceLeaf,
+		layoutEl: HTMLElement,
+		basesViewEl: HTMLElement
+	): void {
+		const headerEl = this.findHeaderEl(leaf);
+		if (headerEl?.parentElement) {
+			headerEl.after(layoutEl);
+			return;
+		}
+
+		const toolbarEl = this.findToolbarEl(leaf);
+		if (toolbarEl?.parentElement) {
+			toolbarEl.before(layoutEl);
+			return;
+		}
+
+		basesViewEl.before(layoutEl);
 	}
 
 	private resolveLayoutContext(basesViewEl: HTMLElement): {
@@ -486,6 +791,12 @@ export class BasesViewListSidebarService {
 		}
 	}
 
+	private removeAllTopLayouts(containerEl: HTMLElement): void {
+		for (const layoutEl of Array.from(containerEl.querySelectorAll<HTMLElement>(`.${CSS_LAYOUT_TOP}`))) {
+			layoutEl.remove();
+		}
+	}
+
 	private findListEl(layoutEl: HTMLElement): HTMLElement | null {
 		for (const child of Array.from(layoutEl.children)) {
 			if (child instanceof HTMLElement && child.classList.contains(CSS_LIST)) {
@@ -528,6 +839,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private ensureResizeHandle(leaf: WorkspaceLeaf, state: ManagedLeafState): void {
+		if (state.placement !== "left" || !state.resizerEl) return;
 		const { resizerEl } = state;
 		resizerEl.setAttribute("aria-label", this.getResizeHandleAriaLabel());
 		resizerEl.setAttribute("title", this.getResizeHandleTooltip());
@@ -541,7 +853,8 @@ export class BasesViewListSidebarService {
 		state: ManagedLeafState,
 		evt: PointerEvent
 	): void {
-		if (this.isNarrowLayout()) return;
+		if (state.placement !== "left") return;
+		if (this.isLeafNarrow(leaf)) return;
 		if (!this.running) return;
 		evt.preventDefault();
 
@@ -572,11 +885,12 @@ export class BasesViewListSidebarService {
 
 	private async endResizeDrag(saveWidth: boolean): Promise<void> {
 		if (!this.resizeDrag) return;
+		const { leaf } = this.resizeDrag;
 		const widthToPersist = this.resizeDrag.lastWidth;
 		this.detachResizeDragListeners();
 
 		if (saveWidth) {
-			await this.persistWidth(widthToPersist);
+			await this.persistWidthForLeaf(leaf, widthToPersist);
 		}
 	}
 
@@ -585,6 +899,38 @@ export class BasesViewListSidebarService {
 		window.removeEventListener("pointerup", this.onResizePointerUpBound);
 		window.removeEventListener("pointercancel", this.onResizePointerUpBound);
 		this.resizeDrag = null;
+	}
+
+	private ensureResizeObserverForLeaf(leaf: WorkspaceLeaf): void {
+		if (this.resizeObservers.has(leaf)) return;
+		if (typeof ResizeObserver === "undefined") return;
+
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (!containerEl) return;
+
+		try {
+			const observer = new ResizeObserver(() => {
+				this.scheduleRefresh(50);
+			});
+			observer.observe(containerEl);
+			this.resizeObservers.set(leaf, observer);
+		} catch {
+			// Ignore observer failures and keep polling via workspace events.
+		}
+	}
+
+	private removeResizeObserverForLeaf(leaf: WorkspaceLeaf): void {
+		const observer = this.resizeObservers.get(leaf);
+		if (observer) {
+			observer.disconnect();
+		}
+		this.resizeObservers.delete(leaf);
+	}
+
+	private cleanupAllResizeObservers(): void {
+		for (const leaf of Array.from(this.resizeObservers.keys())) {
+			this.removeResizeObserverForLeaf(leaf);
+		}
 	}
 
 	private applyDropdownModeClasses(rootEl: HTMLElement): void {
@@ -598,14 +944,131 @@ export class BasesViewListSidebarService {
 		rootEl.classList.remove(CSS_MODE_COMBINED);
 	}
 
+	private removeModeClassesForLeaf(leaf: WorkspaceLeaf, basesViewEl: HTMLElement): void {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (containerEl) {
+			this.removeDropdownModeClasses(containerEl);
+		}
+		const { rootEl } = this.resolveLayoutContext(basesViewEl);
+		if (rootEl) {
+			this.removeDropdownModeClasses(rootEl);
+		}
+	}
+
 	private clearModeClassesFromAllBaseLeaves(): void {
 		const leaves = this.plugin.app.workspace.getLeavesOfType("bases") as WorkspaceLeaf[];
 		for (const leaf of leaves) {
+			const containerEl = this.getLeafView(leaf)?.containerEl;
+			if (containerEl) {
+				this.removeDropdownModeClasses(containerEl);
+			}
 			const basesViewEl = this.findBasesViewEl(leaf);
 			if (!basesViewEl) continue;
 			const { rootEl } = this.resolveLayoutContext(basesViewEl);
 			if (rootEl) this.removeDropdownModeClasses(rootEl);
 		}
+	}
+
+	private applyFontSizeClasses(listEl: HTMLElement): void {
+		listEl.classList.remove(CSS_FONT_M, CSS_FONT_S, CSS_FONT_XS);
+		switch (this.getFontSize()) {
+			case "s":
+				listEl.classList.add(CSS_FONT_S);
+				break;
+			case "xs":
+				listEl.classList.add(CSS_FONT_XS);
+				break;
+			default:
+				listEl.classList.add(CSS_FONT_M);
+				break;
+		}
+	}
+
+	private applyIconVisibilityClasses(listEl: HTMLElement): void {
+		listEl.classList.toggle(CSS_LIST_ICONS_OFF, !this.shouldShowIcons());
+	}
+
+	private applyTopOverflowClasses(
+		listEl: HTMLElement,
+		placement: LayoutPlacement,
+		mode: TopOverflowMode
+	): void {
+		listEl.classList.toggle(CSS_LIST_TOP, placement === "top");
+		listEl.classList.remove(CSS_LIST_TOP_WRAP, CSS_LIST_TOP_SCROLL);
+		if (placement !== "top") return;
+		listEl.classList.add(mode === "scroll" ? CSS_LIST_TOP_SCROLL : CSS_LIST_TOP_WRAP);
+	}
+
+	private ensureListContextMenu(
+		leaf: WorkspaceLeaf,
+		listEl: HTMLElement,
+		viewEntries: ViewEntry[]
+	): void {
+		const entriesByName = new Map(viewEntries.map((entry) => [entry.name, entry]));
+		listEl.oncontextmenu = (evt) => {
+			evt.preventDefault();
+			evt.stopPropagation();
+			const target = evt.target instanceof HTMLElement ? evt.target : null;
+			const rowEl = target?.closest(`.${CSS_ITEM}`);
+			if (rowEl instanceof HTMLElement && listEl.contains(rowEl)) {
+				const viewName = rowEl.getAttribute("data-view-name")?.trim() ?? "";
+				const entry = entriesByName.get(viewName) ?? null;
+				if (entry) {
+					this.showViewItemContextMenu(evt, leaf, entry);
+					return;
+				}
+			}
+			this.showPlacementContextMenu(evt);
+		};
+	}
+
+	private showPlacementContextMenu(event: MouseEvent): void {
+		const current = this.getPlacement();
+		const menu = new Menu();
+		this.addPlacementMenuItems(menu, current);
+		menu.showAtMouseEvent(event);
+	}
+
+	private showViewItemContextMenu(
+		event: MouseEvent,
+		leaf: WorkspaceLeaf,
+		entry: ViewEntry
+	): void {
+		const current = this.getPlacement();
+		const menu = new Menu();
+		menu.addItem((item) => {
+			item.setTitle(this.getContextMenuEditDescriptionLabel());
+			item.onClick(() => {
+				void this.editViewDescription(leaf, entry);
+			});
+		});
+		menu.addSeparator();
+		this.addPlacementMenuItems(menu, current);
+		menu.showAtMouseEvent(event);
+	}
+
+	private addPlacementMenuItems(menu: Menu, current: LayoutPlacement): void {
+		menu.addItem((item) => {
+			item.setTitle(
+				current === "left"
+					? `✓ ${this.getContextMenuLeftLabel()}`
+					: this.getContextMenuLeftLabel()
+			);
+			item.onClick(() => {
+				void this.setPlacement("left");
+			});
+		});
+
+		menu.addItem((item) => {
+			item.setTitle(
+				current === "top"
+					? `✓ ${this.getContextMenuTopLabel()}`
+					: this.getContextMenuTopLabel()
+			);
+			item.onClick(() => {
+				void this.setPlacement("top");
+			});
+		});
 	}
 
 	private cleanupAllLeaves(): void {
@@ -627,16 +1090,22 @@ export class BasesViewListSidebarService {
 			this.removeDropdownModeClasses(state.layoutEl.parentElement);
 		}
 
-		if (state.layoutEl.isConnected) {
-			if (state.layoutEl.contains(state.basesViewEl)) {
-				state.layoutEl.before(state.basesViewEl);
-			} else {
-				const currentBasesView = state.layoutEl.querySelector<HTMLElement>(".bases-view");
-				if (currentBasesView) {
-					state.layoutEl.before(currentBasesView);
+		if (state.placement === "left") {
+			if (state.layoutEl.isConnected) {
+				if (state.layoutEl.contains(state.basesViewEl)) {
+					state.layoutEl.before(state.basesViewEl);
+				} else {
+					const currentBasesView = state.layoutEl.querySelector<HTMLElement>(".bases-view");
+					if (currentBasesView) {
+						state.layoutEl.before(currentBasesView);
+					}
 				}
+				state.layoutEl.remove();
 			}
-			state.layoutEl.remove();
+		} else {
+			if (state.layoutEl.isConnected) {
+				state.layoutEl.remove();
+			}
 		}
 
 		this.managedLeaves.delete(leaf);
@@ -684,10 +1153,39 @@ export class BasesViewListSidebarService {
 		}
 	}
 
+	private getListAriaLabel(leaf: WorkspaceLeaf): string {
+		const file = this.getLeafFile(leaf);
+		if (file?.basename && file.basename.trim().length > 0) {
+			return file.basename.trim();
+		}
+		return this.getListLabel();
+	}
+
 	private getListLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.title",
 			"Views"
+		);
+	}
+
+	private getContextMenuLeftLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showLeft",
+			"Show on left"
+		);
+	}
+
+	private getContextMenuTopLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showTop",
+			"Show on top"
+		);
+	}
+
+	private getContextMenuEditDescriptionLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription",
+			"Edit description"
 		);
 	}
 
@@ -733,12 +1231,83 @@ export class BasesViewListSidebarService {
 		);
 	}
 
+	private getEditDescriptionModalTitle(viewName: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.title",
+			`Edit description: ${viewName}`,
+			{ viewName }
+		);
+	}
+
+	private getEditDescriptionModalPlaceholder(description: string | null): string {
+		if (description && description.length > 0) {
+			return description;
+		}
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.placeholder",
+			"Enter description"
+		);
+	}
+
+	private getEditDescriptionModalConfirmText(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.confirm",
+			"Save"
+		);
+	}
+
+	private getEditDescriptionModalCancelText(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.cancel",
+			"Cancel"
+		);
+	}
+
+	private async editViewDescription(leaf: WorkspaceLeaf, entry: ViewEntry): Promise<void> {
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+
+		const input = await showTextInputModal(this.plugin.app, {
+			title: this.getEditDescriptionModalTitle(entry.name),
+			placeholder: this.getEditDescriptionModalPlaceholder(entry.descriptionText),
+			initialValue: "",
+			confirmText: this.getEditDescriptionModalConfirmText(),
+			cancelText: this.getEditDescriptionModalCancelText(),
+			allowEmptyResult: true,
+		});
+		if (input === null) return;
+
+		const nextDescription = input.trim().length > 0 ? input.trim() : null;
+		await this.yamlStore.updateViewDescription(file, entry.name, nextDescription);
+		this.scheduleRefresh(0);
+	}
+
 	private translateWithFallback(key: string, fallback: string): string {
 		const text = this.plugin.i18n.translate(key as any);
 		if (typeof text !== "string" || text === key) {
 			return fallback;
 		}
 		return text;
+	}
+
+	private translateWithFallbackWithParams(
+		key: string,
+		fallback: string,
+		params: Record<string, string | number>
+	): string {
+		const text = this.plugin.i18n.translate(key as any, params);
+		if (typeof text !== "string" || text === key) {
+			return fallback;
+		}
+		return text;
+	}
+
+	private getListTitle(leaf: WorkspaceLeaf): string {
+		const file = this.getLeafFile(leaf);
+		if (file?.basename && file.basename.trim().length > 0) {
+			return file.basename.trim();
+		}
+		return this.getListLabel();
 	}
 
 	private renderViewList(
@@ -753,10 +1322,13 @@ export class BasesViewListSidebarService {
 		const doc = listEl.ownerDocument;
 		const headerEl = doc.createElement("div");
 		headerEl.className = CSS_HEADER;
+		if (state.placement === "top") {
+			headerEl.classList.add(CSS_HEADER_TOP);
+		}
 
 		const closeButton = doc.createElement("button");
 		closeButton.type = "button";
-		closeButton.className = CSS_CLOSE;
+		closeButton.className = `${CSS_CLOSE} ${CSS_CLOSE_SMALL}`;
 		closeButton.setAttribute("aria-label", this.getCloseButtonAriaLabel());
 		closeButton.setAttribute("title", this.getCloseButtonTooltip());
 		setIcon(closeButton, "x");
@@ -765,15 +1337,19 @@ export class BasesViewListSidebarService {
 			evt.stopPropagation();
 			void this.setCollapsed(true);
 		});
-
-		const titleEl = doc.createElement("div");
-		titleEl.className = CSS_TITLE;
-		titleEl.textContent = this.getListLabel();
-
 		headerEl.appendChild(closeButton);
-		headerEl.appendChild(titleEl);
+
+		if (state.placement === "left") {
+			const titleEl = doc.createElement("div");
+			titleEl.className = CSS_TITLE;
+			titleEl.textContent = this.getListTitle(leaf);
+			headerEl.appendChild(titleEl);
+		}
+
 		listEl.appendChild(headerEl);
 
+		const shouldShowProperty = this.shouldShowProperty();
+		const shouldShowIcons = this.shouldShowIcons();
 		for (const entry of viewEntries) {
 			const button = doc.createElement("button");
 			button.type = "button";
@@ -781,15 +1357,30 @@ export class BasesViewListSidebarService {
 			button.setAttribute("data-view-name", entry.name);
 			button.setAttribute("aria-label", entry.name);
 
-			const iconEl = doc.createElement("span");
-			iconEl.className = CSS_ITEM_ICON;
-			setIcon(iconEl, entry.icon);
+			const contentEl = doc.createElement("span");
+			contentEl.className = CSS_ITEM_CONTENT;
 
-			const labelEl = doc.createElement("span");
-			labelEl.textContent = entry.name;
+			const nameEl = doc.createElement("span");
+			nameEl.className = CSS_ITEM_NAME;
+			nameEl.textContent = entry.name;
+			contentEl.appendChild(nameEl);
 
-			button.appendChild(iconEl);
-			button.appendChild(labelEl);
+			const shouldRenderProperty = shouldShowProperty && !!entry.propertyText;
+			if (shouldRenderProperty) {
+				button.classList.add(CSS_ITEM_WITH_PROPERTY);
+				const propertyEl = doc.createElement("span");
+				propertyEl.className = CSS_ITEM_PROPERTY;
+				propertyEl.textContent = entry.propertyText;
+				contentEl.appendChild(propertyEl);
+			}
+
+			if (shouldShowIcons) {
+				const iconEl = doc.createElement("span");
+				iconEl.className = CSS_ITEM_ICON;
+				setIcon(iconEl, entry.icon);
+				button.appendChild(iconEl);
+			}
+			button.appendChild(contentEl);
 
 			if (currentViewName && currentViewName === entry.name) {
 				button.classList.add(CSS_ITEM_ACTIVE);
@@ -801,6 +1392,71 @@ export class BasesViewListSidebarService {
 
 			listEl.appendChild(button);
 		}
+	}
+
+	private applyAutoShrinkWidthIfEligible(
+		leaf: WorkspaceLeaf,
+		state: ManagedLeafState,
+		viewEntries: ViewEntry[],
+		preferredWidth: PreferredWidthResult
+	): void {
+		if (state.placement !== "left") return;
+		if (this.isLeafNarrow(leaf)) return;
+		if (this.resizeDrag?.leaf === leaf) return;
+		if (preferredWidth.source !== "global") return;
+		if (preferredWidth.widthPx !== WIDTH_DEFAULT) return;
+
+		const autoWidth = this.computeAutoShrinkWidthPx(leaf, viewEntries);
+		this.applyLayoutWidth(state.layoutEl, autoWidth);
+	}
+
+	private computeAutoShrinkWidthPx(leaf: WorkspaceLeaf, viewEntries: ViewEntry[]): number {
+		let maxWidth = this.estimateHeaderWidthPx(leaf);
+		for (const entry of viewEntries) {
+			maxWidth = Math.max(maxWidth, this.estimateItemWidthPx(entry));
+		}
+		const total = this.clampWidth(Math.ceil(maxWidth + 20));
+		if (total >= WIDTH_DEFAULT) return WIDTH_DEFAULT;
+		return total;
+	}
+
+	private estimateHeaderWidthPx(leaf: WorkspaceLeaf): number {
+		const closeWidth = 18;
+		const gap = 6;
+		const titleWidth = this.estimateVisualTextWidth(this.getListTitle(leaf), false);
+		return closeWidth + gap + titleWidth + 8;
+	}
+
+	private estimateItemWidthPx(entry: ViewEntry): number {
+		const iconWidth = this.shouldShowIcons() ? 16 : 0;
+		const gap = this.shouldShowIcons() ? 8 : 0;
+		const horizontalPadding = 22;
+		const nameWidth = this.estimateVisualTextWidth(entry.name, false);
+		let textWidth = nameWidth;
+		if (this.shouldShowProperty() && entry.propertyText) {
+			const propertyWidth = this.estimateVisualTextWidth(entry.propertyText, true) + 12;
+			textWidth = Math.max(textWidth, propertyWidth);
+		}
+		return iconWidth + gap + textWidth + horizontalPadding;
+	}
+
+	private estimateVisualTextWidth(text: string, isProperty: boolean): number {
+		const fontSize = this.getFontSize();
+		const baseAscii = fontSize === "xs" ? 5.4 : fontSize === "s" ? 6.2 : 7.2;
+		const baseWide = fontSize === "xs" ? 8.8 : fontSize === "s" ? 9.9 : 11.2;
+		const propertyScale = isProperty ? 0.92 : 1;
+
+		let width = 0;
+		for (const char of text) {
+			if (char.trim().length === 0) {
+				width += baseAscii * 0.45;
+				continue;
+			}
+			const code = char.codePointAt(0) ?? 0;
+			const isWide = code > 0x00ff;
+			width += isWide ? baseWide : baseAscii;
+		}
+		return Math.ceil(width * propertyScale);
 	}
 
 	private async switchView(leaf: WorkspaceLeaf, viewName: string): Promise<void> {
@@ -857,41 +1513,121 @@ export class BasesViewListSidebarService {
 		const controller = this.getController(leaf);
 		const fromController = this.getViewEntriesFromController(controller);
 		if (fromController.length > 0) {
-			return fromController;
+			const file = this.getLeafFile(leaf);
+			if (!file) return fromController;
+
+			const needsYamlProperty =
+				this.shouldShowProperty() && fromController.some((entry) => !entry.propertyText);
+			const needsYamlDescription = fromController.some((entry) => !entry.descriptionText);
+			if (!needsYamlProperty && !needsYamlDescription) {
+				return fromController;
+			}
+
+			const yamlMetadata = await this.getYamlViewMetadataMap(file);
+			if (yamlMetadata.size === 0) return fromController;
+
+			return fromController.map((entry) => {
+				const fallback = yamlMetadata.get(entry.name);
+				if (!fallback) return entry;
+				return {
+					...entry,
+					type: entry.type ?? fallback.type,
+					propertyText: entry.propertyText ?? fallback.propertyText,
+					descriptionText: entry.descriptionText ?? fallback.descriptionText,
+				};
+			});
 		}
 
 		const file = this.getLeafFile(leaf);
 		if (!file) return [];
+		return this.getViewEntriesFromYamlFile(file);
+	}
 
-		try {
-			const content = await this.plugin.app.vault.cachedRead(file);
-			const parsed = parseYaml(content) as { views?: unknown } | null;
-			if (!parsed || !Array.isArray(parsed.views)) {
-				return [];
-			}
-
-			const entries = parsed.views.map((view): Partial<ViewEntry> => {
-				if (typeof view !== "object" || view === null) return {};
-				const maybeView = view as { name?: unknown; type?: unknown };
-				return {
-					name: typeof maybeView.name === "string" ? maybeView.name : "",
-					type: typeof maybeView.type === "string" ? maybeView.type : null,
-				};
-			});
-
-			return this.normalizeViewEntries(entries);
-		} catch {
-			return [];
+	private async getPreferredWidth(leaf: WorkspaceLeaf): Promise<PreferredWidthResult> {
+		const file = this.getLeafFile(leaf);
+		if (!file) {
+			return {
+				widthPx: this.getSavedWidthPx(),
+				source: "global",
+			};
 		}
+
+		const ratio = await this.yamlStore.getViewListSizeRatio(file);
+		if (typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0) {
+			return {
+				widthPx: this.clampWidth(WIDTH_DEFAULT * ratio),
+				source: "file",
+			};
+		}
+
+		return {
+			widthPx: this.getSavedWidthPx(),
+			source: "global",
+		};
+	}
+
+	private async getViewEntriesFromYamlFile(file: TFile): Promise<ViewEntry[]> {
+		const rows = await this.yamlStore.getViews(file);
+		if (rows.length === 0) return [];
+		const propertyKey = this.getPropertyKey();
+		const entries: PartialViewEntry[] = rows.map((row) => {
+			const view = row.raw as BasesSubViewLike;
+			return {
+				name: row.name,
+				type: row.type,
+				propertyText: this.extractPropertyText(view, propertyKey),
+				descriptionText: this.extractPropertyText(view, "description"),
+			};
+		});
+		return this.normalizeViewEntries(entries);
+	}
+
+	private async getYamlViewMetadataMap(
+		file: TFile
+	): Promise<
+		Map<
+			string,
+			{
+				type: string | null;
+				propertyText: string | null;
+				descriptionText: string | null;
+			}
+		>
+	> {
+		const rows = await this.yamlStore.getViews(file);
+		const map = new Map<
+			string,
+			{
+				type: string | null;
+				propertyText: string | null;
+				descriptionText: string | null;
+			}
+		>();
+		if (rows.length === 0) return map;
+
+		const propertyKey = this.getPropertyKey();
+		for (const row of rows) {
+			if (map.has(row.name)) continue;
+			const view = row.raw as BasesSubViewLike;
+			map.set(row.name, {
+				type: row.type,
+				propertyText: this.extractPropertyText(view, propertyKey),
+				descriptionText: this.extractPropertyText(view, "description"),
+			});
+		}
+		return map;
 	}
 
 	private getViewEntriesFromController(controller: BasesControllerLike | null): ViewEntry[] {
 		if (!controller) return [];
+		const propertyKey = this.getPropertyKey();
 
 		if (Array.isArray(controller.query?.views)) {
-			const fromQuery = controller.query.views.map((view): Partial<ViewEntry> => ({
+			const fromQuery = controller.query.views.map((view): PartialViewEntry => ({
 				name: typeof view?.name === "string" ? view.name : "",
 				type: typeof view?.type === "string" ? view.type : null,
+				propertyText: this.extractPropertyText(view, propertyKey),
+				descriptionText: this.extractPropertyText(view, "description"),
 			}));
 			const normalized = this.normalizeViewEntries(fromQuery);
 			if (normalized.length > 0) {
@@ -906,7 +1642,12 @@ export class BasesViewListSidebarService {
 					return this.normalizeViewEntries(
 						raw
 							.filter((item): item is string => typeof item === "string")
-							.map((name) => ({ name, type: null }))
+							.map((name) => ({
+								name,
+								type: null,
+								propertyText: null,
+								descriptionText: null,
+							}))
 					);
 				}
 			} catch {
@@ -917,7 +1658,7 @@ export class BasesViewListSidebarService {
 		return [];
 	}
 
-	private normalizeViewEntries(entries: Partial<ViewEntry>[]): ViewEntry[] {
+	private normalizeViewEntries(entries: PartialViewEntry[]): ViewEntry[] {
 		const seen = new Set<string>();
 		const normalized: ViewEntry[] = [];
 
@@ -927,18 +1668,111 @@ export class BasesViewListSidebarService {
 			if (!name || seen.has(name)) continue;
 
 			seen.add(name);
-			const type = typeof entry.type === "string" && entry.type.trim().length > 0
-				? entry.type.trim()
-				: null;
+			const type =
+				typeof entry.type === "string" && entry.type.trim().length > 0
+					? entry.type.trim()
+					: null;
 
 			normalized.push({
 				name,
 				type,
 				icon: this.resolveViewIcon(type),
+				propertyText: this.normalizePropertyText(entry.propertyText),
+				descriptionText: this.normalizePropertyText(entry.descriptionText),
 			});
 		}
 
 		return normalized;
+	}
+
+	private extractPropertyText(view: BasesSubViewLike, propertyKey: string): string | null {
+		if (!propertyKey) return null;
+		let rawValue: unknown;
+
+		if (Object.prototype.hasOwnProperty.call(view, propertyKey)) {
+			rawValue = view[propertyKey];
+		}
+
+		if (typeof rawValue === "undefined" && typeof view.get === "function") {
+			try {
+				rawValue = view.get(propertyKey);
+			} catch {
+				// Ignore getter errors from internal API objects.
+			}
+		}
+
+		return this.normalizePropertyValue(rawValue);
+	}
+
+	private normalizePropertyText(value: unknown): string | null {
+		if (typeof value !== "string") return null;
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : null;
+	}
+
+	private normalizePropertyValue(value: unknown): string | null {
+		if (value == null) return null;
+
+		if (Array.isArray(value)) {
+			const listValues = value
+				.map((item) => this.normalizePropertyValue(item))
+				.filter((item): item is string => !!item);
+			if (listValues.length === 0) return null;
+			return listValues.join(", ");
+		}
+
+		if (typeof value === "string") {
+			const trimmed = value.trim();
+			return trimmed.length > 0 ? trimmed : null;
+		}
+
+		if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+			return String(value);
+		}
+
+		if (typeof value === "object") {
+			const maybeRecord = value as {
+				value?: unknown;
+				display?: unknown;
+				values?: unknown;
+				toArray?: () => unknown;
+				toString?: () => string;
+			};
+
+			if (typeof maybeRecord.toArray === "function") {
+				try {
+					return this.normalizePropertyValue(maybeRecord.toArray());
+				} catch {
+					// Ignore invalid toArray implementations.
+				}
+			}
+
+			if (typeof maybeRecord.values !== "undefined") {
+				const normalizedValues = this.normalizePropertyValue(maybeRecord.values);
+				if (normalizedValues) return normalizedValues;
+			}
+
+			if (typeof maybeRecord.display !== "undefined") {
+				const normalizedDisplay = this.normalizePropertyValue(maybeRecord.display);
+				if (normalizedDisplay) return normalizedDisplay;
+			}
+
+			if (typeof maybeRecord.value !== "undefined") {
+				const normalizedInnerValue = this.normalizePropertyValue(maybeRecord.value);
+				if (normalizedInnerValue) return normalizedInnerValue;
+			}
+
+			try {
+				const text = String(value).trim();
+				if (text && text !== "[object Object]") {
+					return text;
+				}
+			} catch {
+				return null;
+			}
+		}
+
+		return null;
 	}
 
 	private resolveViewIcon(viewType: string | null): string {
@@ -986,7 +1820,6 @@ export class BasesViewListSidebarService {
 			icon = icon.slice("lucide-".length).trim();
 		}
 		if (!icon) return "list";
-		// Lucide icon ids are kebab-case ASCII; reject obviously invalid values.
 		if (!/^[a-z0-9-]+$/i.test(icon)) {
 			return "list";
 		}
@@ -1000,11 +1833,24 @@ export class BasesViewListSidebarService {
 		await this.persistSettings();
 	}
 
-	private async persistWidth(widthPx: number): Promise<void> {
-		const clampedWidth = this.clampWidth(widthPx);
-		if (this.plugin.settings.basesViewListWidthPx === clampedWidth) return;
-		this.plugin.settings.basesViewListWidthPx = clampedWidth;
+	private async setPlacement(placement: LayoutPlacement): Promise<void> {
+		if (this.getPlacement() === placement) return;
+		this.plugin.settings.basesViewListPlacement = placement;
+		this.scheduleRefresh(0);
 		await this.persistSettings();
+	}
+
+	private async persistWidthForLeaf(leaf: WorkspaceLeaf, widthPx: number): Promise<void> {
+		const clampedWidth = this.clampWidth(widthPx);
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+
+		const ratio = clampedWidth === WIDTH_DEFAULT ? null : this.roundRatio(clampedWidth / WIDTH_DEFAULT);
+		await this.yamlStore.setViewListSizeRatio(file, ratio);
+	}
+
+	private roundRatio(value: number): number {
+		return Math.round(value * 1000) / 1000;
 	}
 
 	private async persistSettings(): Promise<void> {

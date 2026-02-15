@@ -1519,6 +1519,70 @@ export const ja: TranslationTree = {
 								combined: "併用（一覧 + プルダウン）",
 							},
 						},
+						placement: {
+							name: "ビュー一覧の配置",
+							description: "baseファイル内でビュー一覧をどこに表示するかを選択します。",
+							options: {
+								left: "左側",
+								top: "上部",
+							},
+						},
+						fontSize: {
+							name: "ビュー一覧のフォントサイズ",
+							description: "ビュー名とプロパティ行の文字サイズを変更します。",
+							options: {
+								m: "M",
+								s: "S",
+								xs: "XS",
+							},
+						},
+						showIcons: {
+							name: "view一覧のアイコンを表示",
+							description: "各view名の前にview種別アイコンを表示します。",
+						},
+						property: {
+							show: {
+								name: "viewのプロパティを表示",
+								description: "各view名の下に指定プロパティを表示します。",
+							},
+							key: {
+								name: "表示するプロパティ",
+								description: "各viewの下に表示するプロパティキーを指定します（例: description）。",
+							},
+						},
+						topOverflow: {
+							name: "上端表示時の並べ方",
+							description: "上端表示時に折り返すか、横スクロール1行表示にするかを選択します。",
+							options: {
+								wrap: "折り返して複数行表示",
+								scroll: "横スクロールで1行表示",
+							},
+						},
+						narrowBehavior: {
+							name: "baseの表示領域が狭いときの対応",
+							description:
+								"base表示ペインの幅が閾値未満になったときのview一覧の扱いを選択します。",
+							options: {
+								none: "何もしない",
+								top: "上端に表示する",
+								hide: "非表示にする",
+							},
+						},
+						narrowThreshold: {
+							name: "表示領域幅の閾値(px)",
+							description: "狭幅対応を有効にするペイン幅の閾値をピクセルで指定します。",
+						},
+						contextMenu: {
+							showLeft: "左に表示",
+							showTop: "上に表示",
+							editDescription: "descriptionの編集",
+						},
+						editDescriptionModal: {
+							title: "descriptionを編集: {viewName}",
+							placeholder: "descriptionを入力",
+							confirm: "保存",
+							cancel: "キャンセル",
+						},
 						openButton: {
 							ariaLabel: "ビュー一覧を開く",
 							tooltip: "ビュー一覧を開く",

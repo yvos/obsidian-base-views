@@ -1,5 +1,10 @@
-import { TFile } from "obsidian";
+import { Menu, TFile } from "obsidian";
 import { BasesViewListSidebarService } from "../../../src/bases/BasesViewListSidebarService";
+import { showTextInputModal } from "../../../src/modals/TextInputModal";
+
+jest.mock("../../../src/modals/TextInputModal", () => ({
+	showTextInputModal: jest.fn(),
+}));
 
 interface EventRefLike {
 	event: string;
@@ -54,6 +59,11 @@ function createBaseLeaf(options: {
 
 	const rootEl = document.createElement("div");
 	rootEl.className = "view-content";
+	setLeafWidth(rootEl, 1200);
+
+	const headerEl = document.createElement("div");
+	headerEl.className = "bases-header";
+	rootEl.appendChild(headerEl);
 
 	const toolbarEl = document.createElement("div");
 	toolbarEl.className = "bases-toolbar";
@@ -91,7 +101,14 @@ function createBaseLeaf(options: {
 		},
 	};
 
-	return { leaf, rootEl, toolbarEl, labelEl, basesViewEl, controller };
+	return { leaf, rootEl, headerEl, toolbarEl, labelEl, basesViewEl, controller };
+}
+
+function setLeafWidth(rootEl: HTMLElement, width: number): void {
+	Object.defineProperty(rootEl, "clientWidth", {
+		value: width,
+		configurable: true,
+	});
 }
 
 describe("BasesViewListSidebarService", () => {
@@ -100,14 +117,15 @@ describe("BasesViewListSidebarService", () => {
 	let plugin: any;
 	let service: BasesViewListSidebarService;
 	let vaultCachedRead: jest.Mock;
+	let vaultModify: jest.Mock;
 	let mountedRoots: HTMLElement[];
 
 	beforeEach(() => {
 		jest.useFakeTimers();
-
 		workspace = new MockWorkspace();
 		emitter = new MockEventBus();
 		vaultCachedRead = jest.fn().mockResolvedValue("");
+		vaultModify = jest.fn().mockResolvedValue(undefined);
 		mountedRoots = [];
 
 		plugin = {
@@ -117,11 +135,20 @@ describe("BasesViewListSidebarService", () => {
 				basesViewListDropdownMode: "list-only",
 				basesViewListCollapsed: false,
 				basesViewListWidthPx: 220,
+				basesViewListPlacement: "left",
+				basesViewListFontSize: "m",
+				basesViewListShowProperty: true,
+				basesViewListPropertyKey: "description",
+				basesViewListShowIcons: true,
+				basesViewListTopOverflowMode: "wrap",
+				basesViewListNarrowBehavior: "top",
+				basesViewListNarrowThresholdPx: 800,
 			},
 			app: {
 				workspace,
 				vault: {
 					cachedRead: vaultCachedRead,
+					modify: vaultModify,
 				},
 				internalPlugins: {
 					getEnabledPluginById: jest.fn(() => ({
@@ -153,11 +180,27 @@ describe("BasesViewListSidebarService", () => {
 							"Resize view list width",
 						"settings.integrations.basesIntegration.viewListSidebar.resizeHandle.tooltip":
 							"Drag to resize",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showLeft":
+							"Show on left",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showTop":
+							"Show on top",
+						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription":
+							"Edit description",
+						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.title":
+							"Edit description: {viewName}",
+						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.placeholder":
+							"Enter description",
+						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.confirm":
+							"Save",
+						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.cancel":
+							"Cancel",
 					};
 					return translations[key] ?? key;
 				},
 			},
 		};
+
+		(showTextInputModal as jest.Mock).mockResolvedValue(null);
 
 		service = new BasesViewListSidebarService(plugin);
 	});
@@ -176,8 +219,8 @@ describe("BasesViewListSidebarService", () => {
 			controller: {
 				query: {
 					views: [
-						{ name: "Table", type: "table" },
-						{ name: "custom view", type: "tasknotesCustomTable" },
+						{ name: "Table", type: "table", description: "Main" },
+						{ name: "custom view", type: "tasknotesCustomTable", description: "Custom" },
 					],
 				},
 			},
@@ -189,7 +232,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const items = Array.from(setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item"));
-		expect(items.map((item) => item.textContent?.trim())).toEqual(["Table", "custom view"]);
+		expect(items).toHaveLength(2);
 
 		const icons = Array.from(
 			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
@@ -252,14 +295,21 @@ describe("BasesViewListSidebarService", () => {
 		workspace.leaves = [setup.leaf];
 
 		vaultCachedRead.mockResolvedValue(
-			`views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards`
+			`views:\n  - type: table\n    name: Table\n    description: Alpha\n  - type: cards\n    name: Cards\n    description: Beta`
 		);
 
 		service.start();
 		await flushTimersAndPromises();
 
-		const items = Array.from(setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item"));
-		expect(items.map((item) => item.textContent?.trim())).toEqual(["Table", "Cards"]);
+		const names = Array.from(
+			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-name")
+		).map((el) => el.textContent?.trim());
+		expect(names).toEqual(["Table", "Cards"]);
+
+		const props = Array.from(
+			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-property")
+		).map((el) => el.textContent?.trim());
+		expect(props).toEqual(["Alpha", "Beta"]);
 	});
 
 	it("switches view via selectView when available", async () => {
@@ -315,7 +365,11 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		expect(workspace.setActiveLeaf).toHaveBeenCalledWith(setup.leaf, { focus: false });
-		expect(workspace.openLinkText).toHaveBeenCalledWith("Guides/test.base#custom view", "Guides/test.base", false);
+		expect(workspace.openLinkText).toHaveBeenCalledWith(
+			"Guides/test.base#custom view",
+			"Guides/test.base",
+			false
+		);
 	});
 
 	it("hides sidebar and toolbar trigger when only one view exists", async () => {
@@ -333,6 +387,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).toBeNull();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).toBeNull();
 	});
 
@@ -368,7 +423,33 @@ describe("BasesViewListSidebarService", () => {
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
 	});
 
-	it("closes list via header close button", async () => {
+	it("renders left header title as base filename and uses small close icon class", async () => {
+		const setup = createBaseLeaf({
+			filePath: "Guides/Base-all.base",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const titleEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__title");
+		expect(titleEl?.textContent?.trim()).toBe("Base-all");
+
+		const closeButton = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__close");
+		expect(closeButton?.classList.contains("tn-bases-view-list__close--small")).toBe(true);
+	});
+
+	it("renders top placement under bases-header with close button only", async () => {
+		plugin.settings.basesViewListPlacement = "top";
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -385,18 +466,147 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const closeButton = setup.rootEl.querySelector<HTMLButtonElement>(".tn-bases-view-list__close");
-		expect(closeButton).not.toBeNull();
-
-		closeButton?.click();
-		await flushTimersAndPromises(3);
-
-		expect(plugin.settings.basesViewListCollapsed).toBe(true);
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
+		const topLayout = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-top-layout");
+		expect(topLayout).not.toBeNull();
+		expect(setup.headerEl.nextElementSibling).toBe(topLayout);
+		expect(topLayout?.querySelector(".tn-bases-view-list__title")).toBeNull();
+		expect(topLayout?.querySelector(".tn-bases-view-list__close")).not.toBeNull();
 	});
 
-	it("resizes view list width and persists on pointerup", async () => {
+	it("applies top overflow class as horizontal scroll", async () => {
+		plugin.settings.basesViewListPlacement = "top";
+		plugin.settings.basesViewListTopOverflowMode = "scroll";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(listEl?.classList.contains("tn-bases-view-list--top")).toBe(true);
+		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
+		expect(listEl?.classList.contains("tn-bases-view-list--top-wrap")).toBe(false);
+	});
+
+	it("applies font-size class by setting", async () => {
+		plugin.settings.basesViewListFontSize = "xs";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(listEl?.classList.contains("tn-bases-view-list-font-xs")).toBe(true);
+	});
+
+	it("hides icons when icon display setting is off", async () => {
+		plugin.settings.basesViewListShowIcons = false;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(listEl?.classList.contains("tn-bases-view-list--icons-off")).toBe(true);
+		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-icon")).toBeNull();
+	});
+
+	it("renders property line and joins list property values with commas", async () => {
+		plugin.settings.basesViewListPropertyKey = "tags";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", tags: ["alpha", "beta"] },
+						{ name: "Cards", type: "cards", tags: "single" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const properties = Array.from(
+			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-property")
+		).map((el) => el.textContent?.trim());
+		expect(properties).toEqual(["alpha, beta", "single"]);
+		expect(
+			setup.rootEl
+				.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[0]
+				.classList.contains("tn-bases-view-list__item--with-property")
+		).toBe(true);
+	});
+
+	it("hides property line when setting is off or value is empty", async () => {
+		plugin.settings.basesViewListShowProperty = false;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "" },
+						{ name: "Cards", type: "cards", description: "Detail" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-property")).toBeNull();
+
+		plugin.settings.basesViewListShowProperty = true;
+		emitter.trigger("settings-changed");
+		await flushTimersAndPromises(3);
+
+		const itemButtons = setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item");
+		expect(itemButtons[0].querySelector(".tn-bases-view-list__item-property")).toBeNull();
+		expect(itemButtons[1].querySelector(".tn-bases-view-list__item-property")?.textContent?.trim()).toBe(
+			"Detail"
+		);
+	});
+
+	it("resizes view list width and persists formulas.viewListSize on pointerup", async () => {
+		plugin.settings.basesViewListWidthPx = 260;
+		vaultCachedRead.mockResolvedValue(
+			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+		);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -418,17 +628,23 @@ describe("BasesViewListSidebarService", () => {
 		expect(layoutEl).not.toBeNull();
 		expect(resizerEl).not.toBeNull();
 
-		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 220 }));
+		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 260 }));
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 320 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 320 }));
 		await flushTimersAndPromises(3);
 
-		expect(plugin.settings.basesViewListWidthPx).toBe(320);
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
-		expect(plugin.saveSettings).toHaveBeenCalled();
+		expect(vaultModify).toHaveBeenCalled();
+		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
+		expect(modifiedText).toContain("viewListSize: 1.455");
+		expect(plugin.settings.basesViewListWidthPx).toBe(260);
 	});
 
 	it("clamps resized width to min/max bounds", async () => {
+		plugin.settings.basesViewListWidthPx = 260;
+		vaultCachedRead.mockResolvedValue(
+			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+		);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -450,21 +666,310 @@ describe("BasesViewListSidebarService", () => {
 		expect(layoutEl).not.toBeNull();
 		expect(resizerEl).not.toBeNull();
 
-		// Drag far right -> max clamp (520)
-		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 220 }));
+		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 260 }));
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 2000 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 2000 }));
 		await flushTimersAndPromises(3);
-		expect(plugin.settings.basesViewListWidthPx).toBe(520);
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("520px");
+		expect(vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1]).toContain(
+			"viewListSize: 2.364"
+		);
 
-		// Drag far left -> min clamp (140)
 		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 520 }));
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: -2000 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: -2000 }));
 		await flushTimersAndPromises(3);
-		expect(plugin.settings.basesViewListWidthPx).toBe(140);
 		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("140px");
+		expect(vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1]).toContain(
+			"viewListSize: 0.636"
+		);
+	});
+
+	it("removes formulas.viewListSize when width is reset to default", async () => {
+		vaultCachedRead.mockResolvedValue(
+			"formulas:\n  viewListSize: 1.455\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__resizer");
+		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
+
+		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 320 }));
+		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 220 }));
+		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 220 }));
+		await flushTimersAndPromises(3);
+
+		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
+		expect(modifiedText).not.toContain("viewListSize");
+	});
+
+	it("auto-shrinks width when saved width is default", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "A", type: "table", description: "x" },
+						{ name: "B", type: "cards", description: "y" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		const width = Number.parseInt(
+			(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width") ?? "220px").replace("px", ""),
+			10
+		);
+		expect(width).toBeLessThan(220);
+		expect(width).toBeGreaterThanOrEqual(140);
+	});
+
+	it("does not auto-shrink width when user has saved a custom width", async () => {
+		plugin.settings.basesViewListWidthPx = 320;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "A", type: "table", description: "x" },
+						{ name: "B", type: "cards", description: "y" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
+	});
+
+	it("prefers per-file formulas.viewListSize over global width setting", async () => {
+		plugin.settings.basesViewListWidthPx = 320;
+		vaultCachedRead.mockResolvedValue(
+			"formulas:\n  viewListSize: 0.8\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("176px");
+	});
+
+	it("opens placement context menu with left/top items on right click", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(listEl).not.toBeNull();
+
+		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		expect((Menu as unknown as jest.Mock)).toHaveBeenCalled();
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		expect(menuInstance).toBeTruthy();
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(2);
+		expect(menuInstance.showAtMouseEvent).toHaveBeenCalled();
+		expect(menuInstance.items[0]?.setTitle).toHaveBeenCalled();
+		expect(menuInstance.items[1]?.setTitle).toHaveBeenCalled();
+	});
+
+	it("shows edit-description item on view-row context menu and updates YAML", async () => {
+		vaultCachedRead.mockResolvedValue(
+			"views:\n  - type: table\n    name: Table\n    description: Old desc\n  - type: cards\n    name: Cards\n"
+		);
+		(showTextInputModal as jest.Mock).mockResolvedValue("Updated desc");
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item");
+		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		expect(menuInstance.addItem).toHaveBeenCalledTimes(3);
+		expect(menuInstance.addSeparator).toHaveBeenCalledTimes(1);
+
+		const editItem = menuInstance.items[0];
+		const onClickHandler = editItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(showTextInputModal).toHaveBeenCalled();
+		expect(showTextInputModal).toHaveBeenCalledWith(
+			plugin.app,
+			expect.objectContaining({
+				placeholder: "Old desc",
+				initialValue: "",
+				allowEmptyResult: true,
+			})
+		);
+		expect(vaultModify).toHaveBeenCalled();
+		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
+		expect(modifiedText).toContain("description: Updated desc");
+	});
+
+	it("deletes description when edit modal confirms empty value", async () => {
+		vaultCachedRead.mockResolvedValue(
+			"views:\n  - type: table\n    name: Table\n    description: Old desc\n  - type: cards\n    name: Cards\n"
+		);
+		(showTextInputModal as jest.Mock).mockResolvedValue("");
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item");
+		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuMock = Menu as unknown as jest.Mock;
+		const lastResult = menuMock.mock.results[menuMock.mock.results.length - 1];
+		const menuInstance = lastResult?.value as any;
+		const editItem = menuInstance.items[0];
+		const onClickHandler = editItem?.onClick?.mock?.calls?.[0]?.[0];
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(vaultModify).toHaveBeenCalled();
+		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
+		expect(modifiedText).not.toContain("description: Old desc");
+	});
+
+	it("switches to top+scroll temporarily on narrow pane when behavior is top", async () => {
+		plugin.settings.basesViewListPlacement = "left";
+		plugin.settings.basesViewListNarrowBehavior = "top";
+		plugin.settings.basesViewListNarrowThresholdPx = 1500;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		setLeafWidth(setup.rootEl, 900);
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises(3);
+
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).not.toBeNull();
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
+	});
+
+	it("temporarily hides list on narrow pane when behavior is hide and restores when wide", async () => {
+		plugin.settings.basesViewListNarrowBehavior = "hide";
+		plugin.settings.basesViewListNarrowThresholdPx = 1000;
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		setLeafWidth(setup.rootEl, 900);
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises(3);
+
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).toBeNull();
+		expect(plugin.settings.basesViewListCollapsed).toBe(false);
+
+		setLeafWidth(setup.rootEl, 1200);
+		plugin.settings.basesViewListNarrowThresholdPx = 800;
+		emitter.trigger("settings-changed");
+		await flushTimersAndPromises(3);
+
+		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
 	});
 
 	it("does not duplicate layout or trigger on repeated settings refresh", async () => {

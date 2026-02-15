@@ -379,6 +379,14 @@ export const DEFAULT_SETTINGS: TaskNotesSettings = {
 	basesViewListDropdownMode: "list-only",
 	basesViewListCollapsed: false,
 	basesViewListWidthPx: 220,
+	basesViewListPlacement: "left",
+	basesViewListFontSize: "m",
+	basesViewListShowProperty: true,
+	basesViewListPropertyKey: "description",
+	basesViewListShowIcons: true,
+	basesViewListTopOverflowMode: "wrap",
+	basesViewListNarrowBehavior: "top",
+	basesViewListNarrowThresholdPx: 800,
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': 'TaskNotes/Views/mini-calendar-default.base',

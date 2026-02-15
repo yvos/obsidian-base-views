@@ -5,6 +5,7 @@ import {
 	configureTextSetting,
 	configureToggleSetting,
 	configureDropdownSetting,
+	configureNumberSetting,
 } from "../components/settingHelpers";
 import { TranslationKey } from "../../i18n";
 import { showConfirmationModal } from "../../modals/ConfirmationModal";
@@ -341,6 +342,212 @@ export function renderGeneralTab(
 								value as "list-only" | "combined";
 							await save();
 						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureDropdownSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.placement.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.placement.description"
+						),
+						options: [
+							{
+								value: "left",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.placement.options.left"
+								),
+							},
+							{
+								value: "top",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.placement.options.top"
+								),
+							},
+						],
+						getValue: () => plugin.settings.basesViewListPlacement,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListPlacement = value as "left" | "top";
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureDropdownSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.fontSize.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.fontSize.description"
+						),
+						options: [
+							{
+								value: "m",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.fontSize.options.m"
+								),
+							},
+							{
+								value: "s",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.fontSize.options.s"
+								),
+							},
+							{
+								value: "xs",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.fontSize.options.xs"
+								),
+							},
+						],
+						getValue: () => plugin.settings.basesViewListFontSize,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListFontSize = value as "m" | "s" | "xs";
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureToggleSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.showIcons.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.showIcons.description"
+						),
+						getValue: () => plugin.settings.basesViewListShowIcons,
+						setValue: async (value: boolean) => {
+							plugin.settings.basesViewListShowIcons = value;
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureToggleSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.property.show.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.property.show.description"
+						),
+						getValue: () => plugin.settings.basesViewListShowProperty,
+						setValue: async (value: boolean) => {
+							plugin.settings.basesViewListShowProperty = value;
+							await save();
+							renderGeneralTab(container, plugin, save);
+						},
+					})
+				);
+
+				if (plugin.settings.basesViewListShowProperty) {
+					group.addSetting((setting) =>
+						configureTextSetting(setting, {
+							name: translate(
+								"settings.integrations.basesIntegration.viewListSidebar.property.key.name"
+							),
+							desc: translate(
+								"settings.integrations.basesIntegration.viewListSidebar.property.key.description"
+							),
+							placeholder: "description",
+							getValue: () => plugin.settings.basesViewListPropertyKey,
+							setValue: async (value: string) => {
+								plugin.settings.basesViewListPropertyKey = value;
+								await save();
+							},
+							ariaLabel: "Base view property key",
+						})
+					);
+				}
+
+				group.addSetting((setting) =>
+					configureDropdownSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.topOverflow.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.topOverflow.description"
+						),
+						options: [
+							{
+								value: "wrap",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.topOverflow.options.wrap"
+								),
+							},
+							{
+								value: "scroll",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.topOverflow.options.scroll"
+								),
+							},
+						],
+						getValue: () => plugin.settings.basesViewListTopOverflowMode,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListTopOverflowMode = value as "wrap" | "scroll";
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureDropdownSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.narrowBehavior.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.narrowBehavior.description"
+						),
+						options: [
+							{
+								value: "none",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.narrowBehavior.options.none"
+								),
+							},
+							{
+								value: "top",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.narrowBehavior.options.top"
+								),
+							},
+							{
+								value: "hide",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.narrowBehavior.options.hide"
+								),
+							},
+						],
+						getValue: () => plugin.settings.basesViewListNarrowBehavior,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListNarrowBehavior =
+								value as "none" | "top" | "hide";
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureNumberSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.narrowThreshold.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.narrowThreshold.description"
+						),
+						getValue: () => plugin.settings.basesViewListNarrowThresholdPx,
+						setValue: async (value: number) => {
+							plugin.settings.basesViewListNarrowThresholdPx = value;
+							await save();
+						},
+						min: 320,
+						max: 2400,
+						placeholder: "800",
+						ariaLabel: "Base view list narrow threshold in pixels",
 					})
 				);
 			}

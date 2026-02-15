@@ -208,6 +208,14 @@ export interface TaskNotesSettings {
 	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
 	basesViewListCollapsed: boolean; // Globally collapse/expand base view list sidebar
 	basesViewListWidthPx: number; // Global width for base view list sidebar
+	basesViewListPlacement: "left" | "top"; // Placement of base view list sidebar
+	basesViewListFontSize: "m" | "s" | "xs"; // Font size for view rows
+	basesViewListShowProperty: boolean; // Show secondary property text under view name
+	basesViewListPropertyKey: string; // Key used to render per-view property text
+	basesViewListShowIcons: boolean; // Show/hide view icons in the list
+	basesViewListTopOverflowMode: "wrap" | "scroll"; // Top layout overflow behavior
+	basesViewListNarrowBehavior: "none" | "top" | "hide"; // Behavior when pane width is narrow
+	basesViewListNarrowThresholdPx: number; // Narrow pane threshold in px
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': string;

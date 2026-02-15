@@ -1553,6 +1553,75 @@ export const en: TranslationTree = {
 								combined: "Combined (list + dropdown)",
 							},
 						},
+						placement: {
+							name: "View list placement",
+							description:
+								"Choose where to place the view list in base files.",
+							options: {
+								left: "Left side",
+								top: "Top",
+							},
+						},
+						fontSize: {
+							name: "View list font size",
+							description: "Adjust the font size for view names and property text.",
+							options: {
+								m: "M",
+								s: "S",
+								xs: "XS",
+							},
+						},
+						showIcons: {
+							name: "Show view icons",
+							description: "Show a type icon before each view name.",
+						},
+						property: {
+							show: {
+								name: "Show view property",
+								description:
+									"Show a secondary property line under each view name.",
+							},
+							key: {
+								name: "Property key to show",
+								description:
+									"Property key to display under each view (for example: description).",
+							},
+						},
+						topOverflow: {
+							name: "Top list overflow",
+							description:
+								"When the list is displayed on top, choose wrap or horizontal scrolling.",
+							options: {
+								wrap: "Wrap to multiple lines",
+								scroll: "Single line with horizontal scroll",
+							},
+						},
+						narrowBehavior: {
+							name: "Behavior on narrow pane",
+							description:
+								"How to handle the view list when the base pane width is below the threshold.",
+							options: {
+								none: "Do nothing",
+								top: "Move to top",
+								hide: "Temporarily hide",
+							},
+						},
+						narrowThreshold: {
+							name: "Narrow width threshold (px)",
+							description:
+								"Pane width threshold in pixels used for narrow-pane behavior.",
+						},
+						contextMenu: {
+							showLeft: "Show on left",
+							showTop: "Show on top",
+							editDescription: "Edit description",
+						},
+						editDescriptionModal: {
+							title: "Edit description: {viewName}",
+							placeholder: "Enter description",
+							confirm: "Save",
+							cancel: "Cancel",
+						},
 						openButton: {
 							ariaLabel: "Open view list",
 							tooltip: "Open view list",

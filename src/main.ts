@@ -1352,7 +1352,15 @@ export default class TaskNotesPlugin extends Plugin {
 			typeof loadedData?.enableBasesViewListSidebar === "undefined" ||
 			typeof loadedData?.basesViewListDropdownMode === "undefined" ||
 			typeof loadedData?.basesViewListCollapsed === "undefined" ||
-			typeof loadedData?.basesViewListWidthPx === "undefined";
+			typeof loadedData?.basesViewListWidthPx === "undefined" ||
+			typeof loadedData?.basesViewListPlacement === "undefined" ||
+			typeof loadedData?.basesViewListFontSize === "undefined" ||
+			typeof loadedData?.basesViewListShowProperty === "undefined" ||
+			typeof loadedData?.basesViewListPropertyKey === "undefined" ||
+			typeof loadedData?.basesViewListShowIcons === "undefined" ||
+			typeof loadedData?.basesViewListTopOverflowMode === "undefined" ||
+			typeof loadedData?.basesViewListNarrowBehavior === "undefined" ||
+			typeof loadedData?.basesViewListNarrowThresholdPx === "undefined";
 
 		if (
 			hasNewFields ||

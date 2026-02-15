@@ -6,6 +6,7 @@ export interface TextInputModalOptions {
 	initialValue?: string;
 	confirmText?: string;
 	cancelText?: string;
+	allowEmptyResult?: boolean;
 }
 
 /**
@@ -21,6 +22,7 @@ export class TextInputModal extends Modal {
 		this.options = {
 			confirmText: "Confirm",
 			cancelText: "Cancel",
+			allowEmptyResult: false,
 			...options,
 		};
 	}
@@ -72,7 +74,11 @@ export class TextInputModal extends Modal {
 
 		confirmButton.addEventListener("click", () => {
 			const value = this.inputEl.value.trim();
-			this.resolve(value || null);
+			if (!this.options.allowEmptyResult && value.length === 0) {
+				this.resolve(null);
+			} else {
+				this.resolve(value);
+			}
 			this.close();
 		});
 
