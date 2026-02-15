@@ -8,6 +8,41 @@ export interface GroupedEntries<TEntry> {
 	entries: TEntry[];
 }
 
+export type GroupSortDirection = "ASC" | "DESC";
+
+const GROUP_NONE_ALIASES = new Set(["", "none", "unknown", "null", "undefined"]);
+const GROUP_KEY_COLLATOR = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base",
+});
+
+function isNoneLikeGroupKey(value: string): boolean {
+	return GROUP_NONE_ALIASES.has(value.trim().toLowerCase());
+}
+
+export function compareGroupKeys(
+	left: string,
+	right: string,
+	direction: GroupSortDirection = "ASC"
+): number {
+	const leftNone = isNoneLikeGroupKey(left);
+	const rightNone = isNoneLikeGroupKey(right);
+	if (leftNone && !rightNone) return 1;
+	if (!leftNone && rightNone) return -1;
+
+	const base = GROUP_KEY_COLLATOR.compare(left, right);
+	return direction === "DESC" ? -base : base;
+}
+
+export function sortGroupedEntries<TEntry extends { key: string }>(
+	groups: TEntry[],
+	direction: GroupSortDirection = "ASC"
+): TEntry[] {
+	return [...groups].sort((left, right) =>
+		compareGroupKeys(left.key, right.key, direction)
+	);
+}
+
 export function groupEntriesByValue<TEntry>(
 	entries: TEntry[],
 	getValue: (entry: TEntry) => unknown,

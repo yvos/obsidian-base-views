@@ -1,8 +1,10 @@
 import {
+	compareGroupKeys,
 	extractGroupKeys,
 	extractListValues,
 	groupEntriesByValue,
 	hasAnyMultiValueEntries,
+	sortGroupedEntries,
 	toGroupKeyString,
 } from "../../../src/bases/customTableGrouping";
 
@@ -75,5 +77,23 @@ describe("customTableGrouping", () => {
 
 	test("toGroupKeyString: unwraps data payloads", () => {
 		expect(toGroupKeyString({ data: "#tag-a" })).toBe("#tag-a");
+	});
+
+	test("compareGroupKeys: places None-like values at the end for ASC and DESC", () => {
+		expect(compareGroupKeys("None", "A", "ASC")).toBeGreaterThan(0);
+		expect(compareGroupKeys("None", "A", "DESC")).toBeGreaterThan(0);
+		expect(compareGroupKeys("Unknown", "Z", "ASC")).toBeGreaterThan(0);
+		expect(compareGroupKeys("Unknown", "Z", "DESC")).toBeGreaterThan(0);
+	});
+
+	test("sortGroupedEntries: sorts by direction while keeping None-like at the end", () => {
+		const groups = [
+			{ key: "None", entries: [1] },
+			{ key: "B", entries: [2] },
+			{ key: "A", entries: [3] },
+		];
+
+		expect(sortGroupedEntries(groups, "ASC").map((group) => group.key)).toEqual(["A", "B", "None"]);
+		expect(sortGroupedEntries(groups, "DESC").map((group) => group.key)).toEqual(["B", "A", "None"]);
 	});
 });

@@ -26,8 +26,10 @@ import {
 	setColumnSizeValue,
 } from "./tableColumnSizing";
 import {
+	GroupSortDirection,
 	groupEntriesByValue,
 	hasAnyMultiValueEntries,
+	sortGroupedEntries,
 } from "./customTableGrouping";
 
 type RowHeightOption = "short" | "medium" | "tall" | "extraTall";
@@ -197,8 +199,9 @@ export class CustomTableView extends BasesViewBase {
 			const subGroup = String(this.config?.getAsPropertyId?.("subGroup") ?? "");
 			const unnest = String(this.config?.get?.("unnestMultiValueGroup") ?? true);
 			const primaryGroupBy = this.getPrimaryGroupByPropertyId() ?? "";
+			const primaryGroupDirection = this.getPrimaryGroupByDirection();
 			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
-			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${grouped}`;
+			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}`;
 		} catch {
 			return "";
 		}
@@ -316,6 +319,7 @@ export class CustomTableView extends BasesViewBase {
 		}
 		const isGrouped = this.dataAdapter.isGrouped();
 		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId();
+		const primaryGroupSortDirection = this.getPrimaryGroupByDirection();
 		const shouldRenderGrouped =
 			isGrouped || !!primaryGroupByPropertyId || !!this.subGroupPropertyId;
 
@@ -324,7 +328,8 @@ export class CustomTableView extends BasesViewBase {
 				groupedData,
 				allEntries,
 				isGrouped,
-				primaryGroupByPropertyId
+				primaryGroupByPropertyId,
+				primaryGroupSortDirection
 			);
 			if (nestedGroups.length === 0) {
 				this.clearRenderedContent();
@@ -426,11 +431,31 @@ export class CustomTableView extends BasesViewBase {
 		return null;
 	}
 
+	private getPrimaryGroupByDirection(): GroupSortDirection {
+		const controller = this.basesController;
+		if (!controller?.query?.views || !controller?.viewName) return "ASC";
+
+		const views = controller.query.views;
+		if (!Array.isArray(views)) return "ASC";
+		const currentViewName = controller.viewName;
+		for (const view of views) {
+			if (!view || view.name !== currentViewName) continue;
+			const groupBy = view.groupBy;
+			if (typeof groupBy === "object" && typeof groupBy.direction === "string") {
+				const normalized = groupBy.direction.toUpperCase();
+				if (normalized === "DESC") return "DESC";
+			}
+			return "ASC";
+		}
+		return "ASC";
+	}
+
 	private buildRenderableNestedGroups(
 		groupedData: any[],
 		allEntries: EntryLike[],
 		isGrouped: boolean,
-		primaryGroupByPropertyId: string | null
+		primaryGroupByPropertyId: string | null,
+		primaryGroupSortDirection: GroupSortDirection
 	): RenderableNestedGroup[] {
 		const hasPrimaryGroupBy = typeof primaryGroupByPropertyId === "string" && primaryGroupByPropertyId.length > 0;
 		const canUnnestPrimary =
@@ -446,20 +471,22 @@ export class CustomTableView extends BasesViewBase {
 			primaryGroups = this.buildGroupsFromProperty(
 				allEntries,
 				this.subGroupPropertyId!,
-				this.unnestMultiValueGroup
+				this.unnestMultiValueGroup,
+				primaryGroupSortDirection
 			);
 		} else if (hasPrimaryGroupBy) {
 			if (!canUnnestPrimary && isGrouped) {
-				primaryGroups = this.extractRenderableGroups(groupedData);
+				primaryGroups = this.extractRenderableGroups(groupedData, primaryGroupSortDirection);
 			} else {
 				primaryGroups = this.buildGroupsFromProperty(
 					allEntries,
 					primaryGroupByPropertyId!,
-					this.unnestMultiValueGroup
+					this.unnestMultiValueGroup,
+					primaryGroupSortDirection
 				);
 			}
 		} else if (isGrouped) {
-			primaryGroups = this.extractRenderableGroups(groupedData);
+			primaryGroups = this.extractRenderableGroups(groupedData, primaryGroupSortDirection);
 		} else {
 			primaryGroups = [
 				{
@@ -486,6 +513,7 @@ export class CustomTableView extends BasesViewBase {
 					primary.entries,
 					this.subGroupPropertyId!,
 					this.unnestMultiValueGroup,
+					primaryGroupSortDirection,
 					`${primary.id}:sub`
 				)
 				: [];
@@ -505,13 +533,15 @@ export class CustomTableView extends BasesViewBase {
 		entries: EntryLike[],
 		propertyId: string,
 		unnest: boolean,
+		direction: GroupSortDirection,
 		idPrefix = "group"
 	): RenderableGroup[] {
 		const grouped = groupEntriesByValue(entries, (entry) => this.safeGetValue(entry, propertyId), {
 			unnest,
 			noneLabel: "None",
 		});
-		return grouped.map((bucket, index) => ({
+		const sorted = sortGroupedEntries(grouped, direction);
+		return sorted.map((bucket, index) => ({
 			id: `${idPrefix}:${index}:${bucket.key}`,
 			title: bucket.key,
 			entries: bucket.entries,
@@ -676,24 +706,29 @@ export class CustomTableView extends BasesViewBase {
 		}
 	}
 
-	private extractRenderableGroups(groups: any[]): RenderableGroup[] {
-		const result: RenderableGroup[] = [];
-		let index = 0;
+	private extractRenderableGroups(
+		groups: any[],
+		direction: GroupSortDirection
+	): RenderableGroup[] {
+		const rawGroups: { key: string; entries: EntryLike[] }[] = [];
 
 		for (const group of groups) {
 			const entries = (group?.entries || []) as EntryLike[];
 			if (entries.length === 0) continue;
 
 			const title = this.dataAdapter.convertGroupKeyToString(group.key);
-			result.push({
-				id: `${index}:${title}`,
-				title,
+			rawGroups.push({
+				key: title,
 				entries,
 			});
-			index++;
 		}
 
-		return result;
+		const sorted = sortGroupedEntries(rawGroups, direction);
+		return sorted.map((group, index) => ({
+			id: `${index}:${group.key}`,
+			title: group.key,
+			entries: group.entries,
+		}));
 	}
 
 	private collectEntriesFromGroups(groups: RenderableGroup[]): EntryLike[] {
