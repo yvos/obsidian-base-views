@@ -651,6 +651,35 @@ button.tn-bases-view-list__item {
     color: var(--text-accent);
     text-decoration: none;
     max-width: 100%;
+    min-width: 0;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-file-link-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    color: var(--tn-text-muted);
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-file-icon--lucide svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-file-icon--text {
+    font-size: 13px;
+    line-height: 1;
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-text-value,

@@ -375,6 +375,8 @@ export const DEFAULT_SETTINGS: TaskNotesSettings = {
 	// Bases integration defaults
 	enableBases: true,
 	autoCreateDefaultBasesFiles: true, // Auto-create missing default Base files on startup
+	customTableShowIconicIconInNameColumn: true,
+	customTableShowGroupingPropertyName: false,
 	enableBasesViewListSidebar: true,
 	basesViewListDropdownMode: "list-only",
 	basesViewListCollapsed: false,

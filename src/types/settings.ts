@@ -204,6 +204,8 @@ export interface TaskNotesSettings {
 	// Bases integration settings
 	enableBases: boolean;
 	autoCreateDefaultBasesFiles: boolean; // Auto-create missing default Base files on startup
+	customTableShowIconicIconInNameColumn: boolean; // Show Iconic file icon before file name in Custom Table view
+	customTableShowGroupingPropertyName: boolean; // Show grouped headers as "property: value" in Custom Table view
 	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
 	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
 	basesViewListCollapsed: boolean; // Globally collapse/expand base view list sidebar

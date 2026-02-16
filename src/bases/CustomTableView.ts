@@ -1,4 +1,4 @@
-import { Keymap, Menu, Notice, setIcon } from "obsidian";
+import { Keymap, Menu, Notice, TFile, setIcon } from "obsidian";
 import TaskNotesPlugin from "../main";
 import { BasesViewBase } from "./BasesViewBase";
 import { TaskInfo } from "../types";
@@ -31,6 +31,11 @@ import {
 	hasAnyMultiValueEntries,
 	sortGroupedEntries,
 } from "./customTableGrouping";
+import {
+	formatGroupTitleWithProperty,
+	normalizeIconicLucideIconName,
+	resolveIconicFileIcon,
+} from "./customTableDisplayUtils";
 
 type RowHeightOption = "short" | "medium" | "tall" | "extraTall";
 type VirtualMode = "none" | "ungrouped" | "grouped";
@@ -133,6 +138,8 @@ export class CustomTableView extends BasesViewBase {
 	private basesController: any = null;
 	private subGroupPropertyId: string | null = null;
 	private unnestMultiValueGroup = true;
+	private showIconicIconInNameColumn = true;
+	private showGroupingPropertyName = false;
 
 	private readonly DEFAULT_COLUMN_WIDTH = DEFAULT_TABLE_COLUMN_WIDTH;
 	private readonly MIN_COLUMN_WIDTH = MIN_TABLE_COLUMN_WIDTH;
@@ -201,7 +208,11 @@ export class CustomTableView extends BasesViewBase {
 			const primaryGroupBy = this.getPrimaryGroupByPropertyId() ?? "";
 			const primaryGroupDirection = this.getPrimaryGroupByDirection();
 			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
-			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}`;
+			const iconic = String(this.plugin.settings?.customTableShowIconicIconInNameColumn ?? true);
+			const showGroupProperty = String(
+				this.plugin.settings?.customTableShowGroupingPropertyName ?? false
+			);
+			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}|${iconic}|${showGroupProperty}`;
 		} catch {
 			return "";
 		}
@@ -257,6 +268,10 @@ export class CustomTableView extends BasesViewBase {
 
 			const unnestValue = this.config.get("unnestMultiValueGroup");
 			this.unnestMultiValueGroup = unnestValue !== false;
+			this.showIconicIconInNameColumn =
+				this.plugin.settings?.customTableShowIconicIconInNameColumn !== false;
+			this.showGroupingPropertyName =
+				this.plugin.settings?.customTableShowGroupingPropertyName === true;
 
 			this.configLoaded = true;
 		} catch (error) {
@@ -266,6 +281,8 @@ export class CustomTableView extends BasesViewBase {
 			this.columnSize = {};
 			this.subGroupPropertyId = null;
 			this.unnestMultiValueGroup = true;
+			this.showIconicIconInNameColumn = true;
+			this.showGroupingPropertyName = false;
 		}
 	}
 
@@ -476,7 +493,11 @@ export class CustomTableView extends BasesViewBase {
 			);
 		} else if (hasPrimaryGroupBy) {
 			if (!canUnnestPrimary && isGrouped) {
-				primaryGroups = this.extractRenderableGroups(groupedData, primaryGroupSortDirection);
+				primaryGroups = this.extractRenderableGroups(
+					groupedData,
+					primaryGroupSortDirection,
+					primaryGroupByPropertyId
+				);
 			} else {
 				primaryGroups = this.buildGroupsFromProperty(
 					allEntries,
@@ -486,7 +507,7 @@ export class CustomTableView extends BasesViewBase {
 				);
 			}
 		} else if (isGrouped) {
-			primaryGroups = this.extractRenderableGroups(groupedData, primaryGroupSortDirection);
+			primaryGroups = this.extractRenderableGroups(groupedData, primaryGroupSortDirection, null);
 		} else {
 			primaryGroups = [
 				{
@@ -543,7 +564,7 @@ export class CustomTableView extends BasesViewBase {
 		const sorted = sortGroupedEntries(grouped, direction);
 		return sorted.map((bucket, index) => ({
 			id: `${idPrefix}:${index}:${bucket.key}`,
-			title: bucket.key,
+			title: this.formatGroupTitle(propertyId, bucket.key),
 			entries: bucket.entries,
 		}));
 	}
@@ -708,7 +729,8 @@ export class CustomTableView extends BasesViewBase {
 
 	private extractRenderableGroups(
 		groups: any[],
-		direction: GroupSortDirection
+		direction: GroupSortDirection,
+		propertyId: string | null
 	): RenderableGroup[] {
 		const rawGroups: { key: string; entries: EntryLike[] }[] = [];
 
@@ -726,7 +748,7 @@ export class CustomTableView extends BasesViewBase {
 		const sorted = sortGroupedEntries(rawGroups, direction);
 		return sorted.map((group, index) => ({
 			id: `${index}:${group.key}`,
-			title: group.key,
+			title: this.formatGroupTitle(propertyId, group.key),
 			entries: group.entries,
 		}));
 	}
@@ -1338,6 +1360,18 @@ export class CustomTableView extends BasesViewBase {
 		return this.config?.getDisplayName?.(propertyId) || propertyId;
 	}
 
+	private formatGroupTitle(propertyId: string | null, groupTitle: string): string {
+		const propertyDisplayName =
+			typeof propertyId === "string" && propertyId.length > 0
+				? this.getPropertyDisplayName(propertyId)
+				: null;
+		return formatGroupTitleWithProperty(
+			groupTitle,
+			propertyDisplayName,
+			this.showGroupingPropertyName
+		);
+	}
+
 	private resolvePropertyHeaderIcon(propertyId: string): string {
 		const metadataIcon = this.resolvePropertyIconFromMetadata(propertyId);
 		if (metadataIcon) return metadataIcon;
@@ -1523,29 +1557,129 @@ export class CustomTableView extends BasesViewBase {
 			return;
 		}
 
+		const linkWrapper = this.containerEl.ownerDocument.createElement("span");
+		linkWrapper.className = "tn-bases-table-file-link-wrap";
+
+		if (this.showIconicIconInNameColumn) {
+			const iconicIcon = resolveIconicFileIcon(this.getIconicPlugin(), filePath);
+			if (iconicIcon) {
+				const iconEl = this.containerEl.ownerDocument.createElement("span");
+				iconEl.className = "tn-bases-table-file-icon";
+				iconEl.setAttribute("aria-hidden", "true");
+				this.renderIconicFileIcon(iconEl, iconicIcon.icon);
+				if (iconicIcon.color) {
+					iconEl.style.color = iconicIcon.color;
+				}
+				linkWrapper.appendChild(iconEl);
+			}
+		}
+
 		const linkEl = this.containerEl.ownerDocument.createElement("a");
-		linkEl.className = "tn-bases-table-file-link";
+		linkEl.className = "tn-bases-table-file-link internal-link";
 		linkEl.setText(fileName);
 		linkEl.href = "#";
+		linkEl.setAttribute("data-href", filePath);
 
 		linkEl.addEventListener("click", (evt) => {
-			if (evt.button !== 0 && evt.button !== 1) return;
+			if (evt.button !== 0) return;
 			evt.preventDefault();
 			const modEvent = Keymap.isModEvent(evt);
 			void (this.app || this.plugin.app).workspace.openLinkText(filePath, "", modEvent);
+		});
+
+		linkEl.addEventListener("auxclick", (evt) => {
+			if (evt.button !== 1) return;
+			evt.preventDefault();
+			evt.stopPropagation();
+			void (this.app || this.plugin.app).workspace.openLinkText(filePath, "", true);
+		});
+
+		linkEl.addEventListener("contextmenu", (evt) => {
+			evt.preventDefault();
+			evt.stopPropagation();
+			this.showFileLinkContextMenu(evt, filePath);
 		});
 
 		linkEl.addEventListener("mouseover", (evt) => {
 			(this.app || this.plugin.app).workspace.trigger("hover-link", {
 				event: evt,
 				source: "tasknotes-bases-custom-table",
-				hoverParent: this,
+				hoverParent: linkWrapper,
 				targetEl: linkEl,
 				linktext: filePath,
 			});
 		});
 
-		cellEl.appendChild(linkEl);
+		linkWrapper.appendChild(linkEl);
+		cellEl.appendChild(linkWrapper);
+	}
+
+	private showFileLinkContextMenu(event: MouseEvent, filePath: string): void {
+		const app = this.app || this.plugin.app;
+		const file = app.vault.getAbstractFileByPath(filePath);
+		if (!(file instanceof TFile)) return;
+
+		const menu = new Menu();
+		let populated = false;
+
+		try {
+			app.workspace.trigger("file-menu", menu, file, "tasknotes-bases-custom-table");
+			populated = ((menu as any).items?.length ?? 0) > 0;
+		} catch {
+			populated = false;
+		}
+
+		if (!populated) {
+			menu.addItem((item) => {
+				item.setTitle("Open");
+				item.setIcon("file-text");
+				item.onClick(() => {
+					void app.workspace.getLeaf(false).openFile(file);
+				});
+			});
+			menu.addItem((item) => {
+				item.setTitle("Open in new tab");
+				item.setIcon("external-link");
+				item.onClick(() => {
+					void app.workspace.openLinkText(file.path, "", true);
+				});
+			});
+		}
+
+		menu.showAtMouseEvent(event);
+	}
+
+	private getIconicPlugin(): unknown {
+		const plugins = (this.app || this.plugin.app).plugins as
+			| {
+					getPlugin?: (id: string) => unknown;
+					plugins?: Record<string, unknown>;
+			  }
+			| undefined;
+		if (!plugins) return null;
+
+		if (typeof plugins.getPlugin === "function") {
+			const iconicPlugin = plugins.getPlugin("iconic");
+			if (iconicPlugin) return iconicPlugin;
+		}
+
+		return plugins.plugins?.iconic ?? null;
+	}
+
+	private renderIconicFileIcon(iconEl: HTMLElement, iconId: string): void {
+		const lucideName = normalizeIconicLucideIconName(iconId);
+		if (lucideName) {
+			try {
+				setIcon(iconEl, lucideName);
+				iconEl.classList.add("tn-bases-table-file-icon--lucide");
+				return;
+			} catch {
+				// Fallback to text rendering below.
+			}
+		}
+
+		iconEl.classList.add("tn-bases-table-file-icon--text");
+		iconEl.setText(iconId);
 	}
 
 	private renderValue(cellEl: HTMLElement, value: any): void {

@@ -1368,12 +1368,16 @@ export default class TaskNotesPlugin extends Plugin {
 			typeof loadedData?.basesViewListTopOverflowMode === "undefined" ||
 			typeof loadedData?.basesViewListNarrowBehavior === "undefined" ||
 			typeof loadedData?.basesViewListNarrowThresholdPx === "undefined";
+		const hasNewCustomTableDisplaySettings =
+			typeof loadedData?.customTableShowIconicIconInNameColumn === "undefined" ||
+			typeof loadedData?.customTableShowGroupingPropertyName === "undefined";
 
 		if (
 			hasNewFields ||
 			hasNewCalendarSettings ||
 			hasNewCommandMappings ||
 			hasNewBasesSidebarSettings ||
+			hasNewCustomTableDisplaySettings ||
 			removedDeprecatedBasesWidthSetting
 		) {
 			// Save the migrated settings to include new field mappings (non-blocking)

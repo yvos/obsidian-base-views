@@ -299,6 +299,30 @@ export function renderGeneralTab(
 					});
 			});
 
+			group.addSetting((setting) =>
+				configureToggleSetting(setting, {
+					name: "Custom table: Show Iconic icons in name column",
+					desc: "If Iconic is installed, show each file icon before file name in Custom Table view.",
+					getValue: () => plugin.settings.customTableShowIconicIconInNameColumn,
+					setValue: async (value: boolean) => {
+						plugin.settings.customTableShowIconicIconInNameColumn = value;
+						await save();
+					},
+				})
+			);
+
+			group.addSetting((setting) =>
+				configureToggleSetting(setting, {
+					name: "Custom table: Show grouping property names",
+					desc: 'Show group headers as "property: value" in Custom Table view.',
+					getValue: () => plugin.settings.customTableShowGroupingPropertyName,
+					setValue: async (value: boolean) => {
+						plugin.settings.customTableShowGroupingPropertyName = value;
+						await save();
+					},
+				})
+			);
+
 			// Base view list sidebar toggle
 			group.addSetting((setting) =>
 				configureToggleSetting(setting, {
