@@ -31,16 +31,14 @@ import {
 	hasAnyMultiValueEntries,
 	sortGroupedEntries,
 } from "./customTableGrouping";
-import {
-	formatGroupTitleWithProperty,
-	normalizeIconicLucideIconName,
-	resolveIconicFileIcon,
-} from "./customTableDisplayUtils";
+import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
+import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
 
 type RowHeightOption = "short" | "medium" | "tall" | "extraTall";
 type VirtualMode = "none" | "ungrouped" | "grouped";
 
 const VALID_ROW_HEIGHTS: RowHeightOption[] = ["short", "medium", "tall", "extraTall"];
+const LUCIDE_PREFIX = "lucide-";
 
 type EntryLike = {
 	file?: {
@@ -1561,7 +1559,7 @@ export class CustomTableView extends BasesViewBase {
 		linkWrapper.className = "tn-bases-table-file-link-wrap";
 
 		if (this.showIconicIconInNameColumn) {
-			const iconicIcon = resolveIconicFileIcon(this.getIconicPlugin(), filePath);
+			const iconicIcon = resolveIconicFileIcon(this.app || this.plugin.app, filePath);
 			if (iconicIcon) {
 				const iconEl = this.containerEl.ownerDocument.createElement("span");
 				iconEl.className = "tn-bases-table-file-icon";
@@ -1649,25 +1647,8 @@ export class CustomTableView extends BasesViewBase {
 		menu.showAtMouseEvent(event);
 	}
 
-	private getIconicPlugin(): unknown {
-		const plugins = (this.app || this.plugin.app).plugins as
-			| {
-					getPlugin?: (id: string) => unknown;
-					plugins?: Record<string, unknown>;
-			  }
-			| undefined;
-		if (!plugins) return null;
-
-		if (typeof plugins.getPlugin === "function") {
-			const iconicPlugin = plugins.getPlugin("iconic");
-			if (iconicPlugin) return iconicPlugin;
-		}
-
-		return plugins.plugins?.iconic ?? null;
-	}
-
 	private renderIconicFileIcon(iconEl: HTMLElement, iconId: string): void {
-		const lucideName = normalizeIconicLucideIconName(iconId);
+		const lucideName = this.normalizeIconicLucideIconName(iconId);
 		if (lucideName) {
 			try {
 				setIcon(iconEl, lucideName);
@@ -1680,6 +1661,19 @@ export class CustomTableView extends BasesViewBase {
 
 		iconEl.classList.add("tn-bases-table-file-icon--text");
 		iconEl.setText(iconId);
+	}
+
+	private normalizeIconicLucideIconName(icon: string): string | null {
+		if (typeof icon !== "string") return null;
+		const trimmed = icon.trim();
+		if (trimmed.length === 0) return null;
+
+		if (trimmed.startsWith(LUCIDE_PREFIX)) {
+			const name = trimmed.slice(LUCIDE_PREFIX.length);
+			return name.length > 0 ? name : null;
+		}
+
+		return /^[a-z0-9-]+$/i.test(trimmed) ? trimmed : null;
 	}
 
 	private renderValue(cellEl: HTMLElement, value: any): void {

@@ -12,6 +12,7 @@
 - 2026-02-15 時点で `tasknotesCustomTable` に2段階グルーピング（Sub-group by）と multi-value group unnest（ON/OFF、デフォルトON）を追加。
 - 2026-02-15 時点で `tasknotesCustomTable` の `file.name` 列に Iconic アイコン表示（設定ON/OFF、デフォルトON）を追加し、グループ見出しの `property: value` 表示（設定ON/OFF、デフォルトOFF）を追加。
 - 2026-02-16 時点で `tasknotesCustomTable` の `file.name` リンクを拡張し、`internal-link/data-href` 付与・中クリック新規ペイン・右クリックの標準ファイルメニュー表示（空時フォールバック）に対応。
+- 2026-02-16 時点で `tasknotesCustomTable` の Iconic 連携を再設計し、`ruleManager.checkRuling("file", path)` 優先の解決と `src/integrations/iconic/` へのモジュール分離を実施（`icon` 空 + `color` のみは非表示）。
 - 2026-02-14 時点で `.base` 表示時の view 一覧サイドバー（左固定・狭幅時上部、設定ON/OFF、dropdown表示モード切替）を追加。
 - 2026-02-14 時点で view一覧サイドバーを改善（1件view時の完全非表示、typeアイコン、開閉UI、幅リサイズ、開閉/幅のグローバル永続化）し、詳細を `AIdocs/IMPLEMENTATION-base_view_list.md` に分離整理。
 - 2026-02-14 時点で view一覧サイドバーをさらに改善（left/top配置切替、右クリックメニュー切替、プロパティ2行表示、フォントサイズ選択、左配置時の自動幅短縮）を実装。
@@ -78,6 +79,8 @@
     - 右クリック（`contextmenu`）で `file-menu` を表示（空時は `Open` / `Open in new tab` をフォールバック表示）
     - `internal-link` / `data-href` を付与して Obsidian 内部リンク互換を維持
     - `customTableShowIconicIconInNameColumn`（plugin setting, default: true）で Iconic の file icon を先頭に表示
+    - Iconic 解決順は `ruleManager.checkRuling("file", path)` → `getFileItem(path[, false])` → `settings.fileIcons[path]`
+    - `icon` が空で `color` のみの場合はアイコンを表示しない
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
   - 列ヘッダー表示
     - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）
@@ -114,7 +117,11 @@
 - `src/bases/customTableGrouping.ts`
   - group key 正規化、list値の unnest、entry のグルーピング純粋関数
 - `src/bases/customTableDisplayUtils.ts`
-  - Custom Table の表示補助（Iconic icon 解決、group見出しラベル整形）の純粋関数
+  - Custom Table の表示補助（group見出しラベル整形）の純粋関数
+- `src/integrations/iconic/iconicFileIconResolver.ts`
+  - Iconic plugin 連携（plugin取得、rule/fileItem/settings の順で icon解決）の純粋関数
+- `src/integrations/iconic/types.ts`
+  - Iconic plugin 非公開API連携に使う最小型定義
 - `src/bases/tableColumnSizing.ts`
   - 列幅正規化・テンプレート生成・合計幅計算の純粋関数
 - `src/bases/tableSummary.ts`
@@ -144,7 +151,9 @@
 - `tests/unit/bases/customTableGrouping.test.ts`
   - group key抽出・unnest・grouping純粋関数のユニットテスト
 - `tests/unit/bases/customTableDisplayUtils.test.ts`
-  - Iconic icon解決・icon名正規化・group見出しラベル整形のユニットテスト
+  - group見出しラベル整形のユニットテスト
+- `tests/unit/integrations/iconic/iconicFileIconResolver.test.ts`
+  - Iconic icon解決（rule優先、fallback、例外時継続、color-only非表示）のユニットテスト
 - `tests/unit/bases/customTableGroupedFlatten.test.ts`
   - grouped フラット化順序のユニットテスト
 - `tests/unit/bases/tableColumnSizing.test.ts`
@@ -207,7 +216,9 @@
 - `unnestMultiValueGroup=false` のとき、list 値は結合キー（例: `A, B`）として単一グループに表示する。
 - `customTableShowGroupingPropertyName=true` のとき、group見出しは `propertyDisplayName: groupValue` 形式で表示する。
 - `customTableShowIconicIconInNameColumn=true` かつ Iconic導入時は、`file.name` 列のリンク先頭に Iconic の file icon（色付き）を表示する。取得失敗時や未導入時は通常表示にフォールバックする。
-- Iconic アイコン取得は `getFileItem(path, false)` と `settings.fileIcons[path]` のみを利用する（`AIdocs/iconic-api.md` 準拠）。`fileRules` 由来アイコンの解決は未対応。
+- Iconic アイコン取得は `ruleManager.checkRuling("file", path)` → `getFileItem(path[, false])` → `settings.fileIcons[path]` の順で解決する。
+- `getFileItem` は 1引数/2引数の差異を吸収して呼び出し、失敗時は後続フォールバックへ進む。
+- `icon` が空で `color` のみの結果は表示しない（色のみ設定時の既定アイコン補完は行わない）。
 - ungrouped 時はテーブル下部（tfoot）に summary 行を表示。
 - 仮想描画時も summary を維持する。
   - ungrouped: 仮想リスト下部に全体 summary 行
@@ -275,12 +286,13 @@
 - Custom Table View 変更時は以下を同時確認:
   - 表示ロジック: `src/bases/CustomTableView.ts`
   - グルーピングロジック: `src/bases/customTableGrouping.ts`
-  - 表示補助ロジック: `src/bases/customTableDisplayUtils.ts`
+  - 表示補助ロジック: `src/bases/customTableDisplayUtils.ts`（group見出し）
+  - Iconic連携ロジック: `src/integrations/iconic/iconicFileIconResolver.ts`, `src/integrations/iconic/types.ts`
   - 仮想化ロジック: `src/bases/customTableVirtualization.ts`
   - 列幅ロジック: `src/bases/tableColumnSizing.ts`
   - 集計ロジック: `src/bases/tableSummary.ts`
   - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/customTableGrouping.test.ts`, `tests/unit/bases/customTableDisplayUtils.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
+  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/customTableGrouping.test.ts`, `tests/unit/bases/customTableDisplayUtils.test.ts`, `tests/unit/integrations/iconic/iconicFileIconResolver.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
 - Bases view一覧サイドバー変更時は以下を同時確認:
   - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
   - サービス: `src/bases/BasesViewListSidebarService.ts`
