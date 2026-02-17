@@ -20,6 +20,8 @@
 - 2026-02-15 時点で view一覧サイドバーを仕様調整（`viewListSize` の文字列保存、top配置時のプロパティ行高統一、右クリックでプロパティ表示ON/OFF、グローバル幅保持廃止）を実装。
 - 2026-02-15 時点で view一覧サイドバーを表示調整3（フォントサイズ表示ラベルの変更、button既定height競合の修正、狭幅`top`時の常時scroll強制、ネイティブツールバー表示切替の再実装）を実装。
 - 2026-02-15 時点で view一覧サイドバーの右クリックメニューを拡張（フォントサイズ切替、view一覧の再描画）を実装。
+- 2026-02-16 時点で view一覧サイドバーの各view行に3点メニューを追加し、ネイティブview設定UI起動導線を実装。
+- 2026-02-17 時点で 3点メニューのネイティブ設定起動を再改善し、`.bases-toolbar-menu-item` + `view-config-menu` 遷移判定に対応（失敗時フォールバックメニューは廃止しNoticeのみ）。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -58,6 +60,8 @@
     - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
     - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
     - view行右クリックで `description` 編集 + 配置切替メニューを表示
+    - 各view行右端の3点ボタンでネイティブview設定UI起動を試行（成功時はネイティブUI、失敗時はNoticeのみ）
+    - 3点ボタンは hover/focus 時のみ表示
     - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
     - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
     - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
@@ -130,6 +134,10 @@
   - Bases view の登録/解除
 - `src/bases/BasesViewListSidebarService.ts`
   - `.base` 表示時のview一覧サイドバー管理（DOM注入・切替・cleanup・設定反映）
+- `src/integrations/bases/nativeViewSettingsBridge.ts`
+  - view一覧の3点ボタンからネイティブview設定UIを開くためのDOMブリッジ
+- `src/integrations/bases/types.ts`
+  - Basesネイティブ設定ブリッジの入力/結果型定義
 - `src/bases/BaseViewListYamlStore.ts`
   - `.base` YAML の `formulas.viewListSize` / `views[].description` 読み書き補助
 - `src/bases/api.ts`
@@ -160,6 +168,8 @@
   - 列幅ロジックのユニットテスト
 - `tests/unit/bases/BasesViewListSidebarService.test.ts`
   - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
+- `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
+  - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
   - `viewListSize` / `description` YAML更新のユニットテスト
 
@@ -251,6 +261,8 @@
 - `button` 既定 `height` 競合を避けるため、一覧行は `height: auto` を明示し、文字サイズに連動してアイコンと行高を調整する。
 - 一覧領域の右クリックメニューで `left/top`・プロパティ表示ON/OFF・ネイティブツールバー表示ON/OFFを即時切替できる。
 - view行右クリックでは `description` 編集項目を追加表示する。
+- view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
+- ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。
 - top配置時は `wrap/scroll` 設定を適用し、狭幅 + `narrowBehavior=top` ではユーザー配置が `left/top` のどちらでも `scroll` を強制する。
 - 狭幅判定は leaf container 幅を使い、`ResizeObserver` で変化を追従する。
 - 保存幅が初期値のときのみ自動幅短縮を適用する（ユーザー幅を上書きしない）。
@@ -296,8 +308,9 @@
 - Bases view一覧サイドバー変更時は以下を同時確認:
   - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
   - サービス: `src/bases/BasesViewListSidebarService.ts`
+  - ネイティブ設定ブリッジ: `src/integrations/bases/nativeViewSettingsBridge.ts`, `src/integrations/bases/types.ts`
   - 設定UI: `src/settings/tabs/generalTab.ts`
   - 設定型/初期値: `src/types/settings.ts`, `src/settings/defaults.ts`
   - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`
+  - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`, `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
 - `AIdocs/obsidian.d.ts` は必要箇所のみ参照し、通読しない。

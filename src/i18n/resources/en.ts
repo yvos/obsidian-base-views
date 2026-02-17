@@ -1647,6 +1647,16 @@ export const en: TranslationTree = {
 							ariaLabel: "Resize view list width",
 							tooltip: "Drag to resize",
 						},
+						itemMenuButton: {
+							ariaLabel: "Open view settings menu for {viewName}",
+							tooltip: "View settings: {viewName}",
+						},
+						notices: {
+							nativeViewSettingsOpenFailed:
+								"Could not open native view settings.",
+							nativeViewSettingsOpenPartial:
+								"Could not open this view's native settings. The native view list is open.",
+						},
 						singleViewHidden: {
 							description:
 								"Automatically hide the view list when the current base has only one view.",

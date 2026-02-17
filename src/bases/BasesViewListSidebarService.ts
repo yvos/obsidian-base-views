@@ -1,5 +1,6 @@
-import { EventRef, Menu, TFile, WorkspaceLeaf, setIcon } from "obsidian";
+import { EventRef, Menu, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import TaskNotesPlugin from "../main";
+import { openNativeViewSettingsAtAnchor } from "../integrations/bases/nativeViewSettingsBridge";
 import { showTextInputModal } from "../modals/TextInputModal";
 import { BaseViewListYamlStore } from "./BaseViewListYamlStore";
 
@@ -93,6 +94,7 @@ const CSS_LIST_TOP_SCROLL = "tn-bases-view-list--top-scroll";
 const CSS_LIST_ICONS_OFF = "tn-bases-view-list--icons-off";
 const CSS_BODY = "tn-bases-view-list-body";
 const CSS_ITEM = "tn-bases-view-list__item";
+const CSS_ITEM_ROW = "tn-bases-view-list__item-row";
 const CSS_ITEM_ACTIVE = "is-active";
 const CSS_ITEM_WITH_PROPERTY = "tn-bases-view-list__item--with-property";
 const CSS_ITEM_ICON = "tn-bases-view-list__item-icon";
@@ -100,6 +102,7 @@ const CSS_ITEM_CONTENT = "tn-bases-view-list__item-content";
 const CSS_ITEM_NAME = "tn-bases-view-list__item-name";
 const CSS_ITEM_PROPERTY = "tn-bases-view-list__item-property";
 const CSS_ITEM_PROPERTY_PLACEHOLDER = "tn-bases-view-list__item-property--placeholder";
+const CSS_ITEM_MENU_BUTTON = "tn-bases-view-list__item-menu";
 const CSS_HEADER = "tn-bases-view-list__header";
 const CSS_HEADER_TOP = "tn-bases-view-list__header--top";
 const CSS_TITLE = "tn-bases-view-list__title";
@@ -1049,9 +1052,10 @@ export class BasesViewListSidebarService {
 			evt.preventDefault();
 			evt.stopPropagation();
 			const target = evt.target instanceof HTMLElement ? evt.target : null;
-			const rowEl = target?.closest(`.${CSS_ITEM}`);
-			if (rowEl instanceof HTMLElement && listEl.contains(rowEl)) {
-				const viewName = rowEl.getAttribute("data-view-name")?.trim() ?? "";
+			const rowContainerEl =
+				target?.closest(`.${CSS_ITEM_ROW}`) ?? target?.closest(`.${CSS_ITEM}`);
+			if (rowContainerEl instanceof HTMLElement && listEl.contains(rowContainerEl)) {
+				const viewName = rowContainerEl.getAttribute("data-view-name")?.trim() ?? "";
 				const entry = entriesByName.get(viewName) ?? null;
 				if (entry) {
 					this.showViewItemContextMenu(evt, leaf, entry);
@@ -1085,6 +1089,39 @@ export class BasesViewListSidebarService {
 		menu.addSeparator();
 		this.addViewListContextMenuItems(menu, current, leaf);
 		menu.showAtMouseEvent(event);
+	}
+
+	private async openNativeViewSettingsFromItemMenu(
+		leaf: WorkspaceLeaf,
+		entry: ViewEntry,
+		anchorEl: HTMLElement
+	): Promise<void> {
+		const leafContainerEl = this.getLeafView(leaf)?.containerEl;
+		const basesViewEl = this.findBasesViewEl(leaf);
+		const rootEl =
+			leafContainerEl ??
+			(basesViewEl ? this.resolveLayoutContext(basesViewEl).rootEl : null);
+		if (!rootEl) {
+			new Notice(this.getNativeViewSettingsOpenFailedNotice());
+			return;
+		}
+
+		const result = await openNativeViewSettingsAtAnchor({
+			rootEl,
+			viewName: entry.name,
+			anchorEl,
+			nativeToolbarHiddenClass: CSS_NATIVE_TOOLBAR_HIDDEN,
+		});
+
+		if (result.status === "opened-settings") {
+			return;
+		}
+
+		if (result.status === "opened-view-list-only") {
+			new Notice(this.getNativeViewSettingsOpenPartialNotice());
+		} else {
+			new Notice(this.getNativeViewSettingsOpenFailedNotice());
+		}
 	}
 
 	private addViewListContextMenuItems(
@@ -1359,6 +1396,36 @@ export class BasesViewListSidebarService {
 		);
 	}
 
+	private getItemMenuButtonAriaLabel(viewName: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.itemMenuButton.ariaLabel",
+			`Open view settings menu for ${viewName}`,
+			{ viewName }
+		);
+	}
+
+	private getItemMenuButtonTooltip(viewName: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.itemMenuButton.tooltip",
+			`View settings: ${viewName}`,
+			{ viewName }
+		);
+	}
+
+	private getNativeViewSettingsOpenFailedNotice(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenFailed",
+			"Could not open native view settings."
+		);
+	}
+
+	private getNativeViewSettingsOpenPartialNotice(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenPartial",
+			"Could not open this view's native settings. The native view list is open."
+		);
+	}
+
 	private getOpenButtonAriaLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.openButton.ariaLabel",
@@ -1522,6 +1589,10 @@ export class BasesViewListSidebarService {
 		const shouldShowIcons = this.shouldShowIcons();
 		const shouldForcePropertyLineInTop = state.placement === "top" && shouldShowProperty;
 		for (const entry of viewEntries) {
+			const rowEl = doc.createElement("div");
+			rowEl.className = CSS_ITEM_ROW;
+			rowEl.setAttribute("data-view-name", entry.name);
+
 			const button = doc.createElement("button");
 			button.type = "button";
 			button.className = CSS_ITEM;
@@ -1561,6 +1632,7 @@ export class BasesViewListSidebarService {
 			button.appendChild(contentEl);
 
 			if (currentViewName && currentViewName === entry.name) {
+				rowEl.classList.add(CSS_ITEM_ACTIVE);
 				button.classList.add(CSS_ITEM_ACTIVE);
 			}
 
@@ -1568,7 +1640,29 @@ export class BasesViewListSidebarService {
 				void this.switchView(leaf, entry.name);
 			});
 
-			listEl.appendChild(button);
+			const itemMenuButtonEl = doc.createElement("button");
+			itemMenuButtonEl.type = "button";
+			itemMenuButtonEl.className = CSS_ITEM_MENU_BUTTON;
+			itemMenuButtonEl.setAttribute("aria-label", this.getItemMenuButtonAriaLabel(entry.name));
+			itemMenuButtonEl.setAttribute("title", this.getItemMenuButtonTooltip(entry.name));
+			setIcon(itemMenuButtonEl, "more-horizontal");
+			itemMenuButtonEl.addEventListener("click", (evt) => {
+				evt.preventDefault();
+				evt.stopPropagation();
+				void this.openNativeViewSettingsFromItemMenu(leaf, entry, itemMenuButtonEl);
+			});
+			itemMenuButtonEl.addEventListener("keydown", (evt) => {
+				if (evt.key !== "Enter" && evt.key !== " " && evt.key !== "Spacebar") {
+					return;
+				}
+				evt.preventDefault();
+				evt.stopPropagation();
+				void this.openNativeViewSettingsFromItemMenu(leaf, entry, itemMenuButtonEl);
+			});
+
+			rowEl.appendChild(button);
+			rowEl.appendChild(itemMenuButtonEl);
+			listEl.appendChild(rowEl);
 		}
 	}
 
@@ -1609,13 +1703,15 @@ export class BasesViewListSidebarService {
 		const iconWidth = this.shouldShowIcons() ? 16 : 0;
 		const gap = this.shouldShowIcons() ? 8 : 0;
 		const horizontalPadding = 22;
+		const actionSlotWidth = 20;
+		const actionGap = 4;
 		const nameWidth = this.estimateVisualTextWidth(entry.name, false);
 		let textWidth = nameWidth;
 		if (this.shouldShowProperty() && entry.propertyText) {
 			const propertyWidth = this.estimateVisualTextWidth(entry.propertyText, true) + 12;
 			textWidth = Math.max(textWidth, propertyWidth);
 		}
-		return iconWidth + gap + textWidth + horizontalPadding;
+		return iconWidth + gap + textWidth + horizontalPadding + actionGap + actionSlotWidth;
 	}
 
 	private estimateVisualTextWidth(text: string, isProperty: boolean): number {

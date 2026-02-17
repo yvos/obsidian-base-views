@@ -1,9 +1,14 @@
-import { Menu, TFile, parseYaml } from "obsidian";
+import { Menu, Notice, TFile, parseYaml } from "obsidian";
 import { BasesViewListSidebarService } from "../../../src/bases/BasesViewListSidebarService";
+import { openNativeViewSettingsAtAnchor } from "../../../src/integrations/bases/nativeViewSettingsBridge";
 import { showTextInputModal } from "../../../src/modals/TextInputModal";
 
 jest.mock("../../../src/modals/TextInputModal", () => ({
 	showTextInputModal: jest.fn(),
+}));
+
+jest.mock("../../../src/integrations/bases/nativeViewSettingsBridge", () => ({
+	openNativeViewSettingsAtAnchor: jest.fn(),
 }));
 
 interface EventRefLike {
@@ -127,6 +132,11 @@ describe("BasesViewListSidebarService", () => {
 		vaultCachedRead = jest.fn().mockResolvedValue("");
 		vaultModify = jest.fn().mockResolvedValue(undefined);
 		mountedRoots = [];
+		(openNativeViewSettingsAtAnchor as jest.Mock).mockReset().mockResolvedValue({
+			status: "opened-settings",
+		});
+		(Notice as unknown as jest.Mock).mockClear();
+		(Menu as unknown as jest.Mock).mockClear();
 
 		plugin = {
 			settings: {
@@ -180,6 +190,14 @@ describe("BasesViewListSidebarService", () => {
 							"Resize view list width",
 						"settings.integrations.basesIntegration.viewListSidebar.resizeHandle.tooltip":
 							"Drag to resize",
+						"settings.integrations.basesIntegration.viewListSidebar.itemMenuButton.ariaLabel":
+							"Open view settings menu for {viewName}",
+						"settings.integrations.basesIntegration.viewListSidebar.itemMenuButton.tooltip":
+							"View settings: {viewName}",
+						"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenFailed":
+							"Could not open native view settings.",
+						"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenPartial":
+							"Could not open this view's native settings. The native view list is open.",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showLeft":
 							"Show on left",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showTop":
@@ -386,6 +404,197 @@ describe("BasesViewListSidebarService", () => {
 			"Guides/test.base",
 			false
 		);
+	});
+
+	it("renders per-view item menu button", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemButtons = setup.rootEl.querySelectorAll(".tn-bases-view-list__item");
+		const itemMenuButtons = setup.rootEl.querySelectorAll(".tn-bases-view-list__item-menu");
+		expect(itemButtons).toHaveLength(2);
+		expect(itemMenuButtons).toHaveLength(2);
+	});
+
+	it("opens native settings from item menu button without switching views", async () => {
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "custom view", type: "tasknotesCustomTable" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemMenuButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(
+			".tn-bases-view-list__item-menu"
+		)[1];
+		itemMenuButton.click();
+		await flushTimersAndPromises();
+
+		expect(openNativeViewSettingsAtAnchor).toHaveBeenCalledWith(
+			expect.objectContaining({
+				rootEl: setup.rootEl,
+				viewName: "custom view",
+				anchorEl: itemMenuButton,
+				nativeToolbarHiddenClass: "tn-bases-native-toolbar-hidden",
+			})
+		);
+		expect(selectView).not.toHaveBeenCalled();
+		expect(workspace.openLinkText).not.toHaveBeenCalled();
+		expect(Notice).not.toHaveBeenCalled();
+	});
+
+	it("shows notice only when native settings open is partial", async () => {
+		(openNativeViewSettingsAtAnchor as jest.Mock).mockResolvedValueOnce({
+			status: "opened-view-list-only",
+			reason: "view-settings-not-opened",
+		});
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
+			".tn-bases-view-list__item-menu"
+		);
+		itemMenuButton?.click();
+		await flushTimersAndPromises();
+
+		expect(Notice).toHaveBeenCalledWith(
+			"Could not open this view's native settings. The native view list is open."
+		);
+		expect(Menu).not.toHaveBeenCalled();
+	});
+
+	it("shows failed notice only when native settings open fails", async () => {
+		(openNativeViewSettingsAtAnchor as jest.Mock).mockResolvedValueOnce({
+			status: "failed",
+			reason: "views-trigger-missing",
+		});
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
+			".tn-bases-view-list__item-menu"
+		);
+		itemMenuButton?.click();
+		await flushTimersAndPromises();
+
+		expect(Notice).toHaveBeenCalledWith(
+			"Could not open native view settings."
+		);
+		expect(Menu).not.toHaveBeenCalled();
+	});
+
+	it("opens native settings from item menu button on Enter key", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
+			".tn-bases-view-list__item-menu"
+		);
+		itemMenuButton?.dispatchEvent(
+			new KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			})
+		);
+		await flushTimersAndPromises();
+
+		expect(openNativeViewSettingsAtAnchor).toHaveBeenCalledTimes(1);
+	});
+
+	it("opens native settings from item menu button on Space key", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
+			".tn-bases-view-list__item-menu"
+		);
+		itemMenuButton?.dispatchEvent(
+			new KeyboardEvent("keydown", {
+				key: " ",
+				bubbles: true,
+				cancelable: true,
+			})
+		);
+		await flushTimersAndPromises();
+
+		expect(openNativeViewSettingsAtAnchor).toHaveBeenCalledTimes(1);
 	});
 
 	it("hides sidebar and toolbar trigger when only one view exists", async () => {

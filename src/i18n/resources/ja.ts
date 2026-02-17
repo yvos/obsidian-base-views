@@ -1608,6 +1608,16 @@ export const ja: TranslationTree = {
 							ariaLabel: "ビュー一覧の幅を変更",
 							tooltip: "ドラッグして幅を変更",
 						},
+						itemMenuButton: {
+							ariaLabel: "{viewName} のビュー設定メニューを開く",
+							tooltip: "ビュー設定: {viewName}",
+						},
+						notices: {
+							nativeViewSettingsOpenFailed:
+								"ネイティブのビュー設定を開けませんでした。",
+							nativeViewSettingsOpenPartial:
+								"このビューのネイティブ設定を開けませんでした。ネイティブのビュー一覧は開いています。",
+						},
 						singleViewHidden: {
 							description:
 								"現在のbaseにビューが1つだけの場合、ビュー一覧は自動的に非表示になります。",

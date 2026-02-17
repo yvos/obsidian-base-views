@@ -91,6 +91,12 @@
 	max-width: max-content;
 }
 
+.tn-bases-view-list--top-scroll .tn-bases-view-list__item-row {
+	flex: 0 0 auto;
+	white-space: nowrap;
+	max-width: max-content;
+}
+
 .tn-bases-view-list__header {
 	display: flex;
 	align-items: center;
@@ -167,7 +173,15 @@ button.tn-bases-view-list__item {
 	font-size: var(--tn-bvl-name-font-size);
 }
 
-.tn-bases-view-list--top button.tn-bases-view-list__item {
+.tn-bases-view-list__item-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 20px;
+	gap: 2px;
+	align-items: stretch;
+	min-width: 0;
+}
+
+.tn-bases-view-list--top .tn-bases-view-list__item-row {
 	width: auto;
 	max-width: 100%;
 	flex: 0 0 auto;
@@ -263,6 +277,7 @@ button.tn-bases-view-list__item {
 	padding-right: var(--size-2-2);
 }
 
+.tn-bases-view-list__item-row:hover .tn-bases-view-list__item:not(.is-active),
 .tn-bases-view-list__item:hover {
 	background: var(--background-modifier-hover);
 }
@@ -276,6 +291,49 @@ button.tn-bases-view-list__item {
 .tn-bases-view-list__item.is-active .tn-bases-view-list__item-property {
 	color: var(--text-on-accent);
 	opacity: 0.86;
+}
+
+button.tn-bases-view-list__item-menu {
+	align-self: center;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: var(--cursor);
+	padding: 0;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.tn-bases-view-list__item-menu svg {
+	width: 14px;
+	height: 14px;
+}
+
+.tn-bases-view-list__item-row:hover .tn-bases-view-list__item-menu,
+.tn-bases-view-list__item-row:focus-within .tn-bases-view-list__item-menu,
+.tn-bases-view-list__item-menu:focus-visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.tn-bases-view-list__item-menu:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tn-bases-view-list__item-row.is-active .tn-bases-view-list__item-menu {
+	color: var(--text-on-accent);
+}
+
+.tn-bases-view-list__item-row.is-active .tn-bases-view-list__item-menu:hover {
+	background: rgba(255, 255, 255, 0.15);
 }
 
 .tn-bases-view-list__resizer {
