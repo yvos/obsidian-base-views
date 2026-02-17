@@ -61,7 +61,7 @@
     - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
     - view行右クリックで `description` 編集 + 配置切替メニューを表示
     - 各view行右端の3点ボタンでネイティブview設定UI起動を試行（成功時はネイティブUI、失敗時はNoticeのみ）
-    - 3点ボタンは hover/focus 時のみ表示
+    - 3点ボタンは hover/focus で表示し、active行では半透明で常時表示（初回クリックの空振りを抑制）
     - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
     - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
     - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
@@ -263,6 +263,8 @@
 - view行右クリックでは `description` 編集項目を追加表示する。
 - view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
 - ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。
+- ネイティブviewsメニューは「可視化済みかつ行要素生成済み」であることを確認してから行選択へ進む（起動直後の空メニュー誤検出を回避）。
+- `basesViewListShowNativeToolbar=false` で3点起動した場合は、ネイティブメニューを3点近傍へ再配置する試行を行い、メニュー表示中はツールバー再非表示を遅延させる。
 - top配置時は `wrap/scroll` 設定を適用し、狭幅 + `narrowBehavior=top` ではユーザー配置が `left/top` のどちらでも `scroll` を強制する。
 - 狭幅判定は leaf container 幅を使い、`ResizeObserver` で変化を追従する。
 - 保存幅が初期値のときのみ自動幅短縮を適用する（ユーザー幅を上書きしない）。

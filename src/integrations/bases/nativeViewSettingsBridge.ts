@@ -14,6 +14,8 @@ const NATIVE_SETTINGS_STATE_SELECTORS = [
 	".bases-toolbar-menu-form",
 	".bases-toolbar-menu-container-header .back-button",
 ];
+const HIDDEN_RESTORE_RETRY_MS = 80;
+const HIDDEN_RESTORE_MAX_ATTEMPTS = 90;
 
 const CHEVRON_SELECTORS = [
 	"[data-icon='chevron-right']",
@@ -56,8 +58,12 @@ function getVisibleMenus(doc: Document): HTMLElement[] {
 	return Array.from(doc.querySelectorAll<HTMLElement>(MENU_SELECTOR)).filter((menuEl) => {
 		if (!menuEl.isConnected) return false;
 		if (menuEl.getAttribute("aria-hidden") === "true") return false;
-		const style = menuEl.style;
+		const view = doc.defaultView ?? window;
+		const style = view.getComputedStyle(menuEl);
 		if (style.display === "none" || style.visibility === "hidden") return false;
+		const hasRects = menuEl.getClientRects().length > 0;
+		const isJsdom = /jsdom/i.test(view.navigator?.userAgent ?? "");
+		if (!hasRects && !isJsdom) return false;
 		return true;
 	});
 }
@@ -80,6 +86,12 @@ function isSettingsStateMenu(menuEl: HTMLElement): boolean {
 		}
 	}
 	return false;
+}
+
+function isViewsMenuReady(menuEl: HTMLElement): boolean {
+	if (isSettingsStateMenu(menuEl)) return true;
+	const rowCount = menuEl.querySelectorAll(MENU_ITEM_SELECTOR).length;
+	return rowCount > 0;
 }
 
 function resolveTriggerTarget(triggerHost: HTMLElement): HTMLElement {
@@ -149,6 +161,59 @@ async function waitFor<T>(
 	return null;
 }
 
+async function waitForNextFrame(): Promise<void> {
+	await new Promise((resolve) => window.setTimeout(resolve, 0));
+}
+
+function positionMenuNearAnchor(menuEl: HTMLElement, anchorPoint: Point): void {
+	const view = menuEl.ownerDocument?.defaultView ?? window;
+	const rect = menuEl.getBoundingClientRect();
+	const width = Math.max(220, Math.round(rect.width) || 0);
+	const height = Math.max(120, Math.round(rect.height) || 0);
+	const margin = 8;
+
+	let left = Math.round(anchorPoint.x - width + 20);
+	left = Math.max(margin, Math.min(view.innerWidth - width - margin, left));
+
+	let top = Math.round(anchorPoint.y - 10);
+	top = Math.max(margin, Math.min(view.innerHeight - height - margin, top));
+
+	menuEl.style.position = "fixed";
+	menuEl.style.left = `${left}px`;
+	menuEl.style.top = `${top}px`;
+	menuEl.style.right = "auto";
+	menuEl.style.bottom = "auto";
+}
+
+async function tryPositionMenuNearAnchor(menuEl: HTMLElement, anchorPoint: Point): Promise<void> {
+	for (let i = 0; i < 3; i += 1) {
+		const rect = menuEl.getBoundingClientRect();
+		if (rect.width > 0 && rect.height > 0) break;
+		await waitForNextFrame();
+	}
+	positionMenuNearAnchor(menuEl, anchorPoint);
+}
+
+function scheduleHiddenToolbarRestore(
+	rootEl: HTMLElement,
+	hiddenClass: string,
+	doc: Document
+): void {
+	let attempts = 0;
+	const restoreWhenMenuClosed = () => {
+		if (!rootEl.isConnected) return;
+		const visibleMenus = getVisibleMenus(doc);
+		const hasNativeMenu = findNativeViewsMenu(visibleMenus) != null;
+		if (hasNativeMenu && attempts < HIDDEN_RESTORE_MAX_ATTEMPTS) {
+			attempts += 1;
+			window.setTimeout(restoreWhenMenuClosed, HIDDEN_RESTORE_RETRY_MS);
+			return;
+		}
+		rootEl.classList.add(hiddenClass);
+	};
+	window.setTimeout(restoreWhenMenuClosed, HIDDEN_RESTORE_RETRY_MS);
+}
+
 function resolveViewRow(menuEl: HTMLElement, viewName: string): HTMLElement | null {
 	const targetName = normalizeText(viewName);
 	if (!targetName) return null;
@@ -189,17 +254,37 @@ async function openViewsMenu(
 	beforeMenusCount: number
 ): Promise<HTMLElement | null> {
 	const doc = triggerEl.ownerDocument;
+	const waitForOpenedMenu = () =>
+		waitFor(() => {
+			const menus = getVisibleMenus(doc);
+			if (menus.length === 0) return null;
+			const nativeMenu = findNativeViewsMenu(menus);
+			if (nativeMenu) {
+				return isViewsMenuReady(nativeMenu) ? nativeMenu : null;
+			}
+			if (menus.length > beforeMenusCount) {
+				const newestMenu = menus[menus.length - 1] ?? null;
+				if (!newestMenu) return null;
+				return isViewsMenuReady(newestMenu) ? newestMenu : null;
+			}
+			const fallbackMenu = menus[menus.length - 1] ?? null;
+			if (!fallbackMenu) return null;
+			return isViewsMenuReady(fallbackMenu) ? fallbackMenu : null;
+		}, 40, 20);
+
 	dispatchPointerClick(triggerEl, anchorPoint);
-	return waitFor(() => {
-		const menus = getVisibleMenus(doc);
-		if (menus.length === 0) return null;
-		const nativeMenu = findNativeViewsMenu(menus);
-		if (nativeMenu) return nativeMenu;
-		if (menus.length > beforeMenusCount) {
-			return menus[menus.length - 1] ?? null;
-		}
-		return menus[menus.length - 1] ?? null;
-	}, 20, 20);
+	const openedFromPointer = await waitForOpenedMenu();
+	if (openedFromPointer) return openedFromPointer;
+
+	// Initial startup can miss the synthetic pointer sequence until native menu state is ready.
+	if (typeof triggerEl.click === "function") {
+		triggerEl.click();
+	}
+	const openedFromClick = await waitForOpenedMenu();
+	if (openedFromClick) return openedFromClick;
+
+	dispatchKeyEvent(triggerEl, "Enter");
+	return waitForOpenedMenu();
 }
 
 async function waitForSettingsOpened(
@@ -214,7 +299,7 @@ async function waitForSettingsOpened(
 		const nativeMenu = findNativeViewsMenu(menus);
 		if (nativeMenu && isSettingsStateMenu(nativeMenu)) return true;
 		return null;
-	}, 20, 20);
+	}, 40, 20);
 	return opened === true;
 }
 
@@ -272,11 +357,14 @@ export async function openNativeViewSettingsAtAnchor(
 	const hiddenClass =
 		params.nativeToolbarHiddenClass?.trim() || DEFAULT_NATIVE_TOOLBAR_HIDDEN_CLASS;
 	const wasHidden = rootEl.classList.contains(hiddenClass);
+	let shouldDelayHiddenRestore = false;
 	if (wasHidden) {
 		rootEl.classList.remove(hiddenClass);
+		await waitForNextFrame();
 	}
 
 	try {
+		const doc = rootEl.ownerDocument;
 		const triggerHost = rootEl.querySelector<HTMLElement>(VIEWS_TRIGGER_SELECTOR);
 		if (!triggerHost) {
 			return { status: "failed", reason: "views-trigger-missing" };
@@ -284,10 +372,14 @@ export async function openNativeViewSettingsAtAnchor(
 
 		const triggerEl = resolveTriggerTarget(triggerHost);
 		const anchorPoint = getElementPoint(anchorEl);
-		const beforeMenusCount = getVisibleMenus(rootEl.ownerDocument).length;
+		const beforeMenusCount = getVisibleMenus(doc).length;
 		const openedMenu = await openViewsMenu(triggerEl, anchorPoint, beforeMenusCount);
 		if (!openedMenu) {
 			return { status: "failed", reason: "views-menu-not-opened" };
+		}
+		if (wasHidden) {
+			shouldDelayHiddenRestore = true;
+			await tryPositionMenuNearAnchor(openedMenu, anchorPoint);
 		}
 
 		const rowEl = resolveViewRow(openedMenu, viewName);
@@ -296,6 +388,12 @@ export async function openNativeViewSettingsAtAnchor(
 		}
 
 		const result = await tryOpenSettingsFromRow(rowEl, anchorPoint, openedMenu);
+		if (wasHidden) {
+			const nativeMenu = findNativeViewsMenu(getVisibleMenus(doc));
+			if (nativeMenu) {
+				await tryPositionMenuNearAnchor(nativeMenu, anchorPoint);
+			}
+		}
 		if (result === "opened-settings") {
 			return { status: "opened-settings" };
 		}
@@ -304,7 +402,11 @@ export async function openNativeViewSettingsAtAnchor(
 		return { status: "failed", reason: "bridge-error" };
 	} finally {
 		if (wasHidden) {
-			rootEl.classList.add(hiddenClass);
+			if (shouldDelayHiddenRestore) {
+				scheduleHiddenToolbarRestore(rootEl, hiddenClass, rootEl.ownerDocument);
+			} else {
+				rootEl.classList.add(hiddenClass);
+			}
 		}
 	}
 }

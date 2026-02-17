@@ -307,7 +307,7 @@ button.tn-bases-view-list__item-menu {
 	cursor: var(--cursor);
 	padding: 0;
 	opacity: 0;
-	pointer-events: none;
+	pointer-events: auto;
 	transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
@@ -330,10 +330,13 @@ button.tn-bases-view-list__item-menu {
 
 .tn-bases-view-list__item-row.is-active .tn-bases-view-list__item-menu {
 	color: var(--text-on-accent);
+	opacity: 0.72;
+	pointer-events: auto;
 }
 
 .tn-bases-view-list__item-row.is-active .tn-bases-view-list__item-menu:hover {
 	background: rgba(255, 255, 255, 0.15);
+	opacity: 1;
 }
 
 .tn-bases-view-list__resizer {
