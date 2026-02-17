@@ -116,7 +116,6 @@ const CSS_NATIVE_TOOLBAR_HIDDEN = "tn-bases-native-toolbar-hidden";
 const CSS_FONT_M = "tn-bases-view-list-font-m";
 const CSS_FONT_S = "tn-bases-view-list-font-s";
 const CSS_FONT_XS = "tn-bases-view-list-font-xs";
-const VIEW_SETTINGS_DEBUG_PREFIX = "[TaskNotes][Bases][ViewSettings]";
 
 const WIDTH_MIN = 140;
 const WIDTH_MAX = 520;
@@ -246,18 +245,6 @@ export class BasesViewListSidebarService {
 			this.refreshTimer = null;
 			void this.refreshAll();
 		}, delayMs);
-	}
-
-	private logViewSettingsDebug(message: string, details?: Record<string, unknown>): void {
-		try {
-			if (details) {
-				console.log(VIEW_SETTINGS_DEBUG_PREFIX, message, details);
-				return;
-			}
-			console.log(VIEW_SETTINGS_DEBUG_PREFIX, message);
-		} catch {
-			// Ignore logging failures.
-		}
 	}
 
 	private async refreshAll(): Promise<void> {
@@ -1109,20 +1096,12 @@ export class BasesViewListSidebarService {
 		entry: ViewEntry,
 		anchorEl: HTMLElement
 	): Promise<void> {
-		this.logViewSettingsDebug("item-menu.open.start", {
-			viewName: entry.name,
-			anchorConnected: anchorEl.isConnected,
-		});
 		const leafContainerEl = this.getLeafView(leaf)?.containerEl;
 		const basesViewEl = this.findBasesViewEl(leaf);
 		const rootEl =
 			leafContainerEl ??
 			(basesViewEl ? this.resolveLayoutContext(basesViewEl).rootEl : null);
 		if (!rootEl) {
-			this.logViewSettingsDebug("item-menu.open.failed", {
-				reason: "root-missing",
-				viewName: entry.name,
-			});
 			new Notice(this.getNativeViewSettingsOpenFailedNotice());
 			return;
 		}
@@ -1135,10 +1114,6 @@ export class BasesViewListSidebarService {
 				this.plugin.settings.basesViewListShowNativeToolbar = true;
 				void this.persistSettings();
 			}
-			this.logViewSettingsDebug("item-menu.open.force-native-toolbar-on", {
-				hiddenByClass,
-				hiddenBySetting,
-			});
 			await this.waitForNativeToolbarLayoutReady(rootEl);
 		}
 
@@ -1148,27 +1123,14 @@ export class BasesViewListSidebarService {
 			anchorEl,
 			nativeToolbarHiddenClass: CSS_NATIVE_TOOLBAR_HIDDEN,
 		});
-		this.logViewSettingsDebug("item-menu.open.result", {
-			viewName: entry.name,
-			status: result.status,
-			reason: result.reason ?? null,
-		});
 
 		if (result.status === "opened-settings") {
 			return;
 		}
 
 		if (result.status === "opened-view-list-only") {
-			this.logViewSettingsDebug("item-menu.open.notice-partial", {
-				viewName: entry.name,
-				reason: result.reason ?? null,
-			});
 			new Notice(this.getNativeViewSettingsOpenPartialNotice());
 		} else {
-			this.logViewSettingsDebug("item-menu.open.notice-failed", {
-				viewName: entry.name,
-				reason: result.reason ?? null,
-			});
 			new Notice(this.getNativeViewSettingsOpenFailedNotice());
 		}
 	}
@@ -1678,9 +1640,6 @@ export class BasesViewListSidebarService {
 			}
 
 			button.addEventListener("click", () => {
-				this.logViewSettingsDebug("view-row.button.click", {
-					viewName: entry.name,
-				});
 				void this.switchView(leaf, entry.name);
 			});
 
@@ -1691,19 +1650,7 @@ export class BasesViewListSidebarService {
 			// Keep only Obsidian-style tooltip path via aria-label to avoid duplicated native title tooltip.
 			setIcon(itemMenuButtonEl, "more-horizontal");
 			let pointerActivatedAt = 0;
-			itemMenuButtonEl.addEventListener("pointerenter", () => {
-				this.logViewSettingsDebug("item-menu.button.pointerenter", {
-					viewName: entry.name,
-				});
-			});
 			itemMenuButtonEl.addEventListener("pointerdown", (evt) => {
-				this.logViewSettingsDebug("item-menu.button.pointerdown", {
-					viewName: entry.name,
-					button: evt.button,
-					isTrusted: evt.isTrusted,
-					clientX: Math.round(evt.clientX),
-					clientY: Math.round(evt.clientY),
-				});
 				if (evt.button !== 0) return;
 				pointerActivatedAt = Date.now();
 				evt.preventDefault();
@@ -1711,18 +1658,8 @@ export class BasesViewListSidebarService {
 				void this.openNativeViewSettingsFromItemMenu(leaf, entry, itemMenuButtonEl);
 			});
 			itemMenuButtonEl.addEventListener("click", (evt) => {
-				this.logViewSettingsDebug("item-menu.button.click", {
-					viewName: entry.name,
-					detail: evt.detail,
-					button: evt.button,
-					isTrusted: evt.isTrusted,
-				});
 				// Prefer pointerdown path because some startup states drop click.
 				if (Date.now() - pointerActivatedAt <= 1200) {
-					this.logViewSettingsDebug("item-menu.button.click.suppressed", {
-						viewName: entry.name,
-						sincePointerDownMs: Date.now() - pointerActivatedAt,
-					});
 					evt.preventDefault();
 					evt.stopPropagation();
 					return;
@@ -1735,28 +1672,9 @@ export class BasesViewListSidebarService {
 				if (evt.key !== "Enter" && evt.key !== " " && evt.key !== "Spacebar") {
 					return;
 				}
-				this.logViewSettingsDebug("item-menu.button.keydown", {
-					viewName: entry.name,
-					key: evt.key,
-					isTrusted: evt.isTrusted,
-				});
 				evt.preventDefault();
 				evt.stopPropagation();
 				void this.openNativeViewSettingsFromItemMenu(leaf, entry, itemMenuButtonEl);
-			});
-			rowEl.addEventListener("pointerdown", (evt) => {
-				const target = evt.target instanceof HTMLElement ? evt.target : null;
-				const onMenuButton =
-					target?.closest(`.${CSS_ITEM_MENU_BUTTON}`) != null;
-				const onMainButton = target?.closest(`.${CSS_ITEM}`) != null;
-				this.logViewSettingsDebug("view-row.pointerdown", {
-					viewName: entry.name,
-					onMenuButton,
-					onMainButton,
-					targetClass: target?.className ?? null,
-					clientX: Math.round(evt.clientX),
-					clientY: Math.round(evt.clientY),
-				});
 			});
 
 			rowEl.appendChild(button);
@@ -2275,7 +2193,6 @@ export class BasesViewListSidebarService {
 		const maxAttempts = 20;
 		const originThresholdPx = 2;
 		const stableDeltaPx = 2;
-		const stableFramesRequired = 3;
 		let stableFrames = 0;
 		let previousRect:
 			| { left: number; top: number; width: number; height: number }
@@ -2288,12 +2205,9 @@ export class BasesViewListSidebarService {
 			const top = rect?.top ?? Number.NaN;
 			const width = rect?.width ?? 0;
 			const height = rect?.height ?? 0;
-			const isConnected = !!triggerHost?.isConnected;
 			const hasSize = width > 0 && height > 0;
-			const hasFinitePosition = Number.isFinite(left) && Number.isFinite(top);
-			const isAwayFromOrigin =
-				hasFinitePosition && left > originThresholdPx && top > originThresholdPx;
-			const hasBasicLayout = isConnected && hasSize && isAwayFromOrigin;
+			const isAwayFromOrigin = left > originThresholdPx && top > originThresholdPx;
+			const hasBasicLayout = hasSize && isAwayFromOrigin;
 
 			let isStable = false;
 			if (hasBasicLayout) {
@@ -2316,22 +2230,7 @@ export class BasesViewListSidebarService {
 				previousRect = null;
 			}
 
-			const hasLayout = hasBasicLayout && stableFrames >= stableFramesRequired;
-			this.logViewSettingsDebug("item-menu.open.wait-native-toolbar-layout", {
-				attempt: i + 1,
-				maxAttempts,
-				hasTrigger: !!triggerHost,
-				isConnected,
-				width: rect ? Math.round(width) : null,
-				height: rect ? Math.round(height) : null,
-				left: rect ? Math.round(left) : null,
-				top: rect ? Math.round(top) : null,
-				isAwayFromOrigin,
-				isStable,
-				stableFrames,
-				stableFramesRequired,
-				hasLayout,
-			});
+			const hasLayout = hasBasicLayout && stableFrames >= 2;
 			if (hasLayout) return;
 			await wait(16);
 		}

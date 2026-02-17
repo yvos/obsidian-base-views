@@ -23,6 +23,7 @@
 - 2026-02-16 時点で view一覧サイドバーの各view行に3点メニューを追加し、ネイティブview設定UI起動導線を実装。
 - 2026-02-17 時点で 3点メニューのネイティブ設定起動を再改善し、`.bases-toolbar-menu-item` + `view-config-menu` 遷移判定に対応（失敗時フォールバックメニューは廃止しNoticeのみ）。
 - 2026-02-17 時点で 3点メニュー起動時の native toolbar 再表示後待機を強化し、左上原点回避 + 連続安定フレーム確認後に設定起動するよう改善。
+- 2026-02-17 時点で 3点メニュー起動の待機判定を簡素化（`isConnected` 判定と診断ログを撤去、連続安定フレーム閾値を2へ調整）。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -266,8 +267,7 @@
 - ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。
 - ネイティブviewsメニューは「可視化済みかつ行要素生成済み」であることを確認してから行選択へ進む（起動直後の空メニュー誤検出を回避）。
 - 3点ボタンから設定起動時にネイティブツールバーが非表示なら、`basesViewListShowNativeToolbar` をONへ更新し、そのまま表示を維持する（手動でOFFに戻せる）。
-- ネイティブツールバー再表示直後は `.bases-toolbar-views-menu` の存在/接続/サイズ/座標（左上原点回避）に加え、rectの連続安定フレームを確認してからbridgeを実行する。
-- 3点ボタン経路とネイティブ設定ブリッジには、切り分け用の `console.log`（`[TaskNotes][Bases][ViewSettings]` / `[TaskNotes][Bases][ViewSettingsBridge]`）を実装している。
+- ネイティブツールバー再表示直後は `.bases-toolbar-views-menu` のサイズ/座標（左上原点回避）とrectの連続安定2フレームを確認してからbridgeを実行する。
 - 3点ボタンは `title` 属性を付けず、`aria-label` 経路のツールチップのみを使用して重複表示を避ける。
 - top配置時は `wrap/scroll` 設定を適用し、狭幅 + `narrowBehavior=top` ではユーザー配置が `left/top` のどちらでも `scroll` を強制する。
 - 狭幅判定は leaf container 幅を使い、`ResizeObserver` で変化を追従する。
