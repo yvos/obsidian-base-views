@@ -722,6 +722,11 @@ button.tn-bases-view-list__item-menu {
     background: var(--tn-interactive-hover);
 }
 
+.tn-tasknotesCustomTable .tn-bases-table-row--jump-target > .tn-bases-table-cell,
+.tn-tasknotesCustomTable .tn-bases-table-row--jump-target .tn-bases-table-cell {
+    background: var(--tn-interactive-hover);
+}
+
 .tn-tasknotesCustomTable .tn-bases-table-cell {
     border-bottom: 1px solid var(--tn-border-color);
     padding: 0 12px;

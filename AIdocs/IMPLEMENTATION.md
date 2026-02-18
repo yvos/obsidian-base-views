@@ -31,6 +31,7 @@
 - 2026-02-18 時点で Custom Table の2段階グルーピング見出しを微調整し、1段目/2段目でフォントサイズ差を付与、`veryShort` 時はグループ見出し行余白も連動して縮小。
 - 2026-02-18 時点で `tasknotesCustomTable` の2段階グルーピング候補に file系7種（`file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags`）を追加。
 - 2026-02-18 時点で view一覧の左端表示で長文テキストを行枠内クリップに調整し、Custom Table の unnest 重複行へ `git-branch` ボタンで循環ジャンプできるように更新。
+- 2026-02-18 時点で Custom Table の重複行ジャンプ後、ジャンプ先行を一時ハイライトし、1フレーム後以降に別行ホバーで解除する挙動を追加。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -103,6 +104,7 @@
     - Iconic 解決順は `ruleManager.checkRuling("file", path)` → `getFileItem(path[, false])` → `settings.fileIcons[path]`
     - `icon` が空で `color` のみの場合はアイコンを表示しない
     - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、リンク右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ（末尾到達で先頭へ戻る）
+    - 重複行ジャンプ後は対象行を一時ハイライトし、1フレーム経過後に別行へホバーすると解除
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
   - 列ヘッダー表示
     - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）

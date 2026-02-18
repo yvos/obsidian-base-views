@@ -164,6 +164,12 @@ export class CustomTableView extends BasesViewBase {
 	private readonly VIRTUAL_THRESHOLD_GROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_GROUPED;
 	private readonly VIRTUAL_OVERSCAN = CUSTOM_TABLE_VIRTUAL_OVERSCAN;
 	private duplicateJumpAnimationRAF: number | null = null;
+	private jumpHighlightRowOrder: number | null = null;
+	private jumpHighlightRowEl: HTMLElement | null = null;
+	private jumpHighlightFindRAF: number | null = null;
+	private jumpHighlightUnlockRAF: number | null = null;
+	private jumpHighlightScheduleTimer: number | null = null;
+	private jumpHighlightCanClear = true;
 
 	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
 		super(controller, containerEl, plugin);
@@ -177,6 +183,10 @@ export class CustomTableView extends BasesViewBase {
 		this.register(() => this.destroyVirtualScroller());
 		this.register(() => this.stopActiveColumnResize());
 		this.register(() => this.stopDuplicateJumpAnimation());
+		this.register(() => {
+			this.clearJumpTargetHighlight();
+			this.stopJumpHighlightTimers();
+		});
 	}
 
 	/**
@@ -246,6 +256,7 @@ export class CustomTableView extends BasesViewBase {
 		const doc = this.containerEl.ownerDocument;
 		this.tableScrollEl = doc.createElement("div");
 		this.tableScrollEl.className = "tn-bases-table-scroll";
+		this.registerDomEvent(this.tableScrollEl, "pointerover", this.handleTablePointerOver);
 		this.rootElement.appendChild(this.tableScrollEl);
 	}
 
@@ -453,6 +464,8 @@ export class CustomTableView extends BasesViewBase {
 		this.duplicateNavigationIndex = createEmptyDuplicateNavigationIndex();
 		this.normalRowOrderCursor = 0;
 		this.virtualRowOrderToIndex.clear();
+		this.clearJumpTargetHighlight();
+		this.stopJumpHighlightTimers();
 	}
 
 	private prepareDuplicateNavigation(entriesInRenderOrder: EntryLike[]): void {
@@ -481,6 +494,100 @@ export class CustomTableView extends BasesViewBase {
 		const rowOrder = this.normalRowOrderCursor;
 		this.normalRowOrderCursor += 1;
 		return rowOrder;
+	}
+
+	private handleTablePointerOver = (event: PointerEvent): void => {
+		if (!this.jumpHighlightCanClear) return;
+		if (this.jumpHighlightRowOrder == null) return;
+
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) return;
+
+		const hoveredRow = target.closest<HTMLElement>(".tn-bases-table-row[data-tn-row-order]");
+		if (!hoveredRow) return;
+
+		const hoveredOrderRaw = hoveredRow.dataset.tnRowOrder;
+		if (typeof hoveredOrderRaw !== "string") return;
+		const hoveredOrder = Number.parseInt(hoveredOrderRaw, 10);
+		if (!Number.isFinite(hoveredOrder)) return;
+		if (hoveredOrder === this.jumpHighlightRowOrder) return;
+
+		this.clearJumpTargetHighlight();
+	};
+
+	private findRenderedRowByOrder(rowOrder: number): HTMLElement | null {
+		return this.rootElement?.querySelector<HTMLElement>(
+			`.tn-bases-table-row[data-tn-row-order="${rowOrder}"]`
+		) ?? null;
+	}
+
+	private applyJumpTargetHighlight(rowOrder: number): void {
+		this.clearJumpTargetHighlight();
+		this.stopJumpHighlightTimers();
+
+		const maxFindAttempts = 24;
+		let attempts = 0;
+		const win = this.containerEl.ownerDocument.defaultView || window;
+		const tryApply = (): void => {
+			const rowEl = this.findRenderedRowByOrder(rowOrder);
+			if (!rowEl) {
+				if (attempts < maxFindAttempts) {
+					attempts += 1;
+					this.jumpHighlightFindRAF = win.requestAnimationFrame(tryApply);
+				}
+				return;
+			}
+
+			this.jumpHighlightFindRAF = null;
+			this.jumpHighlightRowEl = rowEl;
+			this.jumpHighlightRowOrder = rowOrder;
+			rowEl.classList.add("tn-bases-table-row--jump-target");
+
+			// Allow one frame where both hover and jump target highlight can coexist.
+			this.jumpHighlightCanClear = false;
+			this.jumpHighlightUnlockRAF = win.requestAnimationFrame(() => {
+				this.jumpHighlightUnlockRAF = null;
+				this.jumpHighlightCanClear = true;
+			});
+		};
+
+		tryApply();
+	}
+
+	private scheduleJumpTargetHighlight(rowOrder: number): void {
+		this.clearJumpTargetHighlight();
+		this.stopJumpHighlightTimers();
+
+		const win = this.containerEl.ownerDocument.defaultView || window;
+		this.jumpHighlightScheduleTimer = win.setTimeout(() => {
+			this.jumpHighlightScheduleTimer = null;
+			this.applyJumpTargetHighlight(rowOrder);
+		}, this.DUPLICATE_JUMP_SCROLL_DURATION_MS);
+	}
+
+	private clearJumpTargetHighlight(): void {
+		if (this.jumpHighlightRowEl?.isConnected) {
+			this.jumpHighlightRowEl.classList.remove("tn-bases-table-row--jump-target");
+		}
+		this.jumpHighlightRowEl = null;
+		this.jumpHighlightRowOrder = null;
+	}
+
+	private stopJumpHighlightTimers(): void {
+		const win = this.containerEl.ownerDocument.defaultView || window;
+		if (this.jumpHighlightFindRAF !== null) {
+			win.cancelAnimationFrame(this.jumpHighlightFindRAF);
+			this.jumpHighlightFindRAF = null;
+		}
+		if (this.jumpHighlightUnlockRAF !== null) {
+			win.cancelAnimationFrame(this.jumpHighlightUnlockRAF);
+			this.jumpHighlightUnlockRAF = null;
+		}
+		if (this.jumpHighlightScheduleTimer !== null) {
+			win.clearTimeout(this.jumpHighlightScheduleTimer);
+			this.jumpHighlightScheduleTimer = null;
+		}
+		this.jumpHighlightCanClear = true;
 	}
 
 	private getPrimaryGroupByPropertyId(): string | null {
@@ -1758,6 +1865,7 @@ export class CustomTableView extends BasesViewBase {
 					"smooth",
 					this.DUPLICATE_JUMP_SCROLL_DURATION_MS
 				);
+				this.scheduleJumpTargetHighlight(rowOrder);
 				return;
 			}
 
@@ -1766,6 +1874,7 @@ export class CustomTableView extends BasesViewBase {
 			);
 			if (!targetRow) return;
 			this.fastScrollRowIntoView(targetRow);
+			this.scheduleJumpTargetHighlight(rowOrder);
 		} catch {
 			// Defensive no-op: duplicate jump should never break table rendering.
 		}
