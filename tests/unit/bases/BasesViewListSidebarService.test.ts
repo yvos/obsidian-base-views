@@ -103,6 +103,7 @@ function createBaseLeaf(options: {
 		viewName: currentViewName,
 		...(options.controller ?? {}),
 	};
+	const refresh = jest.fn();
 
 	const leaf = {
 		view: {
@@ -110,10 +111,11 @@ function createBaseLeaf(options: {
 			file,
 			controller,
 			containerEl: rootEl,
+			refresh,
 		},
 	};
 
-	return { leaf, rootEl, headerEl, toolbarEl, labelEl, basesViewEl, controller, hostEl };
+	return { leaf, rootEl, headerEl, toolbarEl, labelEl, basesViewEl, controller, hostEl, refresh };
 }
 
 function setLeafWidth(rootEl: HTMLElement, width: number): void {
@@ -1741,6 +1743,48 @@ describe("BasesViewListSidebarService", () => {
 		await onClickHandler();
 		await flushTimersAndPromises(3);
 
+		expect(setup.refresh).toHaveBeenCalledTimes(1);
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(2);
+	});
+
+	it("continues redrawing view list even when base refresh throws", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "A" },
+						{ name: "Cards", type: "cards", description: "B" },
+					],
+				},
+			},
+		});
+		setup.refresh.mockImplementation(() => {
+			throw new Error("refresh failed");
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const itemsBefore = setup.rootEl.querySelectorAll(".tn-bases-view-list__item");
+		expect(itemsBefore.length).toBe(2);
+		itemsBefore[0]?.remove();
+		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(1);
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuInstance = getLastMenuInstance();
+		const redrawItem = getMenuItemByTitle(menuInstance, "Redraw view list");
+		const onClickHandler = redrawItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(setup.refresh).toHaveBeenCalledTimes(1);
 		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(2);
 	});
 

@@ -26,8 +26,10 @@
 - 2026-02-17 時点で 3点メニュー起動の待機判定を簡素化（`isConnected` 判定と診断ログを撤去、連続安定フレーム閾値を2へ調整）。
 - 2026-02-18 時点で view一覧サイドバーに `.base` ファイル監視の自動再描画（modify/rename/delete、600msデバウンス、該当leafのみ更新）を追加。
 - 2026-02-18 時点で view一覧設定保持を再設計し、`temporary(leaf) > base formulas > plugin default` で解決する方式へ移行（`none` 配置、side pane別デフォルト、base単位永続化）を実装。
+- 2026-02-18 時点で view一覧コンテキストメニューの `Redraw view list` から、view一覧再構築に加えて対象 `bases` leaf 本体の `refresh()` も呼ぶように更新。
 - 2026-02-18 時点で Custom Table の表示をネイティブ寄せに調整（本文/ヘッダー/グループのフォントサイズ見直し、`Row height = Very short (22px)` 追加）し、view一覧3点ボタンを「行内右端・枠線/背景なし」へ調整。
 - 2026-02-18 時点で Custom Table の2段階グルーピング見出しを微調整し、1段目/2段目でフォントサイズ差を付与、`veryShort` 時はグループ見出し行余白も連動して縮小。
+- 2026-02-18 時点で `tasknotesCustomTable` の2段階グルーピング候補に file系7種（`file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags`）を追加。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -87,6 +89,7 @@
   - grouped / ungrouped 両対応
   - Grouping options
     - `subGroup`（property）で2段階グルーピングを有効化
+      - CustomTableでは `note.*` / `task.*` / `formula.*` に加えて `file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` を候補として許可
     - `unnestMultiValueGroup`（toggle, default: true）で list 値のグループ展開を切替
     - `customTableShowGroupingPropertyName`（plugin setting, default: false）で group見出しを `property: value` 表示に切替
   - `file.name` 列のリンク描画
@@ -289,6 +292,7 @@
 - 一覧領域の右クリックメニューで `left/top` を leaf一時変更できる。
 - 一覧領域の右クリックメニューで base永続 `left/top/none` をトグル保存できる。
 - 一覧領域の右クリックメニューでプロパティ表示ON/OFF・表示プロパティキー・top overflowを base単位で保存できる（plugin設定は既定値として維持）。
+- 一覧領域の右クリックメニュー `Redraw view list` は、view一覧DOM再構築に加えて対象 `bases` leaf の `refresh()` も実行する。
 - view行右クリックでは `description` 編集項目を追加表示する。
 - view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
 - ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。

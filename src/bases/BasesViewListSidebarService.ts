@@ -2732,6 +2732,14 @@ export class BasesViewListSidebarService {
 
 	private async redrawViewList(leaf: WorkspaceLeaf): Promise<void> {
 		if (!this.running) return;
+		const leafView = this.getLeafView(leaf) as unknown as { refresh?: () => void } | null;
+		if (typeof leafView?.refresh === "function") {
+			try {
+				leafView.refresh();
+			} catch (error) {
+				console.debug("[TaskNotes][Bases] Failed to refresh bases view before redrawing list", error);
+			}
+		}
 		this.cleanupLeaf(leaf);
 		this.removeToolbarOpenTrigger(leaf);
 		await this.refreshLeaf(leaf);

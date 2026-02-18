@@ -8,6 +8,25 @@ import { buildMiniCalendarViewFactory } from "./MiniCalendarView";
 import { buildCustomTableViewFactory } from "./CustomTableView";
 import { registerBasesView, unregisterBasesView } from "./api";
 
+const CUSTOM_TABLE_SUB_GROUP_FILE_PROPERTIES = new Set([
+	"file.folder",
+	"file.ext",
+	"file.size",
+	"file.links",
+	"file.backlinks",
+	"file.embeds",
+	"file.tags",
+]);
+
+function isCustomTableSubGroupProperty(prop: string): boolean {
+	return (
+		prop.startsWith("note.") ||
+		prop.startsWith("task.") ||
+		prop.startsWith("formula.") ||
+		CUSTOM_TABLE_SUB_GROUP_FILE_PROPERTIES.has(prop)
+	);
+}
+
 /**
  * Register TaskNotes views with Bases plugin
  * Requires Obsidian 1.10.1+ (public Bases API with groupBy support)
@@ -56,7 +75,7 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 						displayName: "Sub-group by",
 						placeholder: "Select property for sub-grouping (optional)",
 						filter: (prop: string) => {
-							return prop.startsWith("note.") || prop.startsWith("task.") || prop.startsWith("formula.");
+							return isCustomTableSubGroupProperty(prop);
 						},
 					},
 					{
