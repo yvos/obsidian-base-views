@@ -25,6 +25,7 @@
 - 2026-02-17 時点で 3点メニュー起動時の native toolbar 再表示後待機を強化し、左上原点回避 + 連続安定フレーム確認後に設定起動するよう改善。
 - 2026-02-17 時点で 3点メニュー起動の待機判定を簡素化（`isConnected` 判定と診断ログを撤去、連続安定フレーム閾値を2へ調整）。
 - 2026-02-18 時点で view一覧サイドバーに `.base` ファイル監視の自動再描画（modify/rename/delete、600msデバウンス、該当leafのみ更新）を追加。
+- 2026-02-18 時点で view一覧設定保持を再設計し、`temporary(leaf) > base formulas > plugin default` で解決する方式へ移行（`none` 配置、side pane別デフォルト、base単位永続化）を実装。
 - 2026-02-18 時点で Custom Table の表示をネイティブ寄せに調整（本文/ヘッダー/グループのフォントサイズ見直し、`Row height = Very short (22px)` 追加）し、view一覧3点ボタンを「行内右端・枠線/背景なし」へ調整。
 - 2026-02-18 時点で Custom Table の2段階グルーピング見出しを微調整し、1段目/2段目でフォントサイズ差を付与、`veryShort` 時はグループ見出し行余白も連動して縮小。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
@@ -43,24 +44,29 @@
   - 設定:
     - `enableBasesViewListSidebar`（ON/OFF）
     - `basesViewListDropdownMode`（`list-only` / `combined`）
-    - `basesViewListCollapsed`（開閉状態のグローバル保存）
-    - `basesViewListPlacement`（`left` / `top`）
+    - `basesViewListPlacement`（`left` / `top` / `none`、通常ペイン既定）
+    - `basesViewListSidePanePlacement`（`left` / `top` / `none`、サイドペイン既定）
     - `basesViewListFontSize`（`m` / `s` / `xs`）
-    - `basesViewListShowProperty`（viewプロパティ行表示ON/OFF）
-    - `basesViewListPropertyKey`（表示対象のプロパティキー）
+    - `basesViewListShowProperty`（viewプロパティ行表示ON/OFFの既定）
+    - `basesViewListPropertyKey`（表示対象プロパティキーの既定）
     - `basesViewListShowNativeToolbar`（一覧表示中の `.bases-header` / `.bases-toolbar` 表示）
     - `basesViewListShowIcons`（viewアイコン表示ON/OFF）
-    - `basesViewListTopOverflowMode`（`wrap` / `scroll`）
+    - `basesViewListTopOverflowMode`（`wrap` / `scroll` の既定）
     - `basesViewListNarrowBehavior`（`none` / `top` / `hide`）
     - `basesViewListNarrowThresholdPx`（狭幅判定閾値px）
   - 表示:
+    - 解決優先順位は `temporary(leaf) > base formulas(.base) > plugin default`
     - viewが1件以下のbaseでは一覧UI/トグルを表示しない（完全非表示）
     - `left` は左サイドバー表示
     - `top` は `bases-header` 直下（fallback: toolbar直前）に横並び表示
-    - 一覧ヘッダー左の `x` で閉じる、閉状態ではtoolbar左端の `list-plus` で開く
+    - `none` は一覧非表示 + toolbar左端の `list-plus` トリガのみ表示
+    - 一覧ヘッダー左の `x` で閉じると temporary `none` へ戻る
+    - `list-plus` トリガで開くと、通常ペインは temporary `left`、サイドペインは temporary `top` を適用
     - `top` ではタイトル文字列を出さず close のみ表示
-    - 一覧領域の右クリックメニューで `left/top` を切替可能
-    - 一覧領域の右クリックメニューでプロパティ表示ON/OFFを切替可能
+    - 一覧領域の右クリックメニューで `left/top` を leaf一時切替可能
+    - 一覧領域の右クリックメニューで base永続の `left/top/none` をトグル保存可能
+    - 一覧領域の右クリックメニューでプロパティ表示ON/OFFを base単位で保存可能
+    - 一覧領域の右クリックメニューで表示プロパティキーを base単位で変更可能（存在しないキー入力時はoverride削除）
     - 一覧領域の右クリックメニューでネイティブツールバー表示ON/OFFを切替可能
     - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
     - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
@@ -73,7 +79,7 @@
     - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`、`tasknotesCustomTable` は `table-cells-merge`）
     - 設定ON時は view名の下にプロパティ行を表示（配列はカンマ区切り、空値は非表示）
     - 狭幅時は設定に応じて `none/top/hide` を適用
-    - 一覧が非表示状態（collapsed / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
+    - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
     - 対象 `.base` の `modify/rename/delete` を監視し、YAMLキャッシュ削除後に600msデバウンスで該当leafのみ自動再描画
 - Custom Table View (`tasknotesCustomTable`)
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
@@ -148,7 +154,7 @@
 - `src/integrations/bases/types.ts`
   - Basesネイティブ設定ブリッジの入力/結果型定義
 - `src/bases/BaseViewListYamlStore.ts`
-  - `.base` YAML の `formulas.viewListSize` / `views[].description` 読み書き補助
+  - `.base` YAML の `formulas`（`tnViewList*` + `viewListSize`）/ `views[].description` 読み書き補助
 - `src/bases/api.ts`
   - Bases API ラッパー型
 - `src/releaseNotes.ts`
@@ -182,7 +188,7 @@
 - `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
   - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
-  - `viewListSize` / `description` YAML更新のユニットテスト
+  - `tnViewList*` / `viewListSize` / `description` YAML更新のユニットテスト
 
 # 4. データ構造
 - `tableSummaries: Record<propertyId, summaryKey>`
@@ -208,27 +214,34 @@
 - `basesViewListDropdownMode: "list-only" | "combined"`
   - view一覧とネイティブdropdownの併用可否
 - `basesViewListCollapsed: boolean`
-  - view一覧サイドバーの開閉状態（グローバル）
-- `basesViewListPlacement: "left" | "top"`
-  - view一覧の配置モード（左配置/上配置）
+  - 互換目的の旧設定（挙動決定には不使用）
+- `basesViewListPlacement: "left" | "top" | "none"`
+  - 通常ペインにおける view一覧配置の既定値
+- `basesViewListSidePanePlacement: "left" | "top" | "none"`
+  - サイドペインにおける view一覧配置の既定値
 - `basesViewListFontSize: "m" | "s" | "xs"`
   - view一覧の文字サイズ
 - `basesViewListShowNativeToolbar: boolean`
   - 一覧表示中にネイティブBasesツールバーを表示するか
 - `basesViewListShowProperty: boolean`
-  - 各viewの2行目プロパティ表示のON/OFF
+  - 各viewの2行目プロパティ表示の既定値
 - `basesViewListPropertyKey: string`
-  - 2行目に表示するプロパティキー（例: `description`）
+  - 2行目に表示するプロパティキーの既定値（例: `description`）
 - `basesViewListShowIcons: boolean`
   - view一覧のアイコン表示ON/OFF
 - `basesViewListTopOverflowMode: "wrap" | "scroll"`
-  - top配置時の並び方（折返し/1行横スクロール）
+  - top配置時の並び方の既定値（折返し/1行横スクロール）
 - `basesViewListNarrowBehavior: "none" | "top" | "hide"`
   - 狭幅時の挙動
 - `basesViewListNarrowThresholdPx: number`
   - 狭幅判定閾値px
-- `.base formulas.viewListSize: string`
-  - view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、手動リサイズ時に文字列として保存）
+- `.base formulas`（base単位override）
+  - `tnViewListPosition`: 通常ペイン配置 (`left` / `top` / `none`)
+  - `tnViewListSidePanePosition`: サイドペイン配置 (`left` / `top` / `none`)
+  - `tnViewListShowProperty`: プロパティ表示ON/OFF（YAML string: `"true"` / `"false"`）
+  - `tnViewListPropertyKey`: 表示プロパティキー
+  - `tnViewListTopOverflowMode`: top overflow (`wrap` / `scroll`)
+  - `viewListSize`: view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、文字列として保存）
 
 # 5. 挙動の詳細や注意点
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
@@ -260,7 +273,8 @@
 - `list-only` 設定時は `.bases-toolbar-views-menu` を非表示にし、`combined` では表示維持する。
 - `basesViewListDropdownMode` は views dropdown の表示制御のみで、`.bases-header` / `.bases-toolbar` の表示制御は `basesViewListShowNativeToolbar` が担当する。
 - view数が1件以下のbaseでは、一覧サイドバーとtoolbarの開くトグルを注入しない。
-- 開状態ではヘッダーにcloseボタンを表示し、閉状態ではtoolbar左端にopenボタンを表示する。
+- 一覧表示の最終決定は `temporary(leaf) > base formulas > plugin default` の順で行う。
+- `none` 時はヘッダーのcloseで temporary `none` を維持し、toolbar左端のopenボタンで通常ペイン=`left`、サイドペイン=`top` を一時適用する。
 - 一覧幅はリサイズハンドルのドラッグで変更し、pointer終了時に `.base formulas.viewListSize` へ保存する。
 - `formulas.viewListSize` は文字列として保存し、利用時に数値変換して計算する（Bases仕様対応）。
 - `.base` の `modify/rename/delete` 受信時は `yamlStore.clearCache(path)` を先に実行し、600msデバウンス後に同一pathの bases leaf のみ再描画する。
@@ -272,7 +286,9 @@
 - top配置でプロパティ表示ON時は、空値viewも空行を入れて高さを揃える。
 - フォントサイズは `m/s/xs` クラスで切替し、表示ラベルは `Default/Small/Very Small` を使用する。
 - `button` 既定 `height` 競合を避けるため、一覧行は `height: auto` を明示し、文字サイズに連動してアイコンと行高を調整する。
-- 一覧領域の右クリックメニューで `left/top`・プロパティ表示ON/OFF・ネイティブツールバー表示ON/OFFを即時切替できる。
+- 一覧領域の右クリックメニューで `left/top` を leaf一時変更できる。
+- 一覧領域の右クリックメニューで base永続 `left/top/none` をトグル保存できる。
+- 一覧領域の右クリックメニューでプロパティ表示ON/OFF・表示プロパティキー・top overflowを base単位で保存できる（plugin設定は既定値として維持）。
 - view行右クリックでは `description` 編集項目を追加表示する。
 - view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
 - ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。

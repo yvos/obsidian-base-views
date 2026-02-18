@@ -2,13 +2,20 @@ import { EventRef, Menu, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian"
 import TaskNotesPlugin from "../main";
 import { openNativeViewSettingsAtAnchor } from "../integrations/bases/nativeViewSettingsBridge";
 import { showTextInputModal } from "../modals/TextInputModal";
-import { BaseViewListYamlStore } from "./BaseViewListYamlStore";
+import {
+	BaseViewListFormulaPrefs,
+	BaseViewListYamlStore,
+	ViewListFormulaContext,
+	ViewListFormulaPlacement,
+} from "./BaseViewListYamlStore";
 
 type DropdownMode = "list-only" | "combined";
-type LayoutPlacement = "left" | "top";
+type LayoutPlacement = "left" | "top" | "none";
+type RenderPlacement = "left" | "top";
 type FontSizeOption = "m" | "s" | "xs";
 type TopOverflowMode = "wrap" | "scroll";
 type NarrowBehavior = "none" | "top" | "hide";
+type ViewListPaneContext = "normal" | "sidePane";
 
 interface BasesSubViewLike {
 	name?: unknown;
@@ -45,7 +52,7 @@ interface ViewEntry {
 
 interface ManagedLeafState {
 	rootEl: HTMLElement;
-	placement: LayoutPlacement;
+	placement: RenderPlacement;
 	layoutEl: HTMLElement;
 	listEl: HTMLElement;
 	bodyEl: HTMLElement | null;
@@ -75,9 +82,23 @@ interface PartialViewEntry {
 }
 
 interface EffectiveLayoutResolution {
-	placement: LayoutPlacement;
+	placement: RenderPlacement;
 	forceTopScroll: boolean;
-	temporaryHidden: boolean;
+	hiddenReason: "none" | "narrow-hide" | null;
+}
+
+interface ResolvedViewListPrefs {
+	paneContext: ViewListPaneContext;
+	formulaPrefs: BaseViewListFormulaPrefs;
+	placement: LayoutPlacement;
+	showProperty: boolean;
+	propertyKey: string;
+	topOverflowMode: TopOverflowMode;
+}
+
+interface TemporaryLeafPlacement {
+	filePath: string;
+	placement: LayoutPlacement;
 }
 
 interface PreferredWidthResult {
@@ -143,6 +164,7 @@ export class BasesViewListSidebarService {
 	private toolbarTriggers = new Map<WorkspaceLeaf, HTMLElement>();
 	private resizeObservers = new Map<WorkspaceLeaf, ResizeObserver>();
 	private yamlStore: BaseViewListYamlStore;
+	private temporaryPlacements = new Map<WorkspaceLeaf, TemporaryLeafPlacement>();
 	private refreshTimer: number | null = null;
 	private baseFileRefreshTimer: number | null = null;
 	private pendingBaseFilePaths = new Set<string>();
@@ -181,6 +203,7 @@ export class BasesViewListSidebarService {
 		this.cleanupAllToolbarOpenTriggers();
 		this.clearModeClassesFromAllBaseLeaves();
 		this.clearNativeToolbarClassesFromAllBaseLeaves();
+		this.temporaryPlacements.clear();
 		this.yamlStore.clearCache();
 	}
 
@@ -401,6 +424,12 @@ export class BasesViewListSidebarService {
 			}
 		}
 
+		for (const leaf of Array.from(this.temporaryPlacements.keys())) {
+			if (!activeLeaves.has(leaf)) {
+				this.temporaryPlacements.delete(leaf);
+			}
+		}
+
 		await Promise.all(leaves.map((leaf) => this.refreshLeaf(leaf)));
 	}
 
@@ -412,6 +441,7 @@ export class BasesViewListSidebarService {
 			this.removeToolbarOpenTrigger(leaf);
 			this.removeResizeObserverForLeaf(leaf);
 			this.removeNativeToolbarClassesForLeaf(leaf);
+			this.clearTemporaryPlacement(leaf);
 			return;
 		}
 
@@ -420,8 +450,18 @@ export class BasesViewListSidebarService {
 		const basesViewEl = this.findBasesViewEl(leaf);
 		if (!basesViewEl) return;
 
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+
+		const resolvedPrefs = await this.resolveViewListPrefs(leaf, file);
+		if (!this.running) return;
+
 		const toolbarEl = this.findToolbarEl(leaf);
-		const viewEntries = await this.getViewEntries(leaf);
+		const viewEntries = await this.getViewEntries(
+			leaf,
+			resolvedPrefs.propertyKey,
+			resolvedPrefs.showProperty
+		);
 		if (!this.running) return;
 		const rootEl = this.resolveRootEl(leaf, basesViewEl);
 
@@ -433,19 +473,13 @@ export class BasesViewListSidebarService {
 			return;
 		}
 
-		const layoutResolution = this.resolveEffectiveLayout(leaf);
-		if (layoutResolution.temporaryHidden) {
+		const layoutResolution = this.resolveEffectiveLayout(leaf, resolvedPrefs.placement);
+		if (layoutResolution.hiddenReason) {
 			this.cleanupLeaf(leaf);
-			this.removeToolbarOpenTrigger(leaf);
-			if (rootEl) this.applyDropdownModeClasses(rootEl);
-			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
-			return;
-		}
-
-		if (this.isCollapsed()) {
-			this.cleanupLeaf(leaf);
-			if (toolbarEl) {
-				this.ensureToolbarOpenTrigger(leaf, toolbarEl);
+			if (layoutResolution.hiddenReason === "none" && toolbarEl) {
+				this.ensureToolbarOpenTrigger(leaf, toolbarEl, file.path, resolvedPrefs.paneContext);
+			} else {
+				this.removeToolbarOpenTrigger(leaf);
 			}
 			if (rootEl) this.applyDropdownModeClasses(rootEl);
 			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
@@ -475,7 +509,7 @@ export class BasesViewListSidebarService {
 		this.applyTopOverflowClasses(
 			state.listEl,
 			state.placement,
-			layoutResolution.forceTopScroll ? "scroll" : this.getTopOverflowMode()
+			layoutResolution.forceTopScroll ? "scroll" : resolvedPrefs.topOverflowMode
 		);
 
 		let preferredWidth: PreferredWidthResult | null = null;
@@ -492,11 +526,23 @@ export class BasesViewListSidebarService {
 		}
 
 		const currentViewName = this.getCurrentViewName(leaf);
-		this.renderViewList(leaf, state, viewEntries, currentViewName);
-		this.ensureListContextMenu(leaf, state.listEl, viewEntries);
+		this.renderViewList(leaf, state, viewEntries, currentViewName, resolvedPrefs.showProperty);
+		this.ensureListContextMenu(
+			leaf,
+			state,
+			viewEntries,
+			resolvedPrefs,
+			layoutResolution.forceTopScroll
+		);
 
 		if (state.placement === "left" && preferredWidth) {
-			this.applyAutoShrinkWidthIfEligible(leaf, state, viewEntries, preferredWidth);
+			this.applyAutoShrinkWidthIfEligible(
+				leaf,
+				state,
+				viewEntries,
+				preferredWidth,
+				resolvedPrefs.showProperty
+			);
 		}
 	}
 
@@ -504,12 +550,16 @@ export class BasesViewListSidebarService {
 		return this.plugin.settings.enableBases && this.plugin.settings.enableBasesViewListSidebar;
 	}
 
-	private isCollapsed(): boolean {
-		return this.plugin.settings.basesViewListCollapsed === true;
+	private getDefaultPlacement(): LayoutPlacement {
+		const value = this.plugin.settings.basesViewListPlacement;
+		if (value === "left" || value === "top" || value === "none") return value;
+		return "left";
 	}
 
-	private getPlacement(): LayoutPlacement {
-		return this.plugin.settings.basesViewListPlacement === "top" ? "top" : "left";
+	private getDefaultSidePanePlacement(): LayoutPlacement {
+		const value = this.plugin.settings.basesViewListSidePanePlacement;
+		if (value === "left" || value === "top" || value === "none") return value;
+		return "top";
 	}
 
 	private getFontSize(): FontSizeOption {
@@ -526,7 +576,7 @@ export class BasesViewListSidebarService {
 		return this.plugin.settings.basesViewListShowNativeToolbar !== false;
 	}
 
-	private getTopOverflowMode(): TopOverflowMode {
+	private getDefaultTopOverflowMode(): TopOverflowMode {
 		return this.plugin.settings.basesViewListTopOverflowMode === "scroll" ? "scroll" : "wrap";
 	}
 
@@ -545,13 +595,89 @@ export class BasesViewListSidebarService {
 		);
 	}
 
-	private shouldShowProperty(): boolean {
-		return this.plugin.settings.basesViewListShowProperty === true && this.getPropertyKey().length > 0;
+	private getDefaultShowProperty(): boolean {
+		return this.plugin.settings.basesViewListShowProperty === true;
 	}
 
-	private getPropertyKey(): string {
+	private getDefaultPropertyKey(): string {
 		const key = this.plugin.settings.basesViewListPropertyKey;
 		return typeof key === "string" ? key.trim() : "";
+	}
+
+	private isSidePaneLeaf(leaf: WorkspaceLeaf): boolean {
+		const containerEl = this.getLeafView(leaf)?.containerEl;
+		if (!containerEl) return false;
+		return !!containerEl.closest(
+			".workspace-split.mod-left-split, .workspace-split.mod-right-split"
+		);
+	}
+
+	private getPaneContext(leaf: WorkspaceLeaf): ViewListPaneContext {
+		return this.isSidePaneLeaf(leaf) ? "sidePane" : "normal";
+	}
+
+	private getFormulaPositionForContext(
+		prefs: BaseViewListFormulaPrefs,
+		context: ViewListPaneContext
+	): ViewListFormulaPlacement | null {
+		return context === "sidePane" ? prefs.sidePanePosition : prefs.position;
+	}
+
+	private resolvePersistentPlacement(
+		context: ViewListPaneContext,
+		prefs: BaseViewListFormulaPrefs
+	): LayoutPlacement {
+		const fromFormula = this.getFormulaPositionForContext(prefs, context);
+		if (fromFormula) return fromFormula;
+		return context === "sidePane"
+			? this.getDefaultSidePanePlacement()
+			: this.getDefaultPlacement();
+	}
+
+	private getTemporaryPlacement(leaf: WorkspaceLeaf, filePath: string): LayoutPlacement | null {
+		const temporary = this.temporaryPlacements.get(leaf);
+		if (!temporary) return null;
+		if (temporary.filePath !== filePath) {
+			this.temporaryPlacements.delete(leaf);
+			return null;
+		}
+		return temporary.placement;
+	}
+
+	private setTemporaryPlacement(
+		leaf: WorkspaceLeaf,
+		filePath: string,
+		placement: LayoutPlacement
+	): void {
+		this.temporaryPlacements.set(leaf, { filePath, placement });
+	}
+
+	private clearTemporaryPlacement(leaf: WorkspaceLeaf): void {
+		this.temporaryPlacements.delete(leaf);
+	}
+
+	private async resolveViewListPrefs(
+		leaf: WorkspaceLeaf,
+		file: TFile
+	): Promise<ResolvedViewListPrefs> {
+		const paneContext = this.getPaneContext(leaf);
+		const formulaPrefs = await this.yamlStore.getViewListFormulaPrefs(file);
+		const persistentPlacement = this.resolvePersistentPlacement(paneContext, formulaPrefs);
+		const temporaryPlacement = this.getTemporaryPlacement(leaf, file.path);
+
+		const propertyKey = (formulaPrefs.propertyKey ?? this.getDefaultPropertyKey()).trim();
+		const showPropertyDefault = this.getDefaultShowProperty();
+		const showProperty =
+			(formulaPrefs.showProperty ?? showPropertyDefault) === true && propertyKey.length > 0;
+
+		return {
+			paneContext,
+			formulaPrefs,
+			placement: temporaryPlacement ?? persistentPlacement,
+			showProperty,
+			propertyKey,
+			topOverflowMode: formulaPrefs.topOverflowMode ?? this.getDefaultTopOverflowMode(),
+		};
 	}
 
 	private clampWidth(widthPx: number): number {
@@ -579,44 +705,54 @@ export class BasesViewListSidebarService {
 		return width <= this.getNarrowThresholdPx();
 	}
 
-	private resolveEffectiveLayout(leaf: WorkspaceLeaf): EffectiveLayoutResolution {
-		const userPlacement = this.getPlacement();
+	private resolveEffectiveLayout(
+		leaf: WorkspaceLeaf,
+		requestedPlacement: LayoutPlacement
+	): EffectiveLayoutResolution {
+		if (requestedPlacement === "none") {
+			return {
+				placement: "left",
+				forceTopScroll: false,
+				hiddenReason: "none",
+			};
+		}
+
 		const isNarrow = this.isLeafNarrow(leaf);
 		if (!isNarrow) {
 			return {
-				placement: userPlacement,
+				placement: requestedPlacement === "top" ? "top" : "left",
 				forceTopScroll: false,
-				temporaryHidden: false,
+				hiddenReason: null,
 			};
 		}
 
 		const behavior = this.getNarrowBehavior();
 		if (behavior === "hide") {
 			return {
-				placement: userPlacement,
+				placement: requestedPlacement === "top" ? "top" : "left",
 				forceTopScroll: false,
-				temporaryHidden: true,
+				hiddenReason: "narrow-hide",
 			};
 		}
-		if (behavior === "top" && userPlacement === "left") {
+		if (behavior === "top" && requestedPlacement === "left") {
 			return {
 				placement: "top",
 				forceTopScroll: true,
-				temporaryHidden: false,
+				hiddenReason: null,
 			};
 		}
 		if (behavior === "top") {
 			return {
 				placement: "top",
 				forceTopScroll: true,
-				temporaryHidden: false,
+				hiddenReason: null,
 			};
 		}
 
 		return {
-			placement: userPlacement,
+			placement: requestedPlacement === "top" ? "top" : "left",
 			forceTopScroll: false,
-			temporaryHidden: false,
+			hiddenReason: null,
 		};
 	}
 
@@ -1165,9 +1301,12 @@ export class BasesViewListSidebarService {
 
 	private ensureListContextMenu(
 		leaf: WorkspaceLeaf,
-		listEl: HTMLElement,
-		viewEntries: ViewEntry[]
+		state: ManagedLeafState,
+		viewEntries: ViewEntry[],
+		prefs: ResolvedViewListPrefs,
+		forceTopScroll: boolean
 	): void {
+		const { listEl } = state;
 		const entriesByName = new Map(viewEntries.map((entry) => [entry.name, entry]));
 		listEl.oncontextmenu = (evt) => {
 			evt.preventDefault();
@@ -1179,27 +1318,34 @@ export class BasesViewListSidebarService {
 				const viewName = rowContainerEl.getAttribute("data-view-name")?.trim() ?? "";
 				const entry = entriesByName.get(viewName) ?? null;
 				if (entry) {
-					this.showViewItemContextMenu(evt, leaf, entry);
+					this.showViewItemContextMenu(evt, leaf, entry, state.placement, prefs, forceTopScroll);
 					return;
 				}
 			}
-			this.showPlacementContextMenu(evt, leaf);
+			this.showPlacementContextMenu(evt, leaf, state.placement, prefs, forceTopScroll);
 		};
 	}
 
-	private showPlacementContextMenu(event: MouseEvent, leaf: WorkspaceLeaf): void {
-		const current = this.getPlacement();
+	private showPlacementContextMenu(
+		event: MouseEvent,
+		leaf: WorkspaceLeaf,
+		currentPlacement: RenderPlacement,
+		prefs: ResolvedViewListPrefs,
+		forceTopScroll: boolean
+	): void {
 		const menu = new Menu();
-		this.addViewListContextMenuItems(menu, current, leaf);
+		this.addViewListContextMenuItems(menu, leaf, currentPlacement, prefs, forceTopScroll);
 		menu.showAtMouseEvent(event);
 	}
 
 	private showViewItemContextMenu(
 		event: MouseEvent,
 		leaf: WorkspaceLeaf,
-		entry: ViewEntry
+		entry: ViewEntry,
+		currentPlacement: RenderPlacement,
+		prefs: ResolvedViewListPrefs,
+		forceTopScroll: boolean
 	): void {
-		const current = this.getPlacement();
 		const menu = new Menu();
 		menu.addItem((item) => {
 			item.setTitle(this.getContextMenuEditDescriptionLabel());
@@ -1208,7 +1354,7 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
-		this.addViewListContextMenuItems(menu, current, leaf);
+		this.addViewListContextMenuItems(menu, leaf, currentPlacement, prefs, forceTopScroll);
 		menu.showAtMouseEvent(event);
 	}
 
@@ -1258,12 +1404,18 @@ export class BasesViewListSidebarService {
 
 	private addViewListContextMenuItems(
 		menu: Menu,
-		current: LayoutPlacement,
-		leaf: WorkspaceLeaf
+		leaf: WorkspaceLeaf,
+		currentPlacement: RenderPlacement,
+		prefs: ResolvedViewListPrefs,
+		forceTopScroll: boolean
 	): void {
-		const showProperty = this.plugin.settings.basesViewListShowProperty === true;
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+
+		const showProperty = prefs.showProperty;
 		const showNativeToolbar = this.shouldShowNativeToolbar();
 		const fontSize = this.getFontSize();
+
 		menu.addItem((item) => {
 			item.setTitle(
 				showProperty
@@ -1271,9 +1423,17 @@ export class BasesViewListSidebarService {
 					: this.getContextMenuShowPropertyLabel()
 			);
 			item.onClick(() => {
-				void this.setShowProperty(!showProperty);
+				void this.setPerBaseShowProperty(file, !showProperty);
 			});
 		});
+
+		menu.addItem((item) => {
+			item.setTitle(this.getContextMenuChangePropertyKeyLabel());
+			item.onClick(() => {
+				void this.promptAndSetPerBasePropertyKey(leaf, file);
+			});
+		});
+
 		menu.addItem((item) => {
 			item.setTitle(
 				showNativeToolbar
@@ -1284,6 +1444,17 @@ export class BasesViewListSidebarService {
 				void this.setShowNativeToolbar(!showNativeToolbar);
 			});
 		});
+
+		if (currentPlacement === "top") {
+			menu.addSeparator();
+			this.addTopOverflowModeMenuItems(menu, file, prefs.topOverflowMode);
+			if (forceTopScroll) {
+				menu.addItem((item) => {
+					item.setTitle(this.getContextMenuTopOverflowForcedLabel());
+				});
+			}
+		}
+
 		menu.addSeparator();
 		this.addFontSizeMenuItems(menu, fontSize);
 		menu.addSeparator();
@@ -1294,7 +1465,9 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
-		this.addPlacementMenuItems(menu, current);
+		this.addTemporaryPlacementMenuItems(menu, leaf, file.path, currentPlacement);
+		menu.addSeparator();
+		this.addPersistentPlacementMenuItems(menu, leaf, file, currentPlacement, prefs);
 	}
 
 	private addFontSizeMenuItems(menu: Menu, current: FontSizeOption): void {
@@ -1330,7 +1503,12 @@ export class BasesViewListSidebarService {
 		});
 	}
 
-	private addPlacementMenuItems(menu: Menu, current: LayoutPlacement): void {
+	private addTemporaryPlacementMenuItems(
+		menu: Menu,
+		leaf: WorkspaceLeaf,
+		filePath: string,
+		current: RenderPlacement
+	): void {
 		menu.addItem((item) => {
 			item.setTitle(
 				current === "left"
@@ -1338,7 +1516,8 @@ export class BasesViewListSidebarService {
 					: this.getContextMenuLeftLabel()
 			);
 			item.onClick(() => {
-				void this.setPlacement("left");
+				this.setTemporaryPlacement(leaf, filePath, "left");
+				this.scheduleRefresh(0);
 			});
 		});
 
@@ -1349,9 +1528,192 @@ export class BasesViewListSidebarService {
 					: this.getContextMenuTopLabel()
 			);
 			item.onClick(() => {
-				void this.setPlacement("top");
+				this.setTemporaryPlacement(leaf, filePath, "top");
+				this.scheduleRefresh(0);
 			});
 		});
+	}
+
+	private addPersistentPlacementMenuItems(
+		menu: Menu,
+		leaf: WorkspaceLeaf,
+		file: TFile,
+		currentPlacement: RenderPlacement,
+		prefs: ResolvedViewListPrefs
+	): void {
+		const formulaPlacement = this.getFormulaPositionForContext(prefs.formulaPrefs, prefs.paneContext);
+		const scopeText = this.getContextMenuPersistentScopeText(prefs.paneContext);
+		const togglePlacementLabel =
+			currentPlacement === "left"
+				? this.getContextMenuPersistentPlacementLeftLabel(scopeText)
+				: this.getContextMenuPersistentPlacementTopLabel(scopeText);
+		const isPlacementChecked = formulaPlacement === currentPlacement;
+		const isNoneChecked = formulaPlacement === "none";
+
+		menu.addItem((item) => {
+			item.setTitle(isPlacementChecked ? `✓ ${togglePlacementLabel}` : togglePlacementLabel);
+			item.onClick(() => {
+				void this.togglePerBasePersistentPlacement(
+					leaf,
+					file,
+					prefs.paneContext,
+					currentPlacement,
+					isPlacementChecked
+				);
+			});
+		});
+
+		menu.addItem((item) => {
+			const label = this.getContextMenuPersistentPlacementNoneLabel(scopeText);
+			item.setTitle(isNoneChecked ? `✓ ${label}` : label);
+			item.onClick(() => {
+				void this.togglePerBasePersistentPlacement(
+					leaf,
+					file,
+					prefs.paneContext,
+					"none",
+					isNoneChecked
+				);
+			});
+		});
+	}
+
+	private addTopOverflowModeMenuItems(
+		menu: Menu,
+		file: TFile,
+		currentMode: TopOverflowMode
+	): void {
+		menu.addItem((item) => {
+			const label = this.getContextMenuTopOverflowWrapLabel();
+			item.setTitle(currentMode === "wrap" ? `✓ ${label}` : label);
+			item.onClick(() => {
+				void this.setPerBaseTopOverflowMode(file, "wrap");
+			});
+		});
+		menu.addItem((item) => {
+			const label = this.getContextMenuTopOverflowScrollLabel();
+			item.setTitle(currentMode === "scroll" ? `✓ ${label}` : label);
+			item.onClick(() => {
+				void this.setPerBaseTopOverflowMode(file, "scroll");
+			});
+		});
+	}
+
+	private openViewListFromTrigger(
+		leaf: WorkspaceLeaf,
+		filePath: string,
+		paneContext: ViewListPaneContext
+	): void {
+		const placement: LayoutPlacement = paneContext === "sidePane" ? "top" : "left";
+		this.setTemporaryPlacement(leaf, filePath, placement);
+		this.scheduleRefresh(0);
+	}
+
+	private async setPerBaseShowProperty(file: TFile, show: boolean): Promise<void> {
+		await this.yamlStore.setViewListShowProperty(file, show);
+		this.scheduleRefresh(0);
+	}
+
+	private async promptAndSetPerBasePropertyKey(leaf: WorkspaceLeaf, file: TFile): Promise<void> {
+		const prefs = await this.resolveViewListPrefs(leaf, file);
+		const currentKey = prefs.propertyKey || this.getDefaultPropertyKey();
+		const input = await showTextInputModal(this.plugin.app, {
+			title: this.getChangePropertyKeyModalTitle(),
+			placeholder: currentKey || "description",
+			initialValue: currentKey,
+			confirmText: this.getChangePropertyKeyModalConfirmText(),
+			cancelText: this.getChangePropertyKeyModalCancelText(),
+			allowEmptyResult: true,
+		});
+		if (input === null) return;
+
+		const requestedKey = input.trim();
+		if (!requestedKey) {
+			await this.yamlStore.setViewListPropertyKey(file, null);
+			this.scheduleRefresh(0);
+			return;
+		}
+
+		const availableKeys = await this.collectAvailablePropertyKeys(leaf, file);
+		const resolvedKey = this.resolveAvailablePropertyKey(requestedKey, availableKeys);
+		if (!resolvedKey) {
+			await this.yamlStore.setViewListPropertyKey(file, null);
+			new Notice(this.getPropertyKeyNotFoundNotice(requestedKey));
+			this.scheduleRefresh(0);
+			return;
+		}
+
+		await this.yamlStore.setViewListPropertyKey(file, resolvedKey);
+		this.scheduleRefresh(0);
+	}
+
+	private async collectAvailablePropertyKeys(
+		leaf: WorkspaceLeaf,
+		file: TFile
+	): Promise<Set<string>> {
+		const keys = new Set<string>();
+		const skip = new Set([
+			"name",
+			"type",
+			"icon",
+			"filters",
+			"sort",
+			"groupBy",
+			"limit",
+			"formulas",
+		]);
+
+		const controllerViews = this.getController(leaf)?.query?.views;
+		if (Array.isArray(controllerViews)) {
+			for (const view of controllerViews) {
+				if (!view || typeof view !== "object") continue;
+				for (const key of Object.keys(view as Record<string, unknown>)) {
+					const trimmed = key.trim();
+					if (!trimmed || skip.has(trimmed)) continue;
+					keys.add(trimmed);
+				}
+			}
+		}
+
+		const yamlViews = await this.yamlStore.getViews(file);
+		for (const row of yamlViews) {
+			for (const key of Object.keys(row.raw)) {
+				const trimmed = key.trim();
+				if (!trimmed || skip.has(trimmed)) continue;
+				keys.add(trimmed);
+			}
+		}
+
+		return keys;
+	}
+
+	private resolveAvailablePropertyKey(input: string, availableKeys: Set<string>): string | null {
+		if (availableKeys.has(input)) return input;
+		const lowerInput = input.toLowerCase();
+		for (const key of availableKeys) {
+			if (key.toLowerCase() === lowerInput) return key;
+		}
+		return null;
+	}
+
+	private async setPerBaseTopOverflowMode(
+		file: TFile,
+		mode: TopOverflowMode
+	): Promise<void> {
+		await this.yamlStore.setViewListTopOverflowMode(file, mode);
+		this.scheduleRefresh(0);
+	}
+
+	private async togglePerBasePersistentPlacement(
+		leaf: WorkspaceLeaf,
+		file: TFile,
+		context: ViewListFormulaContext,
+		placement: ViewListFormulaPlacement,
+		isChecked: boolean
+	): Promise<void> {
+		await this.yamlStore.setViewListPosition(file, context, isChecked ? null : placement);
+		this.clearTemporaryPlacement(leaf);
+		this.scheduleRefresh(0);
 	}
 
 	private cleanupAllLeaves(): void {
@@ -1400,7 +1762,12 @@ export class BasesViewListSidebarService {
 		}
 	}
 
-	private ensureToolbarOpenTrigger(leaf: WorkspaceLeaf, toolbarEl: HTMLElement): void {
+	private ensureToolbarOpenTrigger(
+		leaf: WorkspaceLeaf,
+		toolbarEl: HTMLElement,
+		filePath: string,
+		paneContext: ViewListPaneContext
+	): void {
 		this.removeToolbarOpenTrigger(leaf);
 
 		const doc = toolbarEl.ownerDocument;
@@ -1414,7 +1781,7 @@ export class BasesViewListSidebarService {
 		buttonEl.setAttribute("title", this.getOpenButtonTooltip());
 		setIcon(buttonEl, "list-plus");
 		buttonEl.addEventListener("click", () => {
-			void this.setCollapsed(false);
+			this.openViewListFromTrigger(leaf, filePath, paneContext);
 		});
 
 		itemEl.appendChild(buttonEl);
@@ -1486,6 +1853,13 @@ export class BasesViewListSidebarService {
 		);
 	}
 
+	private getContextMenuChangePropertyKeyLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.changePropertyKey",
+			"Change displayed property"
+		);
+	}
+
 	private getContextMenuShowNativeToolbarLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showNativeToolbar",
@@ -1525,6 +1899,93 @@ export class BasesViewListSidebarService {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.redrawViewList",
 			"Redraw view list"
+		);
+	}
+
+	private getContextMenuPersistentScopeText(context: ViewListPaneContext): string {
+		if (context === "sidePane") {
+			return this.translateWithFallback(
+				"settings.integrations.basesIntegration.viewListSidebar.contextMenu.scope.sidePane",
+				"in side pane"
+			);
+		}
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.scope.mainPane",
+			"in main pane"
+		);
+	}
+
+	private getContextMenuPersistentPlacementLeftLabel(scopeText: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.persistLeft",
+			`Always show on left for this base (${scopeText})`,
+			{ scope: scopeText }
+		);
+	}
+
+	private getContextMenuPersistentPlacementTopLabel(scopeText: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.persistTop",
+			`Always show on top for this base (${scopeText})`,
+			{ scope: scopeText }
+		);
+	}
+
+	private getContextMenuPersistentPlacementNoneLabel(scopeText: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.persistNone",
+			`Do not show view list for this base (${scopeText})`,
+			{ scope: scopeText }
+		);
+	}
+
+	private getContextMenuTopOverflowWrapLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.topOverflowWrap",
+			"Overflow: Wrap"
+		);
+	}
+
+	private getContextMenuTopOverflowScrollLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.topOverflowScroll",
+			"Overflow: Horizontal scroll"
+		);
+	}
+
+	private getContextMenuTopOverflowForcedLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.topOverflowForced",
+			"Narrow pane: forced to horizontal scroll"
+		);
+	}
+
+	private getChangePropertyKeyModalTitle(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.title",
+			"Change displayed property"
+		);
+	}
+
+	private getChangePropertyKeyModalConfirmText(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.confirm",
+			"Save"
+		);
+	}
+
+	private getChangePropertyKeyModalCancelText(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.cancel",
+			"Cancel"
+		);
+	}
+
+	private getPropertyKeyNotFoundNotice(propertyKey: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.notices.propertyKeyNotFoundReset",
+			`Property "${propertyKey}" is not found in this base views. Reverted to default property key.`,
+			{ propertyKey }
 		);
 	}
 
@@ -1675,7 +2136,8 @@ export class BasesViewListSidebarService {
 		leaf: WorkspaceLeaf,
 		state: ManagedLeafState,
 		viewEntries: ViewEntry[],
-		currentViewName: string | null
+		currentViewName: string | null,
+		showProperty: boolean
 	): void {
 		const { listEl } = state;
 		listEl.innerHTML = "";
@@ -1696,7 +2158,10 @@ export class BasesViewListSidebarService {
 		closeButton.addEventListener("click", (evt) => {
 			evt.preventDefault();
 			evt.stopPropagation();
-			void this.setCollapsed(true);
+			const file = this.getLeafFile(leaf);
+			if (!file) return;
+			this.setTemporaryPlacement(leaf, file.path, "none");
+			this.scheduleRefresh(0);
 		});
 		headerEl.appendChild(closeButton);
 
@@ -1709,7 +2174,7 @@ export class BasesViewListSidebarService {
 
 		listEl.appendChild(headerEl);
 
-		const shouldShowProperty = this.shouldShowProperty();
+		const shouldShowProperty = showProperty;
 		const shouldShowIcons = this.shouldShowIcons();
 		const shouldForcePropertyLineInTop = state.placement === "top" && shouldShowProperty;
 		for (const entry of viewEntries) {
@@ -1808,7 +2273,8 @@ export class BasesViewListSidebarService {
 		leaf: WorkspaceLeaf,
 		state: ManagedLeafState,
 		viewEntries: ViewEntry[],
-		preferredWidth: PreferredWidthResult
+		preferredWidth: PreferredWidthResult,
+		showProperty: boolean
 	): void {
 		if (state.placement !== "left") return;
 		if (this.isLeafNarrow(leaf)) return;
@@ -1816,14 +2282,18 @@ export class BasesViewListSidebarService {
 		if (preferredWidth.source !== "default") return;
 		if (preferredWidth.widthPx !== WIDTH_DEFAULT) return;
 
-		const autoWidth = this.computeAutoShrinkWidthPx(leaf, viewEntries);
+		const autoWidth = this.computeAutoShrinkWidthPx(leaf, viewEntries, showProperty);
 		this.applyLayoutWidth(state.layoutEl, autoWidth);
 	}
 
-	private computeAutoShrinkWidthPx(leaf: WorkspaceLeaf, viewEntries: ViewEntry[]): number {
+	private computeAutoShrinkWidthPx(
+		leaf: WorkspaceLeaf,
+		viewEntries: ViewEntry[],
+		showProperty: boolean
+	): number {
 		let maxWidth = this.estimateHeaderWidthPx(leaf);
 		for (const entry of viewEntries) {
-			maxWidth = Math.max(maxWidth, this.estimateItemWidthPx(entry));
+			maxWidth = Math.max(maxWidth, this.estimateItemWidthPx(entry, showProperty));
 		}
 		const total = this.clampWidth(Math.ceil(maxWidth + 20));
 		if (total >= WIDTH_DEFAULT) return WIDTH_DEFAULT;
@@ -1837,7 +2307,7 @@ export class BasesViewListSidebarService {
 		return closeWidth + gap + titleWidth + 8;
 	}
 
-	private estimateItemWidthPx(entry: ViewEntry): number {
+	private estimateItemWidthPx(entry: ViewEntry, showProperty: boolean): number {
 		const iconWidth = this.shouldShowIcons() ? 16 : 0;
 		const gap = this.shouldShowIcons() ? 8 : 0;
 		const horizontalPadding = 22;
@@ -1845,7 +2315,7 @@ export class BasesViewListSidebarService {
 		const actionGap = 6;
 		const nameWidth = this.estimateVisualTextWidth(entry.name, false);
 		let textWidth = nameWidth;
-		if (this.shouldShowProperty() && entry.propertyText) {
+		if (showProperty && entry.propertyText) {
 			const propertyWidth = this.estimateVisualTextWidth(entry.propertyText, true) + 12;
 			textWidth = Math.max(textWidth, propertyWidth);
 		}
@@ -1921,21 +2391,25 @@ export class BasesViewListSidebarService {
 		return label || null;
 	}
 
-	private async getViewEntries(leaf: WorkspaceLeaf): Promise<ViewEntry[]> {
+	private async getViewEntries(
+		leaf: WorkspaceLeaf,
+		propertyKey: string,
+		showProperty: boolean
+	): Promise<ViewEntry[]> {
 		const controller = this.getController(leaf);
-		const fromController = this.getViewEntriesFromController(controller);
+		const fromController = this.getViewEntriesFromController(controller, propertyKey);
 		if (fromController.length > 0) {
 			const file = this.getLeafFile(leaf);
 			if (!file) return fromController;
 
 			const needsYamlProperty =
-				this.shouldShowProperty() && fromController.some((entry) => !entry.propertyText);
+				showProperty && fromController.some((entry) => !entry.propertyText);
 			const needsYamlDescription = fromController.some((entry) => !entry.descriptionText);
 			if (!needsYamlProperty && !needsYamlDescription) {
 				return fromController;
 			}
 
-			const yamlMetadata = await this.getYamlViewMetadataMap(file);
+			const yamlMetadata = await this.getYamlViewMetadataMap(file, propertyKey);
 			if (yamlMetadata.size === 0) return fromController;
 
 			return fromController.map((entry) => {
@@ -1952,7 +2426,7 @@ export class BasesViewListSidebarService {
 
 		const file = this.getLeafFile(leaf);
 		if (!file) return [];
-		return this.getViewEntriesFromYamlFile(file);
+		return this.getViewEntriesFromYamlFile(file, propertyKey);
 	}
 
 	private async getPreferredWidth(leaf: WorkspaceLeaf): Promise<PreferredWidthResult> {
@@ -1978,10 +2452,12 @@ export class BasesViewListSidebarService {
 		};
 	}
 
-	private async getViewEntriesFromYamlFile(file: TFile): Promise<ViewEntry[]> {
+	private async getViewEntriesFromYamlFile(
+		file: TFile,
+		propertyKey: string
+	): Promise<ViewEntry[]> {
 		const rows = await this.yamlStore.getViews(file);
 		if (rows.length === 0) return [];
-		const propertyKey = this.getPropertyKey();
 		const entries: PartialViewEntry[] = rows.map((row) => {
 			const view = row.raw as BasesSubViewLike;
 			return {
@@ -1995,7 +2471,8 @@ export class BasesViewListSidebarService {
 	}
 
 	private async getYamlViewMetadataMap(
-		file: TFile
+		file: TFile,
+		propertyKey: string
 	): Promise<
 		Map<
 			string,
@@ -2017,7 +2494,6 @@ export class BasesViewListSidebarService {
 		>();
 		if (rows.length === 0) return map;
 
-		const propertyKey = this.getPropertyKey();
 		for (const row of rows) {
 			if (map.has(row.name)) continue;
 			const view = row.raw as BasesSubViewLike;
@@ -2030,9 +2506,11 @@ export class BasesViewListSidebarService {
 		return map;
 	}
 
-	private getViewEntriesFromController(controller: BasesControllerLike | null): ViewEntry[] {
+	private getViewEntriesFromController(
+		controller: BasesControllerLike | null,
+		propertyKey: string
+	): ViewEntry[] {
 		if (!controller) return [];
-		const propertyKey = this.getPropertyKey();
 
 		if (Array.isArray(controller.query?.views)) {
 			const fromQuery = controller.query.views.map((view): PartialViewEntry => ({
@@ -2236,27 +2714,6 @@ export class BasesViewListSidebarService {
 			return "list";
 		}
 		return icon;
-	}
-
-	private async setCollapsed(collapsed: boolean): Promise<void> {
-		if (this.plugin.settings.basesViewListCollapsed === collapsed) return;
-		this.plugin.settings.basesViewListCollapsed = collapsed;
-		this.scheduleRefresh(0);
-		await this.persistSettings();
-	}
-
-	private async setPlacement(placement: LayoutPlacement): Promise<void> {
-		if (this.getPlacement() === placement) return;
-		this.plugin.settings.basesViewListPlacement = placement;
-		this.scheduleRefresh(0);
-		await this.persistSettings();
-	}
-
-	private async setShowProperty(show: boolean): Promise<void> {
-		if (this.plugin.settings.basesViewListShowProperty === show) return;
-		this.plugin.settings.basesViewListShowProperty = show;
-		this.scheduleRefresh(0);
-		await this.persistSettings();
 	}
 
 	private async setShowNativeToolbar(show: boolean): Promise<void> {

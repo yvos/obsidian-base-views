@@ -390,10 +390,53 @@ export function renderGeneralTab(
 									"settings.integrations.basesIntegration.viewListSidebar.placement.options.top"
 								),
 							},
+							{
+								value: "none",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.placement.options.none"
+								),
+							},
 						],
 						getValue: () => plugin.settings.basesViewListPlacement,
 						setValue: async (value: string) => {
-							plugin.settings.basesViewListPlacement = value as "left" | "top";
+							plugin.settings.basesViewListPlacement = value as "left" | "top" | "none";
+							await save();
+						},
+					})
+				);
+
+				group.addSetting((setting) =>
+					configureDropdownSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.sidePanePlacement.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.sidePanePlacement.description"
+						),
+						options: [
+							{
+								value: "left",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.sidePanePlacement.options.left"
+								),
+							},
+							{
+								value: "top",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.sidePanePlacement.options.top"
+								),
+							},
+							{
+								value: "none",
+								label: translate(
+									"settings.integrations.basesIntegration.viewListSidebar.sidePanePlacement.options.none"
+								),
+							},
+						],
+						getValue: () => plugin.settings.basesViewListSidePanePlacement,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListSidePanePlacement =
+								value as "left" | "top" | "none";
 							await save();
 						},
 					})
@@ -484,25 +527,23 @@ export function renderGeneralTab(
 					})
 				);
 
-				if (plugin.settings.basesViewListShowProperty) {
-					group.addSetting((setting) =>
-						configureTextSetting(setting, {
-							name: translate(
-								"settings.integrations.basesIntegration.viewListSidebar.property.key.name"
-							),
-							desc: translate(
-								"settings.integrations.basesIntegration.viewListSidebar.property.key.description"
-							),
-							placeholder: "description",
-							getValue: () => plugin.settings.basesViewListPropertyKey,
-							setValue: async (value: string) => {
-								plugin.settings.basesViewListPropertyKey = value;
-								await save();
-							},
-							ariaLabel: "Base view property key",
-						})
-					);
-				}
+				group.addSetting((setting) =>
+					configureTextSetting(setting, {
+						name: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.property.key.name"
+						),
+						desc: translate(
+							"settings.integrations.basesIntegration.viewListSidebar.property.key.description"
+						),
+						placeholder: "description",
+						getValue: () => plugin.settings.basesViewListPropertyKey,
+						setValue: async (value: string) => {
+							plugin.settings.basesViewListPropertyKey = value;
+							await save();
+						},
+						ariaLabel: "Base view property key",
+					})
+				);
 
 				group.addSetting((setting) =>
 					configureDropdownSetting(setting, {

@@ -381,6 +381,7 @@ export const DEFAULT_SETTINGS: TaskNotesSettings = {
 	basesViewListDropdownMode: "list-only",
 	basesViewListCollapsed: false,
 	basesViewListPlacement: "left",
+	basesViewListSidePanePlacement: "top",
 	basesViewListFontSize: "m",
 	basesViewListShowProperty: true,
 	basesViewListPropertyKey: "description",

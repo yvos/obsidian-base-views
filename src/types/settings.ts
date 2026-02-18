@@ -208,8 +208,9 @@ export interface TaskNotesSettings {
 	customTableShowGroupingPropertyName: boolean; // Show grouped headers as "property: value" in Custom Table view
 	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
 	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
-	basesViewListCollapsed: boolean; // Globally collapse/expand base view list sidebar
-	basesViewListPlacement: "left" | "top"; // Placement of base view list sidebar
+	basesViewListCollapsed: boolean; // Deprecated: global collapse state (kept for migration compatibility)
+	basesViewListPlacement: "left" | "top" | "none"; // Default placement for main pane
+	basesViewListSidePanePlacement: "left" | "top" | "none"; // Default placement for side pane
 	basesViewListFontSize: "m" | "s" | "xs"; // Font size for view rows
 	basesViewListShowProperty: boolean; // Show secondary property text under view name
 	basesViewListPropertyKey: string; // Key used to render per-view property text

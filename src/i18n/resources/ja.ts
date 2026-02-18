@@ -1525,6 +1525,17 @@ export const ja: TranslationTree = {
 							options: {
 								left: "左側",
 								top: "上部",
+								none: "表示しない",
+							},
+						},
+						sidePanePlacement: {
+							name: "サイドペイン時のビュー一覧の配置",
+							description:
+								"baseファイルをサイドペインに表示したときの配置を選択します。",
+							options: {
+								left: "左側",
+								top: "上部",
+								none: "表示しない",
 							},
 						},
 						fontSize: {
@@ -1551,8 +1562,9 @@ export const ja: TranslationTree = {
 								description: "各view名の下に指定プロパティを表示します。",
 							},
 							key: {
-								name: "表示するプロパティ",
-								description: "各viewの下に表示するプロパティキーを指定します（例: description）。",
+								name: "表示するプロパティ名のデフォルト値",
+								description:
+									"各viewの下に表示する既定のプロパティキーです（例: description）。右クリックメニューからbaseごとに変更できます。",
 							},
 						},
 						topOverflow: {
@@ -1582,13 +1594,29 @@ export const ja: TranslationTree = {
 							showTop: "上に表示",
 							showProperty: "プロパティを表示",
 							hideProperty: "プロパティを非表示",
+							changePropertyKey: "表示プロパティを変更",
 							showNativeToolbar: "ネイティブツールバーを表示",
 							hideNativeToolbar: "ネイティブツールバーを非表示",
 							editDescription: "descriptionの編集",
 							fontSizeDefault: "フォントサイズ: Default",
 							fontSizeSmall: "フォントサイズ: Small",
 							fontSizeVerySmall: "フォントサイズ: Very Small",
+							topOverflowWrap: "上端オーバーフロー: 折り返し",
+							topOverflowScroll: "上端オーバーフロー: スクロール",
+							topOverflowForced: "狭幅時は上端オーバーフローがスクロールに固定されます",
+							persistLeft: "このbaseは{scope}ビュー一覧を常に左に表示する",
+							persistTop: "このbaseは{scope}ビュー一覧を常に上に表示する",
+							persistNone: "このbaseは{scope}ビュー一覧を表示しない",
+							scope: {
+								mainPane: "通常ペインで",
+								sidePane: "サイドペインで",
+							},
 							redrawViewList: "ビュー一覧を再描画",
+						},
+						changePropertyKeyModal: {
+							title: "表示プロパティを変更",
+							confirm: "保存",
+							cancel: "キャンセル",
 						},
 						editDescriptionModal: {
 							title: "descriptionを編集: {viewName}",
@@ -1617,6 +1645,8 @@ export const ja: TranslationTree = {
 								"ネイティブのビュー設定を開けませんでした。",
 							nativeViewSettingsOpenPartial:
 								"このビューのネイティブ設定を開けませんでした。ネイティブのビュー一覧は開いています。",
+							propertyKeyNotFoundReset:
+								"プロパティ「{propertyKey}」はこのbaseのviewに存在しないため、既定の表示プロパティに戻しました。",
 						},
 						singleViewHidden: {
 							description:

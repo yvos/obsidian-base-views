@@ -1560,6 +1560,17 @@ export const en: TranslationTree = {
 							options: {
 								left: "Left side",
 								top: "Top",
+								none: "Hidden",
+							},
+						},
+						sidePanePlacement: {
+							name: "View list placement in side pane",
+							description:
+								"Choose where to place the view list when a base file is opened in a side pane.",
+							options: {
+								left: "Left side",
+								top: "Top",
+								none: "Hidden",
 							},
 						},
 						fontSize: {
@@ -1587,9 +1598,9 @@ export const en: TranslationTree = {
 									"Show a secondary property line under each view name.",
 							},
 							key: {
-								name: "Property key to show",
+								name: "Default property key to show",
 								description:
-									"Property key to display under each view (for example: description).",
+									"Default property key shown under each view (for example: description). You can change it per base via the right-click menu.",
 							},
 						},
 						topOverflow: {
@@ -1621,13 +1632,29 @@ export const en: TranslationTree = {
 							showTop: "Show on top",
 							showProperty: "Show property",
 							hideProperty: "Hide property",
+							changePropertyKey: "Change displayed property",
 							showNativeToolbar: "Show native toolbar",
 							hideNativeToolbar: "Hide native toolbar",
 							editDescription: "Edit description",
 							fontSizeDefault: "Font size: Default",
 							fontSizeSmall: "Font size: Small",
 							fontSizeVerySmall: "Font size: Very Small",
+							topOverflowWrap: "Top overflow: Wrap",
+							topOverflowScroll: "Top overflow: Horizontal scroll",
+							topOverflowForced: "Narrow pane forces top overflow to horizontal scroll",
+							persistLeft: "Always show view list on left for this base {scope}",
+							persistTop: "Always show view list on top for this base {scope}",
+							persistNone: "Do not show view list for this base {scope}",
+							scope: {
+								mainPane: "in main pane",
+								sidePane: "in side pane",
+							},
 							redrawViewList: "Redraw view list",
+						},
+						changePropertyKeyModal: {
+							title: "Change displayed property",
+							confirm: "Save",
+							cancel: "Cancel",
 						},
 						editDescriptionModal: {
 							title: "Edit description: {viewName}",
@@ -1656,6 +1683,8 @@ export const en: TranslationTree = {
 								"Could not open native view settings.",
 							nativeViewSettingsOpenPartial:
 								"Could not open this view's native settings. The native view list is open.",
+							propertyKeyNotFoundReset:
+								"Property \"{propertyKey}\" is not found in this base views. Reverted to default property key.",
 						},
 						singleViewHidden: {
 							description:
