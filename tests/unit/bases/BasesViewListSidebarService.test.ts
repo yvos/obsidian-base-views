@@ -119,6 +119,7 @@ function setLeafWidth(rootEl: HTMLElement, width: number): void {
 describe("BasesViewListSidebarService", () => {
 	let workspace: MockWorkspace;
 	let emitter: MockEventBus;
+	let vault: MockEventBus;
 	let plugin: any;
 	let service: BasesViewListSidebarService;
 	let vaultCachedRead: jest.Mock;
@@ -129,6 +130,7 @@ describe("BasesViewListSidebarService", () => {
 		jest.useFakeTimers();
 		workspace = new MockWorkspace();
 		emitter = new MockEventBus();
+		vault = new MockEventBus();
 		vaultCachedRead = jest.fn().mockResolvedValue("");
 		vaultModify = jest.fn().mockResolvedValue(undefined);
 		mountedRoots = [];
@@ -159,6 +161,8 @@ describe("BasesViewListSidebarService", () => {
 				vault: {
 					cachedRead: vaultCachedRead,
 					modify: vaultModify,
+					on: vault.on.bind(vault),
+					offref: vault.offref.bind(vault),
 				},
 				internalPlugins: {
 					getEnabledPluginById: jest.fn(() => ({
@@ -316,6 +320,169 @@ describe("BasesViewListSidebarService", () => {
 			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
 		).map((el) => el.getAttribute("data-icon"));
 		expect(icons).toEqual(["list"]);
+	});
+
+	it("auto-refreshes only matching base leaf on base file modify (debounced)", async () => {
+		const setupA = createBaseLeaf({
+			filePath: "Guides/alpha.base",
+			currentViewName: "Table",
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		const setupB = createBaseLeaf({
+			filePath: "Guides/beta.base",
+			currentViewName: "Cards",
+			controller: {
+				query: {
+					views: [{ name: "Cards", type: "cards" }],
+				},
+			},
+		});
+		mountedRoots.push(setupA.rootEl, setupB.rootEl);
+		workspace.leaves = [setupA.leaf, setupB.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		(setupA.controller as any).query.views = [{ name: "Renamed Alpha View", type: "table" }];
+		vault.trigger("modify", setupA.leaf.view.file);
+
+		jest.advanceTimersByTime(599);
+		await Promise.resolve();
+		expect(
+			setupA.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item-name")?.textContent?.trim()
+		).toBe("Table");
+
+		jest.advanceTimersByTime(1);
+		await flushTimersAndPromises();
+
+		expect(
+			setupA.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item-name")?.textContent?.trim()
+		).toBe("Renamed Alpha View");
+		expect(
+			setupB.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item-name")?.textContent?.trim()
+		).toBe("Cards");
+	});
+
+	it("ignores non-base file modify events", async () => {
+		const setup = createBaseLeaf({
+			filePath: "Guides/target.base",
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const refreshLeafSpy = jest.spyOn(service as any, "refreshLeaf");
+		const baselineCalls = refreshLeafSpy.mock.calls.length;
+
+		vault.trigger("modify", new TFile("Notes/not-base.md"));
+		jest.advanceTimersByTime(1000);
+		await flushTimersAndPromises();
+
+		expect(refreshLeafSpy.mock.calls.length).toBe(baselineCalls);
+	});
+
+	it("debounces repeated base modify events into a single targeted refresh", async () => {
+		const setup = createBaseLeaf({
+			filePath: "Guides/debounce.base",
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const refreshLeafSpy = jest.spyOn(service as any, "refreshLeaf");
+		const baselineCalls = refreshLeafSpy.mock.calls.length;
+
+		vault.trigger("modify", setup.leaf.view.file);
+		jest.advanceTimersByTime(300);
+		vault.trigger("modify", setup.leaf.view.file);
+		jest.advanceTimersByTime(300);
+		vault.trigger("modify", setup.leaf.view.file);
+
+		jest.advanceTimersByTime(599);
+		await Promise.resolve();
+		expect(refreshLeafSpy.mock.calls.length).toBe(baselineCalls);
+
+		jest.advanceTimersByTime(1);
+		await flushTimersAndPromises();
+		expect(refreshLeafSpy.mock.calls.length).toBe(baselineCalls + 1);
+	});
+
+	it("handles base rename by refreshing matching leaf and scheduling helper refresh", async () => {
+		const setup = createBaseLeaf({
+			filePath: "Guides/new-name.base",
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const refreshLeafSpy = jest.spyOn(service as any, "refreshLeaf");
+		const scheduleRefreshSpy = jest.spyOn(service as any, "scheduleRefresh");
+		const baselineRefreshCalls = refreshLeafSpy.mock.calls.length;
+		const baselineScheduleCalls = scheduleRefreshSpy.mock.calls.length;
+
+		vault.trigger("rename", setup.leaf.view.file, "Guides/old-name.base");
+
+		expect(scheduleRefreshSpy.mock.calls.length).toBe(baselineScheduleCalls + 1);
+		expect(scheduleRefreshSpy).toHaveBeenLastCalledWith(120);
+
+		jest.advanceTimersByTime(600);
+		await flushTimersAndPromises();
+		expect(refreshLeafSpy.mock.calls.length).toBeGreaterThanOrEqual(baselineRefreshCalls + 1);
+	});
+
+	it("handles base delete by scheduling helper refresh and clearing via debounced path refresh", async () => {
+		const setup = createBaseLeaf({
+			filePath: "Guides/delete-target.base",
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.rootEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const refreshLeafSpy = jest.spyOn(service as any, "refreshLeaf");
+		const scheduleRefreshSpy = jest.spyOn(service as any, "scheduleRefresh");
+		const baselineRefreshCalls = refreshLeafSpy.mock.calls.length;
+		const baselineScheduleCalls = scheduleRefreshSpy.mock.calls.length;
+
+		vault.trigger("delete", setup.leaf.view.file);
+
+		expect(scheduleRefreshSpy.mock.calls.length).toBe(baselineScheduleCalls + 1);
+		expect(scheduleRefreshSpy).toHaveBeenLastCalledWith(120);
+
+		jest.advanceTimersByTime(600);
+		await flushTimersAndPromises();
+		expect(refreshLeafSpy.mock.calls.length).toBeGreaterThanOrEqual(baselineRefreshCalls + 1);
 	});
 
 	it("falls back to YAML parsing when controller views are unavailable", async () => {

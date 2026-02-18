@@ -34,10 +34,16 @@ import {
 import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
 import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
 
-type RowHeightOption = "short" | "medium" | "tall" | "extraTall";
+type RowHeightOption = "veryShort" | "short" | "medium" | "tall" | "extraTall";
 type VirtualMode = "none" | "ungrouped" | "grouped";
 
-const VALID_ROW_HEIGHTS: RowHeightOption[] = ["short", "medium", "tall", "extraTall"];
+const VALID_ROW_HEIGHTS: RowHeightOption[] = [
+	"veryShort",
+	"short",
+	"medium",
+	"tall",
+	"extraTall",
+];
 const LUCIDE_PREFIX = "lucide-";
 
 type EntryLike = {

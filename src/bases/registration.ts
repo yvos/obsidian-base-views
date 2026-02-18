@@ -71,6 +71,7 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 						displayName: "Row height",
 						default: "medium",
 						options: {
+							veryShort: "Very short",
 							short: "Short",
 							medium: "Medium",
 							tall: "Tall",

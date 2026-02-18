@@ -24,6 +24,9 @@
 - 2026-02-17 時点で 3点メニューのネイティブ設定起動を再改善し、`.bases-toolbar-menu-item` + `view-config-menu` 遷移判定に対応（失敗時フォールバックメニューは廃止しNoticeのみ）。
 - 2026-02-17 時点で 3点メニュー起動時の native toolbar 再表示後待機を強化し、左上原点回避 + 連続安定フレーム確認後に設定起動するよう改善。
 - 2026-02-17 時点で 3点メニュー起動の待機判定を簡素化（`isConnected` 判定と診断ログを撤去、連続安定フレーム閾値を2へ調整）。
+- 2026-02-18 時点で view一覧サイドバーに `.base` ファイル監視の自動再描画（modify/rename/delete、600msデバウンス、該当leafのみ更新）を追加。
+- 2026-02-18 時点で Custom Table の表示をネイティブ寄せに調整（本文/ヘッダー/グループのフォントサイズ見直し、`Row height = Very short (22px)` 追加）し、view一覧3点ボタンを「行内右端・枠線/背景なし」へ調整。
+- 2026-02-18 時点で Custom Table の2段階グルーピング見出しを微調整し、1段目/2段目でフォントサイズ差を付与、`veryShort` 時はグループ見出し行余白も連動して縮小。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -63,7 +66,7 @@
     - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
     - view行右クリックで `description` 編集 + 配置切替メニューを表示
     - 各view行右端の3点ボタンでネイティブview設定UI起動を試行（成功時はネイティブUI、失敗時はNoticeのみ）
-    - 3点ボタンは hover/focus で表示し、active行では半透明で常時表示（初回クリックの空振りを抑制）
+    - 3点ボタンは view行の右端内側に絶対配置し、hover/focus時のみ表示（枠線/背景なし、アイコン色のみ変化）
     - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
     - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
     - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
@@ -71,6 +74,7 @@
     - 設定ON時は view名の下にプロパティ行を表示（配列はカンマ区切り、空値は非表示）
     - 狭幅時は設定に応じて `none/top/hide` を適用
     - 一覧が非表示状態（collapsed / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
+    - 対象 `.base` の `modify/rename/delete` を監視し、YAMLキャッシュ削除後に600msデバウンスで該当leafのみ自動再描画
 - Custom Table View (`tasknotesCustomTable`)
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
   - `config.getOrder()` に従った列順
@@ -91,8 +95,11 @@
   - 列ヘッダー表示
     - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）
     - `metadataTypeManager.properties` の `icon/type/widget` を優先し、未取得時は `propertyId` 規則でフォールバック
-  - 行高設定（`short` / `medium` / `tall` / `extraTall`）
-    - 固定行高として適用（`short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
+  - 行高設定（`veryShort` / `short` / `medium` / `tall` / `extraTall`）
+    - 固定行高として適用（`veryShort=22px`, `short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
+  - タイポグラフィ
+    - 本文セルは `var(--font-ui-smaller)`、ヘッダー/グループ見出しは `var(--font-ui-small)` を基準にしてネイティブ寄せ
+    - 2段階グルーピング見出しは、1段目=`var(--font-ui-small)`、2段目=`var(--font-ui-smaller)` で微差を付与
   - 列幅設定（`columnSize` 互換形式）
     - ヘッダー境界ドラッグで対象列のみ幅変更
     - 変更時のみ `columnSize: Record<propertyId, px>` を保存
@@ -170,6 +177,8 @@
   - 列幅ロジックのユニットテスト
 - `tests/unit/bases/BasesViewListSidebarService.test.ts`
   - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
+- `tests/unit/bases/registration.customTableOptions.test.ts`
+  - `tasknotesCustomTable` の `rowHeight` option に `veryShort` が含まれることを検証
 - `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
   - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
@@ -179,7 +188,7 @@
 - `tableSummaries: Record<propertyId, summaryKey>`
   - Custom Table View の列ごとの summary 設定
   - `BasesViewConfig.set/get("tableSummaries")` で保存
-- `rowHeight: "short" | "medium" | "tall" | "extraTall"`
+- `rowHeight: "veryShort" | "short" | "medium" | "tall" | "extraTall"`
   - View option から取得する行高設定
 - `columnSize: Record<propertyId, number>`
   - 列幅の永続化設定（変更列のみ）
@@ -242,7 +251,8 @@
 - 仮想行の区切り線は行単位で描画し、セル単位の高さ差で罫線がずれないようにしている。
 - 列幅はヘッダー境界ドラッグで変更でき、通常描画（colgroup）と仮想描画（grid template）に同時反映する。
 - 列幅合計が表示幅を超えると横スクロールバーが表示される。
-- テキスト/リンクは行高設定に応じたline-clampを適用（`short/medium=1行`, `tall=2行`, `extraTall=3行`）。
+- テキスト/リンクは行高設定に応じたline-clampを適用（`veryShort/short/medium=1行`, `tall=2行`, `extraTall=3行`）。
+- `veryShort` 時は通常行高だけでなく、グループ見出し行/サブグループ見出しの余白も縮めて表示密度を合わせる。
 - summary は設定された列のみ表示し、未設定列は空セル。
 - セル描画は `Value.renderTo(...)` を試し、失敗時は文字列描画にフォールバック。
 - TaskListView と違い、Custom Table View は TaskNotes 判定で絞り込まず Base の全エントリを表示。
@@ -253,6 +263,7 @@
 - 開状態ではヘッダーにcloseボタンを表示し、閉状態ではtoolbar左端にopenボタンを表示する。
 - 一覧幅はリサイズハンドルのドラッグで変更し、pointer終了時に `.base formulas.viewListSize` へ保存する。
 - `formulas.viewListSize` は文字列として保存し、利用時に数値変換して計算する（Bases仕様対応）。
+- `.base` の `modify/rename/delete` 受信時は `yamlStore.clearCache(path)` を先に実行し、600msデバウンス後に同一pathの bases leaf のみ再描画する。
 - closeボタンは小型表示に調整して視覚ノイズを抑えている。
 - left配置ヘッダーのタイトルは `base` ファイル名（拡張子除く）を表示する。
 - top配置では一覧を `bases-header` 直下へ挿入し、ヘッダー文字列は表示しない。

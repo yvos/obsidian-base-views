@@ -138,13 +138,17 @@ const KNOWN_VIEW_ICONS: Record<string, string> = {
 export class BasesViewListSidebarService {
 	private workspaceRefs: EventRef[] = [];
 	private emitterRefs: EventRef[] = [];
+	private vaultRefs: EventRef[] = [];
 	private managedLeaves = new Map<WorkspaceLeaf, ManagedLeafState>();
 	private toolbarTriggers = new Map<WorkspaceLeaf, HTMLElement>();
 	private resizeObservers = new Map<WorkspaceLeaf, ResizeObserver>();
 	private yamlStore: BaseViewListYamlStore;
 	private refreshTimer: number | null = null;
+	private baseFileRefreshTimer: number | null = null;
+	private pendingBaseFilePaths = new Set<string>();
 	private resizeDrag: ResizeDragState | null = null;
 	private running = false;
+	private readonly BASE_FILE_REFRESH_DEBOUNCE_MS = 600;
 
 	private readonly onResizePointerMoveBound = (evt: PointerEvent) => {
 		this.onResizePointerMove(evt);
@@ -169,6 +173,7 @@ export class BasesViewListSidebarService {
 		if (!this.running) return;
 		this.running = false;
 		this.clearRefreshTimer();
+		this.clearBaseFileRefreshTimer();
 		this.detachResizeDragListeners();
 		this.unbindEvents();
 		this.cleanupAllResizeObservers();
@@ -195,6 +200,24 @@ export class BasesViewListSidebarService {
 		this.workspaceRefs.push(
 			this.plugin.app.workspace.on("file-open", () => {
 				this.scheduleRefresh(120);
+			})
+		);
+
+		this.vaultRefs.push(
+			this.plugin.app.vault.on("modify", (file) => {
+				this.onBaseFileModified(file);
+			})
+		);
+
+		this.vaultRefs.push(
+			this.plugin.app.vault.on("rename", (file, oldPath) => {
+				this.onBaseFileRenamed(file, oldPath);
+			})
+		);
+
+		this.vaultRefs.push(
+			this.plugin.app.vault.on("delete", (file) => {
+				this.onBaseFileDeleted(file);
 			})
 		);
 
@@ -229,6 +252,14 @@ export class BasesViewListSidebarService {
 			emitter.offref?.(ref);
 		}
 		this.emitterRefs = [];
+
+		const vault = this.plugin.app.vault as unknown as {
+			offref?: (ref: EventRef) => void;
+		};
+		for (const ref of this.vaultRefs) {
+			vault.offref?.(ref);
+		}
+		this.vaultRefs = [];
 	}
 
 	private clearRefreshTimer(): void {
@@ -238,6 +269,14 @@ export class BasesViewListSidebarService {
 		}
 	}
 
+	private clearBaseFileRefreshTimer(): void {
+		if (this.baseFileRefreshTimer !== null) {
+			window.clearTimeout(this.baseFileRefreshTimer);
+			this.baseFileRefreshTimer = null;
+		}
+		this.pendingBaseFilePaths.clear();
+	}
+
 	private scheduleRefresh(delayMs: number): void {
 		if (!this.running) return;
 		this.clearRefreshTimer();
@@ -245,6 +284,88 @@ export class BasesViewListSidebarService {
 			this.refreshTimer = null;
 			void this.refreshAll();
 		}, delayMs);
+	}
+
+	private onBaseFileModified(file: unknown): void {
+		const basePath = this.getBasePathFromFileLike(file);
+		if (!basePath) return;
+
+		this.yamlStore.clearCache(basePath);
+		this.queueBaseFileRefresh(basePath);
+	}
+
+	private onBaseFileRenamed(file: unknown, oldPath: string): void {
+		const nextPath = this.getBasePathFromFileLike(file);
+		const previousPath = this.normalizeBasePath(oldPath);
+
+		if (nextPath) {
+			this.yamlStore.clearCache(nextPath);
+			this.queueBaseFileRefresh(nextPath);
+		}
+
+		if (previousPath) {
+			this.yamlStore.clearCache(previousPath);
+			this.queueBaseFileRefresh(previousPath);
+			if (!nextPath || nextPath !== previousPath) {
+				this.scheduleRefresh(120);
+			}
+		}
+	}
+
+	private onBaseFileDeleted(file: unknown): void {
+		const basePath = this.getBasePathFromFileLike(file);
+		if (!basePath) return;
+
+		this.yamlStore.clearCache(basePath);
+		this.queueBaseFileRefresh(basePath);
+		this.scheduleRefresh(120);
+	}
+
+	private getBasePathFromFileLike(file: unknown): string | null {
+		if (!(file instanceof TFile)) return null;
+		if (file.extension !== "base") return null;
+		return file.path;
+	}
+
+	private normalizeBasePath(path: unknown): string | null {
+		if (typeof path !== "string") return null;
+		const normalized = path.trim();
+		if (!normalized) return null;
+		if (!normalized.toLowerCase().endsWith(".base")) return null;
+		return normalized;
+	}
+
+	private queueBaseFileRefresh(path: string): void {
+		if (!this.running) return;
+		const normalized = this.normalizeBasePath(path);
+		if (!normalized) return;
+
+		this.pendingBaseFilePaths.add(normalized);
+
+		if (this.baseFileRefreshTimer !== null) {
+			window.clearTimeout(this.baseFileRefreshTimer);
+		}
+		this.baseFileRefreshTimer = window.setTimeout(() => {
+			this.baseFileRefreshTimer = null;
+			const targetPaths = new Set(this.pendingBaseFilePaths);
+			this.pendingBaseFilePaths.clear();
+			void this.refreshLeavesForBasePaths(targetPaths);
+		}, this.BASE_FILE_REFRESH_DEBOUNCE_MS);
+	}
+
+	private async refreshLeavesForBasePaths(targetPaths: Set<string>): Promise<void> {
+		if (!this.running) return;
+		if (targetPaths.size === 0) return;
+
+		const leaves = this.plugin.app.workspace.getLeavesOfType("bases") as WorkspaceLeaf[];
+		const refreshTargets = leaves.filter((leaf) => {
+			const file = this.getLeafFile(leaf);
+			if (!file || file.extension !== "base") return false;
+			return targetPaths.has(file.path);
+		});
+		if (refreshTargets.length === 0) return;
+
+		await Promise.all(refreshTargets.map((leaf) => this.refreshLeaf(leaf)));
 	}
 
 	private async refreshAll(): Promise<void> {
@@ -1720,8 +1841,8 @@ export class BasesViewListSidebarService {
 		const iconWidth = this.shouldShowIcons() ? 16 : 0;
 		const gap = this.shouldShowIcons() ? 8 : 0;
 		const horizontalPadding = 22;
-		const actionSlotWidth = 20;
-		const actionGap = 4;
+		const actionSlotWidth = 22;
+		const actionGap = 6;
 		const nameWidth = this.estimateVisualTextWidth(entry.name, false);
 		let textWidth = nameWidth;
 		if (this.shouldShowProperty() && entry.propertyText) {
