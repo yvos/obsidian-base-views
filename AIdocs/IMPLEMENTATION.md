@@ -30,6 +30,7 @@
 - 2026-02-18 時点で Custom Table の表示をネイティブ寄せに調整（本文/ヘッダー/グループのフォントサイズ見直し、`Row height = Very short (22px)` 追加）し、view一覧3点ボタンを「行内右端・枠線/背景なし」へ調整。
 - 2026-02-18 時点で Custom Table の2段階グルーピング見出しを微調整し、1段目/2段目でフォントサイズ差を付与、`veryShort` 時はグループ見出し行余白も連動して縮小。
 - 2026-02-18 時点で `tasknotesCustomTable` の2段階グルーピング候補に file系7種（`file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags`）を追加。
+- 2026-02-18 時点で view一覧の左端表示で長文テキストを行枠内クリップに調整し、Custom Table の unnest 重複行へ `git-branch` ボタンで循環ジャンプできるように更新。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
@@ -80,6 +81,7 @@
     - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
     - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`、`tasknotesCustomTable` は `table-cells-merge`）
     - 設定ON時は view名の下にプロパティ行を表示（配列はカンマ区切り、空値は非表示）
+    - 左端表示では長いview名/プロパティを行ボーダー内でクリップ表示
     - 狭幅時は設定に応じて `none/top/hide` を適用
     - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
     - 対象 `.base` の `modify/rename/delete` を監視し、YAMLキャッシュ削除後に600msデバウンスで該当leafのみ自動再描画
@@ -100,6 +102,7 @@
     - `customTableShowIconicIconInNameColumn`（plugin setting, default: true）で Iconic の file icon を先頭に表示
     - Iconic 解決順は `ruleManager.checkRuling("file", path)` → `getFileItem(path[, false])` → `settings.fileIcons[path]`
     - `icon` が空で `color` のみの場合はアイコンを表示しない
+    - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、リンク右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ（末尾到達で先頭へ戻る）
   - `Value.renderTo(...)` 優先 + `toString()` フォールバック
   - 列ヘッダー表示
     - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）
@@ -140,6 +143,8 @@
   - group key 正規化、list値の unnest、entry のグルーピング純粋関数
 - `src/bases/customTableDisplayUtils.ts`
   - Custom Table の表示補助（group見出しラベル整形）の純粋関数
+- `src/bases/customTableDuplicateNavigation.ts`
+  - Custom Table の重複行ナビゲーション（`file.path -> rowOrder[]`、次行循環計算）の純粋関数
 - `src/integrations/iconic/iconicFileIconResolver.ts`
   - Iconic plugin 連携（plugin取得、rule/fileItem/settings の順で icon解決）の純粋関数
 - `src/integrations/iconic/types.ts`
@@ -178,6 +183,8 @@
   - group key抽出・unnest・grouping純粋関数のユニットテスト
 - `tests/unit/bases/customTableDisplayUtils.test.ts`
   - group見出しラベル整形のユニットテスト
+- `tests/unit/bases/customTableDuplicateNavigation.test.ts`
+  - 重複行ナビゲーション（インデックス構築、重複判定、次行循環）のユニットテスト
 - `tests/unit/integrations/iconic/iconicFileIconResolver.test.ts`
   - Iconic icon解決（rule優先、fallback、例外時継続、color-only非表示）のユニットテスト
 - `tests/unit/bases/customTableGroupedFlatten.test.ts`

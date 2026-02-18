@@ -180,6 +180,14 @@ button.tn-bases-view-list__item {
 	min-width: 0;
 }
 
+.tn-bases-view-list-layout .tn-bases-view-list__item-row {
+	overflow: hidden;
+}
+
+.tn-bases-view-list-layout button.tn-bases-view-list__item {
+	overflow: hidden;
+}
+
 .tn-bases-view-list--top .tn-bases-view-list__item-row {
 	width: auto;
 	max-width: 100%;
@@ -215,6 +223,11 @@ button.tn-bases-view-list__item {
 	text-align: left;
 }
 
+.tn-bases-view-list-layout .tn-bases-view-list__item-content {
+	overflow: hidden;
+	max-width: 100%;
+}
+
 .tn-bases-view-list__item-name {
 	display: block;
 	font-size: var(--tn-bvl-name-font-size);
@@ -223,6 +236,11 @@ button.tn-bases-view-list__item {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	text-align: left;
+}
+
+.tn-bases-view-list-layout .tn-bases-view-list__item-name {
+	width: 100%;
+	max-width: 100%;
 }
 
 .tn-bases-view-list__item-property {
@@ -238,6 +256,11 @@ button.tn-bases-view-list__item {
 	color: var(--text-muted);
 	line-height: 1.25;
 	opacity: 0.95;
+}
+
+.tn-bases-view-list-layout .tn-bases-view-list__item-property {
+	width: 100%;
+	max-width: 100%;
 }
 
 .tn-bases-view-list__item-property--placeholder {
@@ -743,6 +766,34 @@ button.tn-bases-view-list__item-menu {
     gap: 6px;
     min-width: 0;
     max-width: 100%;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-duplicate-jump {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: color-mix(in srgb, var(--tn-text-muted) 85%, var(--tn-text-normal) 15%);
+    cursor: var(--cursor);
+    flex: 0 0 14px;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-duplicate-jump svg {
+    width: 11px;
+    height: 11px;
+}
+
+.tn-tasknotesCustomTable .tn-bases-table-duplicate-jump:hover,
+.tn-tasknotesCustomTable .tn-bases-table-duplicate-jump:focus-visible {
+    color: var(--text-accent);
+    background: transparent;
+    box-shadow: none;
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-file-icon {

@@ -56,6 +56,7 @@ export class VirtualScroller<T> {
 
 	private renderedElements = new Map<string, HTMLElement>();
 	private scrollRAF: number | null = null;
+	private scrollToAnimationRAF: number | null = null;
 
 	// Variable height tracking
 	private itemHeights = new Map<number, number>(); // index -> measured height
@@ -467,6 +468,8 @@ export class VirtualScroller<T> {
 	 * Update the items list and re-render
 	 */
 	updateItems(items: T[]): void {
+		this.cancelScrollToAnimation();
+
 		// Save current scroll position
 		const currentScrollTop = this.scrollContainer.scrollTop;
 
@@ -507,12 +510,68 @@ export class VirtualScroller<T> {
 	/**
 	 * Scroll to a specific item index
 	 */
-	scrollToIndex(index: number, behavior: ScrollBehavior = 'smooth'): void {
+	scrollToIndex(
+		index: number,
+		behavior: ScrollBehavior = 'smooth',
+		durationMs?: number
+	): void {
 		const targetScroll = this.getItemPosition(index);
+		if (
+			typeof durationMs === 'number' &&
+			Number.isFinite(durationMs) &&
+			durationMs > 0
+		) {
+			this.animateScrollTo(targetScroll, durationMs);
+			return;
+		}
+
+		this.cancelScrollToAnimation();
 		this.scrollContainer.scrollTo({
 			top: targetScroll,
 			behavior,
 		});
+	}
+
+	private animateScrollTo(targetTop: number, durationMs: number): void {
+		this.cancelScrollToAnimation();
+
+		const maxScrollTop = Math.max(
+			0,
+			this.scrollContainer.scrollHeight - this.scrollContainer.clientHeight
+		);
+		const clampedTarget = Math.max(0, Math.min(maxScrollTop, targetTop));
+		const startTop = this.scrollContainer.scrollTop;
+		const delta = clampedTarget - startTop;
+		if (Math.abs(delta) < 1) {
+			this.scrollContainer.scrollTop = clampedTarget;
+			return;
+		}
+
+		const startTime = performance.now();
+		const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+
+		const tick = (now: number): void => {
+			const elapsed = now - startTime;
+			const progress = Math.max(0, Math.min(1, elapsed / durationMs));
+			const eased = easeOutCubic(progress);
+			this.scrollContainer.scrollTop = startTop + delta * eased;
+
+			if (progress < 1) {
+				this.scrollToAnimationRAF = requestAnimationFrame(tick);
+				return;
+			}
+
+			this.scrollToAnimationRAF = null;
+		};
+
+		this.scrollToAnimationRAF = requestAnimationFrame(tick);
+	}
+
+	private cancelScrollToAnimation(): void {
+		if (this.scrollToAnimationRAF !== null) {
+			cancelAnimationFrame(this.scrollToAnimationRAF);
+			this.scrollToAnimationRAF = null;
+		}
 	}
 
 	/**
@@ -576,6 +635,7 @@ export class VirtualScroller<T> {
 		if (this.measurementRAF !== null) {
 			cancelAnimationFrame(this.measurementRAF);
 		}
+		this.cancelScrollToAnimation();
 		if (this.resizeObserver) {
 			this.resizeObserver.disconnect();
 			this.resizeObserver = null;

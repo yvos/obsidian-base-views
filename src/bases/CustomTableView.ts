@@ -31,6 +31,13 @@ import {
 	hasAnyMultiValueEntries,
 	sortGroupedEntries,
 } from "./customTableGrouping";
+import {
+	buildDuplicateNavigationIndex,
+	createEmptyDuplicateNavigationIndex,
+	getNextDuplicateRowOrder,
+	hasDuplicateNavigationTarget,
+	type DuplicateNavigationIndex,
+} from "./customTableDuplicateNavigation";
 import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
 import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
 
@@ -90,6 +97,7 @@ type VirtualNestedGroupedItem =
 		type: "row";
 		id: string;
 		entry: EntryLike;
+		rowOrder: number;
 		nested?: boolean;
 	};
 
@@ -140,6 +148,9 @@ export class CustomTableView extends BasesViewBase {
 	private renderedTables: HTMLTableElement[] = [];
 	private activeColumnResizeCleanup: (() => void) | null = null;
 	private basesController: any = null;
+	private duplicateNavigationIndex: DuplicateNavigationIndex = createEmptyDuplicateNavigationIndex();
+	private normalRowOrderCursor = 0;
+	private virtualRowOrderToIndex = new Map<number, number>();
 	private subGroupPropertyId: string | null = null;
 	private unnestMultiValueGroup = true;
 	private showIconicIconInNameColumn = true;
@@ -147,10 +158,12 @@ export class CustomTableView extends BasesViewBase {
 
 	private readonly DEFAULT_COLUMN_WIDTH = DEFAULT_TABLE_COLUMN_WIDTH;
 	private readonly MIN_COLUMN_WIDTH = MIN_TABLE_COLUMN_WIDTH;
+	private readonly DUPLICATE_JUMP_SCROLL_DURATION_MS = 150;
 
 	private readonly VIRTUAL_THRESHOLD_UNGROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_UNGROUPED;
 	private readonly VIRTUAL_THRESHOLD_GROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_GROUPED;
 	private readonly VIRTUAL_OVERSCAN = CUSTOM_TABLE_VIRTUAL_OVERSCAN;
+	private duplicateJumpAnimationRAF: number | null = null;
 
 	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
 		super(controller, containerEl, plugin);
@@ -163,6 +176,7 @@ export class CustomTableView extends BasesViewBase {
 		super.onload();
 		this.register(() => this.destroyVirtualScroller());
 		this.register(() => this.stopActiveColumnResize());
+		this.register(() => this.stopDuplicateJumpAnimation());
 	}
 
 	/**
@@ -323,6 +337,7 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		this.applyRowHeightClass();
+		this.resetRowNavigationState();
 
 		const columns = this.getVisibleColumns();
 		if (columns.length === 0) {
@@ -358,6 +373,7 @@ export class CustomTableView extends BasesViewBase {
 				return;
 			}
 
+			this.prepareDuplicateNavigation(this.collectNestedGroupRowEntries(nestedGroups));
 			const enhancedItems = this.flattenNestedGroupsForVirtual(nestedGroups, columns);
 			const shouldVirtual = shouldUseGroupedVirtualization(
 				enhancedItems.length,
@@ -378,6 +394,7 @@ export class CustomTableView extends BasesViewBase {
 			this.renderEmptyState("No rows match the current filters.");
 			return;
 		}
+		this.prepareDuplicateNavigation(entries);
 
 		const shouldVirtual = shouldUseUngroupedVirtualization(
 			entries.length,
@@ -429,6 +446,41 @@ export class CustomTableView extends BasesViewBase {
 		this.destroyVirtualScroller();
 		this.renderedTables = [];
 		this.tableScrollEl?.empty();
+		this.resetRowNavigationState();
+	}
+
+	private resetRowNavigationState(): void {
+		this.duplicateNavigationIndex = createEmptyDuplicateNavigationIndex();
+		this.normalRowOrderCursor = 0;
+		this.virtualRowOrderToIndex.clear();
+	}
+
+	private prepareDuplicateNavigation(entriesInRenderOrder: EntryLike[]): void {
+		this.duplicateNavigationIndex = buildDuplicateNavigationIndex(
+			entriesInRenderOrder.map((entry) => entry?.file?.path)
+		);
+		this.normalRowOrderCursor = 0;
+		this.virtualRowOrderToIndex.clear();
+	}
+
+	private collectNestedGroupRowEntries(nestedGroups: RenderableNestedGroup[]): EntryLike[] {
+		const entries: EntryLike[] = [];
+		for (const primary of nestedGroups) {
+			if (primary.subGroups.length > 0) {
+				for (const subGroup of primary.subGroups) {
+					entries.push(...subGroup.entries);
+				}
+				continue;
+			}
+			entries.push(...primary.entries);
+		}
+		return entries;
+	}
+
+	private consumeNormalRowOrder(): number {
+		const rowOrder = this.normalRowOrderCursor;
+		this.normalRowOrderCursor += 1;
+		return rowOrder;
 	}
 
 	private getPrimaryGroupByPropertyId(): string | null {
@@ -579,6 +631,7 @@ export class CustomTableView extends BasesViewBase {
 	): VirtualNestedGroupedItem[] {
 		const hasSummary = hasAnyTableSummary(columns, this.tableSummaries);
 		const items: VirtualNestedGroupedItem[] = [];
+		let rowOrder = 0;
 
 		for (const primary of nestedGroups) {
 			items.push({
@@ -611,8 +664,10 @@ export class CustomTableView extends BasesViewBase {
 							type: "row",
 							id: `row:${primary.id}:${subGroup.id}:${index}`,
 							entry: subGroup.entries[index],
+							rowOrder,
 							nested: true,
 						});
+						rowOrder += 1;
 					}
 				}
 				continue;
@@ -631,7 +686,9 @@ export class CustomTableView extends BasesViewBase {
 					type: "row",
 					id: `row:${primary.id}:${index}`,
 					entry: primary.entries[index],
+					rowOrder,
 				});
+				rowOrder += 1;
 			}
 		}
 
@@ -643,6 +700,8 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[]
 	): void {
 		this.destroyVirtualScroller();
+		this.virtualRowOrderToIndex.clear();
+		this.normalRowOrderCursor = 0;
 		if (!this.tableScrollEl) return;
 		this.tableScrollEl.empty();
 		this.renderedTables = [];
@@ -705,6 +764,13 @@ export class CustomTableView extends BasesViewBase {
 	): Promise<void> {
 		this.ensureVirtualLayout("grouped", columns, menuEntries, false);
 		if (!this.virtualItemsHostEl) return;
+		this.virtualRowOrderToIndex.clear();
+		for (let virtualIndex = 0; virtualIndex < items.length; virtualIndex++) {
+			const item = items[virtualIndex];
+			if (item.type === "row") {
+				this.virtualRowOrderToIndex.set(item.rowOrder, virtualIndex);
+			}
+		}
 
 		if (!this.virtualScroller) {
 			this.virtualScroller = new VirtualScroller<VirtualNestedGroupedItem>({
@@ -721,7 +787,7 @@ export class CustomTableView extends BasesViewBase {
 					if (item.type === "group-summary") {
 						return this.createVirtualSummaryRow(item.summaryValues, columns, !!item.nested);
 					}
-					return this.createVirtualRow(item.entry, columns, !!item.nested);
+					return this.createVirtualRow(item.entry, columns, !!item.nested, item.rowOrder);
 				},
 				getItemKey: (item) => item.id,
 			});
@@ -796,6 +862,8 @@ export class CustomTableView extends BasesViewBase {
 
 	private renderUngroupedNormal(entries: EntryLike[], columns: string[]): void {
 		this.destroyVirtualScroller();
+		this.virtualRowOrderToIndex.clear();
+		this.normalRowOrderCursor = 0;
 		if (!this.tableScrollEl) return;
 		this.tableScrollEl.empty();
 		this.renderedTables = [];
@@ -811,6 +879,8 @@ export class CustomTableView extends BasesViewBase {
 
 	private renderGroupedNormal(groups: RenderableGroup[], columns: string[]): void {
 		this.destroyVirtualScroller();
+		this.virtualRowOrderToIndex.clear();
+		this.prepareDuplicateNavigation(this.collectEntriesFromGroups(groups));
 		if (!this.tableScrollEl) return;
 		this.tableScrollEl.empty();
 		this.renderedTables = [];
@@ -826,6 +896,10 @@ export class CustomTableView extends BasesViewBase {
 	): Promise<void> {
 		this.ensureVirtualLayout("ungrouped", columns, entries, true);
 		if (!this.virtualItemsHostEl) return;
+		this.virtualRowOrderToIndex.clear();
+		for (let rowOrder = 0; rowOrder < entries.length; rowOrder++) {
+			this.virtualRowOrderToIndex.set(rowOrder, rowOrder);
+		}
 
 		this.updateVirtualFooterSummary(entries, columns);
 
@@ -834,7 +908,7 @@ export class CustomTableView extends BasesViewBase {
 				container: this.virtualItemsHostEl,
 				items: entries,
 				overscan: this.VIRTUAL_OVERSCAN,
-				renderItem: (entry) => this.createVirtualRow(entry, columns),
+				renderItem: (entry, index) => this.createVirtualRow(entry, columns, false, index),
 				getItemKey: (entry, index) => entry.file?.path || `row-${index}`,
 			});
 			setTimeout(() => this.virtualScroller?.recalculate(), 0);
@@ -850,6 +924,7 @@ export class CustomTableView extends BasesViewBase {
 	): Promise<void> {
 		this.ensureVirtualLayout("grouped", columns, menuEntries, false);
 		if (!this.virtualItemsHostEl) return;
+		this.virtualRowOrderToIndex.clear();
 
 		if (!this.virtualScroller) {
 			this.virtualScroller = new VirtualScroller<VirtualGroupedItem<EntryLike>>({
@@ -1000,13 +1075,17 @@ export class CustomTableView extends BasesViewBase {
 	private createVirtualRow(
 		entry: EntryLike,
 		columns: string[],
-		nested = false
+		nested = false,
+		rowOrder: number | null = null
 	): HTMLElement {
 		const doc = this.containerEl.ownerDocument;
 		const row = doc.createElement("div");
 		row.className = "tn-bases-table-row tn-bases-table-row--virtual";
 		if (nested) {
 			row.classList.add("tn-bases-table-row--nested");
+		}
+		if (typeof rowOrder === "number" && Number.isFinite(rowOrder)) {
+			row.dataset.tnRowOrder = String(rowOrder);
 		}
 		row.style.display = "grid";
 		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
@@ -1015,7 +1094,7 @@ export class CustomTableView extends BasesViewBase {
 		for (const propertyId of columns) {
 			const cell = doc.createElement("div");
 			cell.className = "tn-bases-table-cell";
-			this.renderCell(cell, entry, propertyId);
+			this.renderCell(cell, entry, propertyId, rowOrder);
 			row.appendChild(cell);
 		}
 
@@ -1317,10 +1396,12 @@ export class CustomTableView extends BasesViewBase {
 		for (const entry of entries) {
 			const row = tbodyEl.insertRow();
 			row.className = "tn-bases-table-row";
+			const rowOrder = this.consumeNormalRowOrder();
+			row.dataset.tnRowOrder = String(rowOrder);
 			for (const propertyId of columns) {
 				const td = row.insertCell();
 				td.className = "tn-bases-table-cell";
-				this.renderCell(td, entry, propertyId);
+				this.renderCell(td, entry, propertyId, rowOrder);
 			}
 		}
 
@@ -1528,11 +1609,16 @@ export class CustomTableView extends BasesViewBase {
 		}
 	}
 
-	private renderCell(cellEl: HTMLElement, entry: EntryLike, propertyId: string): void {
+	private renderCell(
+		cellEl: HTMLElement,
+		entry: EntryLike,
+		propertyId: string,
+		rowOrder: number | null = null
+	): void {
 		const value = this.safeGetValue(entry, propertyId);
 
 		if (this.isFileNameColumn(propertyId)) {
-			this.renderFileLink(cellEl, entry);
+			this.renderFileLink(cellEl, entry, rowOrder);
 			return;
 		}
 
@@ -1553,7 +1639,11 @@ export class CustomTableView extends BasesViewBase {
 		return prefix === "file" && name === "name";
 	}
 
-	private renderFileLink(cellEl: HTMLElement, entry: EntryLike): void {
+	private renderFileLink(
+		cellEl: HTMLElement,
+		entry: EntryLike,
+		rowOrder: number | null = null
+	): void {
 		const filePath = entry.file?.path;
 		const fileName = entry.file?.name || filePath;
 		if (!filePath || !fileName) {
@@ -1615,7 +1705,129 @@ export class CustomTableView extends BasesViewBase {
 		});
 
 		linkWrapper.appendChild(linkEl);
+
+		if (
+			this.unnestMultiValueGroup &&
+			typeof rowOrder === "number" &&
+			hasDuplicateNavigationTarget(this.duplicateNavigationIndex, filePath)
+		) {
+			const jumpButton = this.containerEl.ownerDocument.createElement("button");
+			jumpButton.type = "button";
+			jumpButton.className = "tn-bases-table-duplicate-jump";
+			jumpButton.setAttribute("aria-label", "Jump to next same file row");
+			jumpButton.setAttribute("title", "Jump to next same file row");
+			setIcon(jumpButton, "git-branch");
+			jumpButton.addEventListener("pointerdown", (evt) => {
+				evt.preventDefault();
+				evt.stopPropagation();
+			});
+			jumpButton.addEventListener("click", (evt) => {
+				evt.preventDefault();
+				evt.stopPropagation();
+				this.jumpToNextDuplicateFileRow(filePath, rowOrder);
+			});
+			linkWrapper.appendChild(jumpButton);
+		}
+
 		cellEl.appendChild(linkWrapper);
+	}
+
+	private jumpToNextDuplicateFileRow(filePath: string, currentRowOrder: number): void {
+		const nextRowOrder = getNextDuplicateRowOrder(
+			this.duplicateNavigationIndex,
+			filePath,
+			currentRowOrder
+		);
+		if (typeof nextRowOrder !== "number") return;
+
+		this.scrollToRowOrder(nextRowOrder);
+	}
+
+	private scrollToRowOrder(rowOrder: number): void {
+		try {
+			if (this.useVirtualScrolling && this.virtualScroller) {
+				const targetVirtualIndex =
+					this.virtualMode === "grouped"
+						? this.virtualRowOrderToIndex.get(rowOrder)
+						: rowOrder;
+				if (typeof targetVirtualIndex !== "number" || !Number.isFinite(targetVirtualIndex)) {
+					return;
+				}
+				this.virtualScroller.scrollToIndex(
+					targetVirtualIndex,
+					"smooth",
+					this.DUPLICATE_JUMP_SCROLL_DURATION_MS
+				);
+				return;
+			}
+
+			const targetRow = this.rootElement?.querySelector<HTMLElement>(
+				`[data-tn-row-order="${rowOrder}"]`
+			);
+			if (!targetRow) return;
+			this.fastScrollRowIntoView(targetRow);
+		} catch {
+			// Defensive no-op: duplicate jump should never break table rendering.
+		}
+	}
+
+	private fastScrollRowIntoView(targetRow: HTMLElement): void {
+		const container = this.tableScrollEl;
+		if (!container || !container.isConnected) {
+			targetRow.scrollIntoView({
+				block: "center",
+				behavior: "smooth",
+			});
+			return;
+		}
+
+		const containerRect = container.getBoundingClientRect();
+		const rowRect = targetRow.getBoundingClientRect();
+		const rowTopInContainer = rowRect.top - containerRect.top + container.scrollTop;
+		const centeredTop =
+			rowTopInContainer - Math.max(0, (container.clientHeight - rowRect.height) / 2);
+		this.animateContainerScrollTo(container, centeredTop, this.DUPLICATE_JUMP_SCROLL_DURATION_MS);
+	}
+
+	private animateContainerScrollTo(
+		container: HTMLElement,
+		targetTop: number,
+		durationMs: number
+	): void {
+		this.stopDuplicateJumpAnimation();
+		const doc = this.containerEl.ownerDocument;
+		const win = doc.defaultView || window;
+		const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+		const clampedTarget = Math.max(0, Math.min(maxTop, targetTop));
+		const startTop = container.scrollTop;
+		const delta = clampedTarget - startTop;
+		if (Math.abs(delta) < 1) {
+			container.scrollTop = clampedTarget;
+			return;
+		}
+
+		const startTime = win.performance?.now?.() ?? Date.now();
+		const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+		const tick = (now: number): void => {
+			const elapsed = now - startTime;
+			const progress = Math.max(0, Math.min(1, elapsed / durationMs));
+			container.scrollTop = startTop + delta * easeOutCubic(progress);
+			if (progress < 1) {
+				this.duplicateJumpAnimationRAF = win.requestAnimationFrame(tick);
+				return;
+			}
+			this.duplicateJumpAnimationRAF = null;
+		};
+
+		this.duplicateJumpAnimationRAF = win.requestAnimationFrame(tick);
+	}
+
+	private stopDuplicateJumpAnimation(): void {
+		if (this.duplicateJumpAnimationRAF === null) return;
+		const doc = this.containerEl.ownerDocument;
+		const win = doc.defaultView || window;
+		win.cancelAnimationFrame(this.duplicateJumpAnimationRAF);
+		this.duplicateJumpAnimationRAF = null;
 	}
 
 	private showFileLinkContextMenu(event: MouseEvent, filePath: string): void {
@@ -1757,6 +1969,7 @@ export class CustomTableView extends BasesViewBase {
 		this.virtualMenuEntries = [];
 		this.virtualColumnTemplate = "";
 		this.virtualMinWidth = "";
+		this.virtualRowOrderToIndex.clear();
 	}
 
 	protected async handleTaskUpdate(_task: TaskInfo): Promise<void> {
