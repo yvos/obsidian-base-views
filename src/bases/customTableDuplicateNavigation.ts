@@ -1,13 +1,16 @@
+// 同一ファイル行への循環ジャンプ用インデックスを保持する。
 export interface DuplicateNavigationIndex {
 	rowOrdersByPath: Map<string, number[]>;
 }
 
+// 空の重複行ジャンプインデックスを生成する。
 export function createEmptyDuplicateNavigationIndex(): DuplicateNavigationIndex {
 	return {
 		rowOrdersByPath: new Map<string, number[]>(),
 	};
 }
 
+// 描画順のファイルパス配列から重複行ジャンプインデックスを構築する。
 export function buildDuplicateNavigationIndex(
 	filePathsInRenderOrder: Array<string | null | undefined>
 ): DuplicateNavigationIndex {
@@ -31,6 +34,7 @@ export function buildDuplicateNavigationIndex(
 	return index;
 }
 
+// 指定ファイルに重複行ジャンプ先が存在するか判定する。
 export function hasDuplicateNavigationTarget(
 	index: DuplicateNavigationIndex,
 	filePath: string
@@ -39,6 +43,7 @@ export function hasDuplicateNavigationTarget(
 	return Array.isArray(rowOrders) && rowOrders.length > 1;
 }
 
+// 現在行から次の同一ファイル行のrowOrderを循環取得する。
 export function getNextDuplicateRowOrder(
 	index: DuplicateNavigationIndex,
 	filePath: string,

@@ -1,3 +1,4 @@
+// Custom Table列で使う集計種別キーを定義する。
 export type TableSummaryKey =
 	| "empty"
 	| "filled"
@@ -12,6 +13,7 @@ export type TableSummaryKey =
 	| "checked"
 	| "unchecked";
 
+// 集計メニューで表示する選択肢のキーとラベルを表す。
 export interface TableSummaryOption {
 	key: TableSummaryKey;
 	label: string;
@@ -41,12 +43,14 @@ const BOOLEAN_SUMMARIES: TableSummaryOption[] = [
 	{ key: "unchecked", label: "Unchecked" },
 ];
 
+// 値を集計計算に使いやすい形へ正規化した結果を保持する。
 interface NormalizedValue {
 	raw: unknown;
 	empty: boolean;
 	scalar: string | number | boolean | Date | null;
 }
 
+// Bases由来のValueオブジェクトを再帰的にプリミティブへ寄せる。
 function normalizeBasesValue(value: unknown): unknown {
 	if (value === null || value === undefined) return null;
 
@@ -82,6 +86,7 @@ function normalizeBasesValue(value: unknown): unknown {
 	return value;
 }
 
+// 任意値を空判定付きのNormalizedValueへ変換する。
 function toNormalizedValue(value: unknown): NormalizedValue {
 	const normalized = normalizeBasesValue(value);
 
@@ -137,6 +142,7 @@ function toNormalizedValue(value: unknown): NormalizedValue {
 	return { raw: value, empty: false, scalar: asText };
 }
 
+// 集計比較・表示に使うため任意値を文字列へ変換する。
 function stringifyValue(value: unknown): string {
 	if (value === null || value === undefined) return "";
 	if (value instanceof Date) return formatDate(value);
@@ -147,18 +153,21 @@ function stringifyValue(value: unknown): string {
 	return String(value);
 }
 
+// 文字列を数値として解釈可能ならnumberへ変換する。
 function tryParseNumber(value: string): number | null {
 	if (!value) return null;
 	const number = Number(value);
 	return Number.isFinite(number) ? number : null;
 }
 
+// 文字列をDateとして解釈可能ならDateへ変換する。
 function tryParseDate(value: string): Date | null {
 	const timestamp = Date.parse(value);
 	if (Number.isNaN(timestamp)) return null;
 	return new Date(timestamp);
 }
 
+// 文字列を真偽値として解釈可能ならbooleanへ変換する。
 function tryParseBoolean(value: string): boolean | null {
 	const lower = value.toLowerCase();
 	if (lower === "true" || lower === "yes" || lower === "checked" || lower === "on") return true;
@@ -166,12 +175,14 @@ function tryParseBoolean(value: string): boolean | null {
 	return null;
 }
 
+// 数値をsummary表示用の短い文字列へ整形する。
 function formatNumber(value: number): string {
 	if (!Number.isFinite(value)) return "";
 	const rounded = Math.round(value * 100) / 100;
 	return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
 }
 
+// 日付をYYYY-MM-DD形式の表示文字列へ整形する。
 function formatDate(date: Date): string {
 	const year = date.getFullYear();
 	const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -179,6 +190,7 @@ function formatDate(date: Date): string {
 	return `${year}-${month}-${day}`;
 }
 
+// ミリ秒差分を日/時間単位の簡易レンジ文字列へ整形する。
 function formatDuration(milliseconds: number): string {
 	if (!Number.isFinite(milliseconds) || milliseconds <= 0) return "0d";
 	const totalHours = Math.floor(milliseconds / (1000 * 60 * 60));
@@ -189,6 +201,7 @@ function formatDuration(milliseconds: number): string {
 	return `${hours}h`;
 }
 
+// 値配列の型傾向から利用可能なsummary候補一覧を返す。
 export function getSummaryOptions(values: unknown[]): TableSummaryOption[] {
 	const normalized = values.map((value) => toNormalizedValue(value)).filter((value) => !value.empty);
 
@@ -210,6 +223,7 @@ export function getSummaryOptions(values: unknown[]): TableSummaryOption[] {
 	return options;
 }
 
+// 指定されたsummaryキーに基づき値配列の集計結果を算出する。
 export function calculateSummary(values: unknown[], summaryKey: TableSummaryKey): string {
 	const normalized = values.map((value) => toNormalizedValue(value));
 	const filled = normalized.filter((value) => !value.empty);

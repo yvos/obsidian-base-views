@@ -41,7 +41,9 @@ import {
 import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
 import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
 
+// Custom Tableの行高設定で利用する選択肢を表す。
 type RowHeightOption = "veryShort" | "short" | "medium" | "tall" | "extraTall";
+// Custom Tableの仮想化モード状態を表す。
 type VirtualMode = "none" | "ungrouped" | "grouped";
 
 const VALID_ROW_HEIGHTS: RowHeightOption[] = [
@@ -53,6 +55,7 @@ const VALID_ROW_HEIGHTS: RowHeightOption[] = [
 ];
 const LUCIDE_PREFIX = "lucide-";
 
+// Custom Table描画で扱う最小限のentry参照型を表す。
 type EntryLike = {
 	file?: {
 		path?: string;
@@ -61,12 +64,14 @@ type EntryLike = {
 	getValue: (propertyId: string) => any;
 };
 
+// 1段グルーピング描画用のグループ情報を表す。
 interface RenderableGroup {
 	id: string;
 	title: string;
 	entries: EntryLike[];
 }
 
+// 2段グルーピング描画用の親グループ情報を表す。
 interface RenderableNestedGroup {
 	id: string;
 	title: string;
@@ -74,6 +79,7 @@ interface RenderableNestedGroup {
 	subGroups: RenderableGroup[];
 }
 
+// 2段グルーピング仮想描画で使う行種別Unionを表す。
 type VirtualNestedGroupedItem =
 	| {
 		type: "primary-header";
@@ -101,6 +107,7 @@ type VirtualNestedGroupedItem =
 		nested?: boolean;
 	};
 
+// プロパティアイコン解決に必要な最小メタデータ型を表す。
 interface PropertyMetadataLike {
 	icon?: unknown;
 	type?: unknown;
@@ -122,6 +129,7 @@ const PROPERTY_TYPE_ICON_MAP: Record<string, string> = {
 	formula: "table-cells-merge",
 };
 
+// Basesの全entryを表形式で描画する tasknotesCustomTable ビュー本体。
 export class CustomTableView extends BasesViewBase {
 	type = "tasknotesCustomTable";
 
@@ -2086,6 +2094,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 }
 
+// Bases登録時にCustomTableViewインスタンスを生成するファクトリを返す。
 export function buildCustomTableViewFactory(plugin: TaskNotesPlugin) {
 	return function (controller: any, containerEl: HTMLElement): CustomTableView {
 		if (!containerEl) {

@@ -9,14 +9,22 @@ import {
 	ViewListFormulaPlacement,
 } from "./BaseViewListYamlStore";
 
+// ネイティブdropdownとの併用モードを表す。
 type DropdownMode = "list-only" | "combined";
+// view一覧の配置設定値を表す。
 type LayoutPlacement = "left" | "top" | "none";
+// 実際に描画可能な配置（left/top）を表す。
 type RenderPlacement = "left" | "top";
+// view一覧フォントサイズ設定値を表す。
 type FontSizeOption = "m" | "s" | "xs";
+// top配置時の折返し/横スクロールモードを表す。
 type TopOverflowMode = "wrap" | "scroll";
+// 狭幅時の表示挙動を表す。
 type NarrowBehavior = "none" | "top" | "hide";
+// leafが通常ペインかサイドペインかの文脈を表す。
 type ViewListPaneContext = "normal" | "sidePane";
 
+// Basesのsub view定義を緩く扱うための最小型を表す。
 interface BasesSubViewLike {
 	name?: unknown;
 	type?: unknown;
@@ -24,10 +32,12 @@ interface BasesSubViewLike {
 	[key: string]: unknown;
 }
 
+// Bases controller上のqueryオブジェクト最小型を表す。
 interface BasesQueryLike {
 	views?: BasesSubViewLike[];
 }
 
+// view切替やview一覧取得に必要なcontroller最小型を表す。
 interface BasesControllerLike {
 	getQueryViewNames?: () => unknown;
 	selectView?: (viewName: string) => unknown;
@@ -35,6 +45,7 @@ interface BasesControllerLike {
 	viewName?: unknown;
 }
 
+// leaf.viewをBases向けに扱うための最小型を表す。
 interface BasesLeafViewLike {
 	getViewType?: () => string;
 	file?: TFile | null;
@@ -42,6 +53,7 @@ interface BasesLeafViewLike {
 	containerEl?: HTMLElement;
 }
 
+// view一覧描画で使う1行分の表示データを表す。
 interface ViewEntry {
 	name: string;
 	type: string | null;
@@ -50,6 +62,7 @@ interface ViewEntry {
 	descriptionText: string | null;
 }
 
+// サイドバー注入済みleafのDOM参照群を保持する。
 interface ManagedLeafState {
 	rootEl: HTMLElement;
 	placement: RenderPlacement;
@@ -60,12 +73,15 @@ interface ManagedLeafState {
 	basesViewEl: HTMLElement;
 }
 
+// Bases registrationから取得するアイコン情報の最小型を表す。
 interface BasesRegistrationLike {
 	icon?: unknown;
 }
 
+// view typeごとのregistration参照マップを表す。
 type BasesRegistrationMap = Record<string, BasesRegistrationLike | undefined>;
 
+// 幅リサイズ中に保持するドラッグ状態を表す。
 interface ResizeDragState {
 	leaf: WorkspaceLeaf;
 	layoutEl: HTMLElement;
@@ -74,6 +90,7 @@ interface ResizeDragState {
 	lastWidth: number;
 }
 
+// 取得元差異を吸収した部分的view情報を表す。
 interface PartialViewEntry {
 	name?: unknown;
 	type?: unknown;
@@ -81,12 +98,14 @@ interface PartialViewEntry {
 	descriptionText?: string | null;
 }
 
+// 配置解決後の最終結果（配置・強制scroll・非表示理由）を表す。
 interface EffectiveLayoutResolution {
 	placement: RenderPlacement;
 	forceTopScroll: boolean;
 	hiddenReason: "none" | "narrow-hide" | null;
 }
 
+// 設定/`.base formulas`/temporary を解決したview一覧設定値を表す。
 interface ResolvedViewListPrefs {
 	paneContext: ViewListPaneContext;
 	formulaPrefs: BaseViewListFormulaPrefs;
@@ -96,11 +115,13 @@ interface ResolvedViewListPrefs {
 	topOverflowMode: TopOverflowMode;
 }
 
+// leaf単位で一時的に適用する配置状態を保持する。
 interface TemporaryLeafPlacement {
 	filePath: string;
 	placement: LayoutPlacement;
 }
 
+// 幅の解決結果（px値と由来）を表す。
 interface PreferredWidthResult {
 	widthPx: number;
 	source: "file" | "default";
@@ -156,6 +177,7 @@ const KNOWN_VIEW_ICONS: Record<string, string> = {
 	tasknotesMiniCalendar: "calendar-days",
 };
 
+// `.base` 画面にview一覧サイドバーを注入・同期するサービス本体。
 export class BasesViewListSidebarService {
 	private workspaceRefs: EventRef[] = [];
 	private emitterRefs: EventRef[] = [];

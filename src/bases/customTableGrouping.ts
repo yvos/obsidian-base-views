@@ -1,13 +1,16 @@
+// グループキー抽出時の挙動（unnestやNoneラベル）を指定する。
 export interface GroupExtractionOptions {
 	unnest: boolean;
 	noneLabel?: string;
 }
 
+// グループキーごとにエントリ配列を保持する構造を表す。
 export interface GroupedEntries<TEntry> {
 	key: string;
 	entries: TEntry[];
 }
 
+// グループキーの昇順・降順を指定する方向型を表す。
 export type GroupSortDirection = "ASC" | "DESC";
 
 const GROUP_NONE_ALIASES = new Set(["", "none", "unknown", "null", "undefined"]);
@@ -16,10 +19,12 @@ const GROUP_KEY_COLLATOR = new Intl.Collator(undefined, {
 	sensitivity: "base",
 });
 
+// キー文字列がNone扱いの別名値かどうかを判定する。
 function isNoneLikeGroupKey(value: string): boolean {
 	return GROUP_NONE_ALIASES.has(value.trim().toLowerCase());
 }
 
+// グループキーをNone末尾ルール付きで比較し、並び順を返す。
 export function compareGroupKeys(
 	left: string,
 	right: string,
@@ -34,6 +39,7 @@ export function compareGroupKeys(
 	return direction === "DESC" ? -base : base;
 }
 
+// グループ配列をキー比較ロジックで並べ替えた新配列を返す。
 export function sortGroupedEntries<TEntry extends { key: string }>(
 	groups: TEntry[],
 	direction: GroupSortDirection = "ASC"
@@ -43,6 +49,7 @@ export function sortGroupedEntries<TEntry extends { key: string }>(
 	);
 }
 
+// 各エントリの値をグループキーへ変換してグループ化する。
 export function groupEntriesByValue<TEntry>(
 	entries: TEntry[],
 	getValue: (entry: TEntry) => unknown,
@@ -67,6 +74,7 @@ export function groupEntriesByValue<TEntry>(
 	}));
 }
 
+// グループ対象値に配列系のマルチ値が含まれるかを判定する。
 export function hasAnyMultiValueEntries<TEntry>(
 	entries: TEntry[],
 	getValue: (entry: TEntry) => unknown
@@ -79,6 +87,7 @@ export function hasAnyMultiValueEntries<TEntry>(
 	return false;
 }
 
+// 1つの値から設定に応じたグループキー配列を抽出する。
 export function extractGroupKeys(
 	value: unknown,
 	options: GroupExtractionOptions
@@ -107,6 +116,7 @@ export function extractGroupKeys(
 	return [toGroupKeyString(value, noneLabel)];
 }
 
+// 値を配列として扱える場合に配列要素を抽出して返す。
 export function extractListValues(value: unknown): unknown[] | null {
 	if (value == null) return null;
 	if (Array.isArray(value)) return value;
@@ -142,6 +152,7 @@ export function extractListValues(value: unknown): unknown[] | null {
 	return null;
 }
 
+// 任意値をグループキー表示用の文字列へ正規化して返す。
 export function toGroupKeyString(value: unknown, noneLabel = "None"): string {
 	if (value == null) return noneLabel;
 

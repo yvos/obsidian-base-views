@@ -179,3 +179,50 @@
 - `src/i18n/resources/ja.ts`
 - `tests/unit/bases/BasesViewListSidebarService.test.ts`
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
+
+## 8. 2026-02-19 調査結果（切り出し検討向け）
+
+### 8.1 Task List View の登録・表示に関わる主要ファイル
+- 登録導線
+  - `src/main.ts`: plugin起動時に `registerBasesTaskList()` を呼び、終了時に `unregisterBasesViews()` を呼ぶ。
+  - `src/bases/registration.ts`: `tasknotesTaskList` の view ID・表示名・icon・option を定義して登録する。
+  - `src/bases/api.ts`: `registerBasesView()` / `unregisterBasesView()` のBases APIラッパーを提供する。
+- 表示導線
+  - `src/bases/TaskListView.ts`: Task List本体。データ抽出、grouped/flat描画、仮想スクロール、TaskCard描画連携を担当。
+  - `src/bases/TaskSearchFilter.ts`: 検索ボックスのフィルタ処理を担当。
+  - `src/bases/groupTitleRenderer.ts`: group見出し文字列のリンク化描画を担当。
+
+### 8.2 Custom View（`tasknotesCustomTable`）の登録・表示に関わる主要ファイル
+- 登録導線
+  - `src/main.ts`: Task Listと同じ登録導線で一括登録される。
+  - `src/bases/registration.ts`: `tasknotesCustomTable` の view ID・option（subGroup/unnest/rowHeight）を定義して登録する。
+- 表示導線
+  - `src/bases/CustomTableView.ts`: Custom Table本体。表描画、grouping、summary、列幅、重複行ジャンプ、仮想スクロール統合を担当。
+  - `src/bases/customTableGrouping.ts`: グルーピングキー抽出・unnest・並べ替え。
+  - `src/bases/customTableVirtualization.ts`: 仮想化閾値判定とgrouped平坦化。
+  - `src/bases/customTableDisplayUtils.ts`: 見出し表示整形。
+  - `src/bases/customTableDuplicateNavigation.ts`: 同一 `file.path` 行の循環ジャンプ計算。
+  - `src/bases/tableColumnSizing.ts`: 列幅正規化・保存値計算。
+  - `src/bases/tableSummary.ts`: summary候補・集計計算。
+
+### 8.3 Bases view一覧の登録・表示に関わる主要ファイル
+- 起動/終了導線
+  - `src/main.ts`: `BasesViewListSidebarService` を生成して `start()/stop()` を呼ぶ。
+- 表示・永続・ネイティブ設定導線
+  - `src/bases/BasesViewListSidebarService.ts`: view一覧DOM注入、配置解決、クリック切替、右クリックメニュー、再描画を担当。
+  - `src/bases/BaseViewListYamlStore.ts`: `.base` YAML の `formulas` / `views[].description` 読み書き。
+  - `src/integrations/bases/nativeViewSettingsBridge.ts`: 3点メニューからネイティブview設定UI起動。
+  - `src/integrations/bases/types.ts`: 上記ブリッジの型。
+- 設定導線
+  - `src/settings/tabs/generalTab.ts`: 設定画面のview一覧関連UI。
+  - `src/settings/defaults.ts`: view一覧設定の初期値。
+  - `src/types/settings.ts`: view一覧設定型。
+  - `styles/bases-views.css`: view一覧UIスタイル。
+
+### 8.4 検討中案への示唆（技術観点）
+- 案1（Task List Viewのmodified版追加）
+  - `src/bases/TaskListView.ts` を直接改変せず、`TaskListViewModified.ts` を追加して別view IDで `registration.ts` に追記する方が安全。
+  - 既存 `tasknotesTaskList` と共存できるため、挙動比較と段階移行が容易。
+- 案2（bases機能のみの別リポジトリ化）
+  - 最小コアは `src/bases/`（Task List / Custom Table / view一覧関連）、`src/integrations/bases/`、該当設定型/UI、`styles/bases-views.css`。
+  - `src/api/`, `src/views/`, `src/services/` の大半、calendar/pomodoro/ICS/editor系は分離対象（bases以外機能）。

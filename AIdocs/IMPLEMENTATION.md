@@ -360,3 +360,80 @@
   - スタイル: `styles/bases-views.css`
   - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`, `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
 - `AIdocs/obsidian.d.ts` は必要箇所のみ参照し、通読しない。
+
+# 10. 2026-02-19 ファイル棚卸し（Task List / Custom View / view一覧）
+
+## 10.1 Task List View の登録・表示に関わるファイル
+- `src/main.ts`
+  - plugin起動時に `registerBasesTaskList()` を呼び、終了時に `unregisterBasesViews()` を呼ぶ。
+- `src/bases/registration.ts`
+  - `tasknotesTaskList` のview登録（view ID / name / icon / options）を定義する。
+- `src/bases/api.ts`
+  - Bases APIへの登録/解除ラッパーを提供する。
+- `src/bases/TaskListView.ts`
+  - Task List描画本体（TaskNotes抽出、group描画、仮想スクロール、クリック処理）を担当する。
+- `src/bases/TaskSearchFilter.ts`
+  - Task List検索ボックスの全文検索フィルタを担当する。
+- `src/bases/groupTitleRenderer.ts`
+  - grouped時の見出しリンク描画を担当する。
+
+## 10.2 Custom View（`tasknotesCustomTable`）の登録・表示に関わるファイル
+- `src/main.ts`
+  - Task Listと同じ登録導線で `tasknotesCustomTable` を有効化する。
+- `src/bases/registration.ts`
+  - `tasknotesCustomTable` のview登録と `subGroup` / `unnestMultiValueGroup` / `rowHeight` option を定義する。
+- `src/bases/CustomTableView.ts`
+  - Custom Table描画本体（通常/仮想描画、grouping、summary、列幅、重複行ジャンプ）を担当する。
+- `src/bases/customTableGrouping.ts`
+  - グルーピングキー抽出、unnest、ソートを担当する。
+- `src/bases/customTableVirtualization.ts`
+  - 仮想化閾値判定とgrouped平坦化を担当する。
+- `src/bases/customTableDisplayUtils.ts`
+  - group見出し表示文字列を整形する。
+- `src/bases/customTableDuplicateNavigation.ts`
+  - 同一 `file.path` の重複行ジャンプインデックス計算を担当する。
+- `src/bases/tableColumnSizing.ts`
+  - 列幅の正規化・保存値更新・テンプレート生成を担当する。
+- `src/bases/tableSummary.ts`
+  - summary候補判定と集計値計算を担当する。
+
+## 10.3 Bases view一覧に関わるファイル
+- `src/main.ts`
+  - `BasesViewListSidebarService` を生成して `start()/stop()` を制御する。
+- `src/bases/BasesViewListSidebarService.ts`
+  - view一覧DOM注入、配置解決、切替、右クリックメニュー、リサイズ、再描画を担当する。
+- `src/bases/BaseViewListYamlStore.ts`
+  - `.base` YAML（`formulas` と `views[].description`）の読み書きを担当する。
+- `src/integrations/bases/nativeViewSettingsBridge.ts`
+  - view行3点メニューからネイティブview設定UIを開くDOMブリッジを担当する。
+- `src/integrations/bases/types.ts`
+  - ネイティブ設定起動ブリッジの入力/結果型を定義する。
+- `src/settings/tabs/generalTab.ts`
+  - view一覧関連設定UI（enable/placement/font/property/icons など）を提供する。
+- `src/settings/defaults.ts`
+  - view一覧関連設定のデフォルト値を定義する。
+- `src/types/settings.ts`
+  - view一覧関連設定の型を定義する。
+- `styles/bases-views.css`
+  - view一覧サイドバーのレイアウト/見た目を定義する。
+
+## 10.4 上記3機能に直接関わらないファイル（削除候補の大分類）
+- `src/bases/CalendarView.ts`, `src/bases/KanbanView.ts`, `src/bases/MiniCalendarView.ts`, `src/bases/calendar-core.ts`
+  - Bases関連だが、今回対象の3機能（Task List / Custom Table / view一覧）には直接関与しない別ビュー実装。
+- `src/api/*`
+  - HTTP API（Tasks/Calendars/Pomodoro/Webhook）公開機能。
+- `src/views/*`
+  - Pomodoro/Stats/ReleaseNotes の独自ビュー機能。
+- `src/services/*` のうち外部連携系
+  - `GoogleCalendarService` / `MicrosoftCalendarService` / `OAuthService` / `ICS*` / `PomodoroService` など、カレンダー同期やタイマー機能。
+- `src/editor/*`
+  - エディタ拡張（タスクリンク装飾、補完、ウィジェット）機能。
+- `src/modals/*` のうち外部連携・時間管理系
+  - `DeviceCodeModal`, `Timeblock*`, `ICSEvent*` など、対象3機能外のモーダル。
+- `src/settings/tabs/*`（`generalTab.ts` 以外）
+  - 見た目、機能一般、連携、タスクプロパティ等の汎用設定UI。
+
+## 10.5 備考（切り出し時の依存注意）
+- `TaskListView` は `src/ui/TaskCard.ts` と日付/優先度/再発メニュー系コンポーネントに依存するため、Task List modified版だけを残す場合でも関連UIは連動して残す必要がある。
+- `CustomTableView` は `src/integrations/iconic/iconicFileIconResolver.ts` を参照するため、Iconic連携を残すか無効化するかを先に決める必要がある。
+- 3機能のみへ絞る場合でも、`src/main.ts` は大きいため、初期化処理を分割して `bases` 専用エントリへ再構成するのが安全。

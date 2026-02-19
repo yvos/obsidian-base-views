@@ -14,6 +14,7 @@ import { ReminderModal } from "../modals/ReminderModal";
 import { getDatePart, getTimePart, parseDateToUTC, createUTCDateFromLocalCalendarDate } from "../utils/dateUtils";
 import { VirtualScroller } from "../utils/VirtualScroller";
 
+// Bases上でTaskNotesタスクのみをカード一覧表示するTask Listビュー本体。
 export class TaskListView extends BasesViewBase {
 	type = "tasknotesTaskList";
 
@@ -1460,6 +1461,7 @@ export class TaskListView extends BasesViewBase {
  * Factory function for Bases registration.
  * Returns an actual TaskListView instance (extends BasesView).
  */
+// Bases登録時にTaskListViewインスタンスを生成するファクトリを返す。
 export function buildTaskListViewFactory(plugin: TaskNotesPlugin) {
 	return function (controller: any, containerEl: HTMLElement): TaskListView {
 		if (!containerEl) {

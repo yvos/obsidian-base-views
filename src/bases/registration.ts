@@ -18,6 +18,7 @@ const CUSTOM_TABLE_SUB_GROUP_FILE_PROPERTIES = new Set([
 	"file.tags",
 ]);
 
+// Custom TableのSub-group対象として許可するプロパティか判定する。
 function isCustomTableSubGroupProperty(prop: string): boolean {
 	return (
 		prop.startsWith("note.") ||
@@ -31,6 +32,7 @@ function isCustomTableSubGroupProperty(prop: string): boolean {
  * Register TaskNotes views with Bases plugin
  * Requires Obsidian 1.10.1+ (public Bases API with groupBy support)
  */
+// BasesへTask List/Custom Tableを含むTaskNotes各ビューを登録する。
 export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<void> {
 	if (!plugin.settings.enableBases) return;
 	// All views now require Obsidian 1.10.1+ (public Bases API with groupBy support)
@@ -620,6 +622,7 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 /**
  * Unregister TaskNotes views from Bases plugin
  */
+// Basesへ登録したTaskNotesカスタムビューを一括解除する。
 export function unregisterBasesViews(plugin: TaskNotesPlugin): void {
 	try {
 		// Unregister views using wrapper (uses internal API as public API doesn't provide unregister)

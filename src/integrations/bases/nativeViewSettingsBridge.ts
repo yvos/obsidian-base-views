@@ -29,11 +29,13 @@ const CHEVRON_SELECTORS = [
 	"[aria-expanded]",
 ];
 
+// クリックシミュレーションで使う座標値を表す。
 interface Point {
 	x: number;
 	y: number;
 }
 
+// メニュー項目比較用に文字列をNFKC・小文字へ正規化する。
 function normalizeText(value: string): string {
 	return value
 		.normalize("NFKC")
@@ -42,6 +44,7 @@ function normalizeText(value: string): string {
 		.toLowerCase();
 }
 
+// 要素の矩形中心座標をクリック基準点として取得する。
 function getElementPoint(el: HTMLElement): Point {
 	const rect = el.getBoundingClientRect();
 	if (Number.isFinite(rect.left) && Number.isFinite(rect.top)) {
@@ -52,6 +55,7 @@ function getElementPoint(el: HTMLElement): Point {
 	return { x: 0, y: 0 };
 }
 
+// 画面上で可視状態のmenu要素のみを抽出する。
 function getVisibleMenus(doc: Document): HTMLElement[] {
 	return Array.from(doc.querySelectorAll<HTMLElement>(MENU_SELECTOR)).filter((menuEl) => {
 		if (!menuEl.isConnected) return false;
@@ -66,6 +70,7 @@ function getVisibleMenus(doc: Document): HTMLElement[] {
 	});
 }
 
+// 可視menu配列からBasesのviewsメニューを優先検出する。
 function findNativeViewsMenu(menus: HTMLElement[]): HTMLElement | null {
 	for (let index = menus.length - 1; index >= 0; index -= 1) {
 		const menuEl = menus[index];
@@ -76,6 +81,7 @@ function findNativeViewsMenu(menus: HTMLElement[]): HTMLElement | null {
 	return null;
 }
 
+// 渡されたmenuが設定画面状態に遷移済みか判定する。
 function isSettingsStateMenu(menuEl: HTMLElement): boolean {
 	if (!menuEl.isConnected) return false;
 	for (const selector of NATIVE_SETTINGS_STATE_SELECTORS) {
@@ -86,12 +92,14 @@ function isSettingsStateMenu(menuEl: HTMLElement): boolean {
 	return false;
 }
 
+// viewsメニューとして操作可能な状態かを判定する。
 function isViewsMenuReady(menuEl: HTMLElement): boolean {
 	if (isSettingsStateMenu(menuEl)) return true;
 	const rowCount = menuEl.querySelectorAll(MENU_ITEM_SELECTOR).length;
 	return rowCount > 0;
 }
 
+// viewsトリガの実際のクリック対象要素を解決する。
 function resolveTriggerTarget(triggerHost: HTMLElement): HTMLElement {
 	return (
 		triggerHost.querySelector<HTMLElement>(
@@ -100,6 +108,7 @@ function resolveTriggerTarget(triggerHost: HTMLElement): HTMLElement {
 	);
 }
 
+// ポインタ/マウスイベントを指定座標で疑似発火する。
 function dispatchMouseLikeEvent(target: HTMLElement, type: string, point: Point): void {
 	const view = target.ownerDocument?.defaultView ?? window;
 	const eventInit = {
@@ -125,6 +134,7 @@ function dispatchMouseLikeEvent(target: HTMLElement, type: string, point: Point)
 	target.dispatchEvent(new MouseEvent(type, eventInit));
 }
 
+// クリック操作一連のイベント列を順に疑似発火する。
 function dispatchPointerClick(target: HTMLElement, point: Point): void {
 	dispatchMouseLikeEvent(target, "pointerdown", point);
 	dispatchMouseLikeEvent(target, "mousedown", point);
@@ -133,6 +143,7 @@ function dispatchPointerClick(target: HTMLElement, point: Point): void {
 	dispatchMouseLikeEvent(target, "click", point);
 }
 
+// キー入力イベントを指定要素へ疑似発火する。
 function dispatchKeyEvent(target: HTMLElement, key: string): void {
 	const view = target.ownerDocument?.defaultView ?? window;
 	target.dispatchEvent(
@@ -146,6 +157,7 @@ function dispatchKeyEvent(target: HTMLElement, key: string): void {
 	);
 }
 
+// 条件成立まで一定回数ポーリングして結果を待つ。
 async function waitFor<T>(
 	factory: () => T | null | undefined,
 	attempts = 12,
@@ -159,10 +171,12 @@ async function waitFor<T>(
 	return null;
 }
 
+// 次フレームまで待機してDOM反映を待つ。
 async function waitForNextFrame(): Promise<void> {
 	await new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
+// 開いたviewsメニューから対象ビュー行を曖昧一致で特定する。
 function resolveViewRow(menuEl: HTMLElement, viewName: string): HTMLElement | null {
 	const targetName = normalizeText(viewName);
 	if (!targetName) return null;
@@ -190,6 +204,7 @@ function resolveViewRow(menuEl: HTMLElement, viewName: string): HTMLElement | nu
 	return bestMatch?.el ?? null;
 }
 
+// 対象ビュー行内から設定サブメニュー展開用の矢印要素を解決する。
 function resolveChevronTarget(rowEl: HTMLElement): HTMLElement | null {
 	const selector = CHEVRON_SELECTORS.join(", ");
 	const node = rowEl.querySelector<HTMLElement>(selector);
@@ -197,6 +212,7 @@ function resolveChevronTarget(rowEl: HTMLElement): HTMLElement | null {
 	return node.closest<HTMLElement>("button, [role='button'], div, span") ?? node;
 }
 
+// viewsメニューを開くまで複数操作（クリック/Enter）でリトライする。
 async function openViewsMenu(
 	triggerEl: HTMLElement,
 	anchorPoint: Point,
@@ -244,6 +260,7 @@ async function openViewsMenu(
 	return null;
 }
 
+// viewsメニューから設定状態メニューへ遷移したかを待機判定する。
 async function waitForSettingsOpened(
 	doc: Document,
 	beforeMenusCount: number,
@@ -260,6 +277,7 @@ async function waitForSettingsOpened(
 	return opened === true;
 }
 
+// 行要素にフォーカスを移しキーボード操作可能にする。
 function focusRow(rowEl: HTMLElement): void {
 	if (typeof rowEl.focus !== "function") return;
 	if (!rowEl.hasAttribute("tabindex")) {
@@ -268,6 +286,7 @@ function focusRow(rowEl: HTMLElement): void {
 	rowEl.focus();
 }
 
+// 対象行から設定画面を開く操作を複数経路で試行する。
 async function tryOpenSettingsFromRow(
 	rowEl: HTMLElement,
 	anchorPoint: Point,
@@ -301,6 +320,7 @@ async function tryOpenSettingsFromRow(
 	return "opened-view-list-only";
 }
 
+// view一覧トリガからネイティブのview設定画面を開くブリッジ処理を実行する。
 export async function openNativeViewSettingsAtAnchor(
 	params: OpenNativeViewSettingsAtAnchorParams
 ): Promise<NativeViewSettingsOpenResult> {

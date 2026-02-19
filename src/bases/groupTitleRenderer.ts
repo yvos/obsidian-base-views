@@ -2,6 +2,7 @@ import { parseLinktext, TFile } from "obsidian";
 import { appendInternalLink, type LinkServices } from "../ui/renderers/linkRenderer";
 import { parseLinkToPath } from "../utils/linkUtils";
 
+// グループ見出しの表示文字列をリンク先情報から補正する。
 function resolveDisplayText(
 	filePath: string,
 	displayText: string,
@@ -40,6 +41,7 @@ function resolveDisplayText(
  * - File paths (with or without .md extension)
  * - Regular text
  */
+// グループ見出し文字列を内部リンク対応付きで描画する。
 export function renderGroupTitle(
 	container: HTMLElement,
 	title: string,

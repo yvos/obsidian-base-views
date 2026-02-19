@@ -1,3 +1,4 @@
+// グループ見出し文字列にプロパティ名プレフィックスを付与する。
 export function formatGroupTitleWithProperty(
 	groupValueTitle: string,
 	propertyDisplayName: string | null,
