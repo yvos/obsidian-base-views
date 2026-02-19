@@ -6,7 +6,6 @@ import { calculateSummary, getSummaryOptions, TableSummaryKey } from "./tableSum
 import { VirtualScroller } from "../utils/VirtualScroller";
 import {
 	CUSTOM_TABLE_VIRTUAL_OVERSCAN,
-	CUSTOM_TABLE_VIRTUAL_THRESHOLD_GROUPED,
 	CUSTOM_TABLE_VIRTUAL_THRESHOLD_UNGROUPED,
 	flattenGroupedVirtualItems,
 	GroupedVirtualSource,
@@ -169,7 +168,8 @@ export class CustomTableView extends BasesViewBase {
 	private readonly DUPLICATE_JUMP_SCROLL_DURATION_MS = 150;
 
 	private readonly VIRTUAL_THRESHOLD_UNGROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_UNGROUPED;
-	private readonly VIRTUAL_THRESHOLD_GROUPED = CUSTOM_TABLE_VIRTUAL_THRESHOLD_GROUPED;
+	// Keep grouped layout consistent (single shared header) regardless row count.
+	private readonly VIRTUAL_THRESHOLD_GROUPED = 0;
 	private readonly VIRTUAL_OVERSCAN = CUSTOM_TABLE_VIRTUAL_OVERSCAN;
 	private duplicateJumpAnimationRAF: number | null = null;
 	private jumpHighlightRowOrder: number | null = null;
@@ -241,9 +241,10 @@ export class CustomTableView extends BasesViewBase {
 			const columnSize = JSON.stringify(this.config?.get?.("columnSize") ?? {});
 			const subGroup = String(this.config?.getAsPropertyId?.("subGroup") ?? "");
 			const unnest = String(this.config?.get?.("unnestMultiValueGroup") ?? true);
-			const primaryGroupBy = this.getPrimaryGroupByPropertyId() ?? "";
-			const primaryGroupDirection = this.getPrimaryGroupByDirection();
 			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
+			const allowControllerGroupByFallback = grouped === "grouped";
+			const primaryGroupBy = this.getPrimaryGroupByPropertyId(allowControllerGroupByFallback) ?? "";
+			const primaryGroupDirection = this.getPrimaryGroupByDirection(allowControllerGroupByFallback);
 			const iconic = String(this.plugin.settings?.customTableShowIconicIconInNameColumn ?? true);
 			const showGroupProperty = String(
 				this.plugin.settings?.customTableShowGroupingPropertyName ?? false
@@ -373,8 +374,8 @@ export class CustomTableView extends BasesViewBase {
 			return;
 		}
 		const isGrouped = this.dataAdapter.isGrouped();
-		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId();
-		const primaryGroupSortDirection = this.getPrimaryGroupByDirection();
+		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId(isGrouped);
+		const primaryGroupSortDirection = this.getPrimaryGroupByDirection(isGrouped);
 		const shouldRenderGrouped =
 			isGrouped || !!primaryGroupByPropertyId || !!this.subGroupPropertyId;
 
@@ -407,7 +408,7 @@ export class CustomTableView extends BasesViewBase {
 			return;
 		}
 
-		const entries = (groupedData[0]?.entries || allEntries || []) as EntryLike[];
+		const entries = allEntries as EntryLike[];
 		if (entries.length === 0) {
 			this.clearRenderedContent();
 			this.renderEmptyState("No rows match the current filters.");
@@ -598,7 +599,71 @@ export class CustomTableView extends BasesViewBase {
 		this.jumpHighlightCanClear = true;
 	}
 
-	private getPrimaryGroupByPropertyId(): string | null {
+	private readPrimaryGroupByFromConfig(): {
+		resolved: boolean;
+		propertyId: string | null;
+		direction: GroupSortDirection | null;
+	} {
+		if (!this.config) {
+			return { resolved: false, propertyId: null, direction: null };
+		}
+
+		try {
+			const getAsPropertyId = this.config.getAsPropertyId;
+			if (typeof getAsPropertyId === "function") {
+				const propertyCandidate = getAsPropertyId.call(this.config, "groupBy");
+				const propertyId = this.asNonEmptyString(propertyCandidate);
+				if (propertyCandidate == null || typeof propertyCandidate === "string") {
+					const rawGroupBy =
+						typeof this.config.get === "function" ? this.config.get("groupBy") : null;
+					const propertyFromRaw = this.resolveGroupByPropertyFromValue(rawGroupBy);
+					const direction = this.resolveGroupByDirectionFromValue(
+						rawGroupBy
+					);
+					return { resolved: true, propertyId: propertyId ?? propertyFromRaw, direction };
+				}
+			}
+
+			const getOption = this.config.get;
+			if (typeof getOption === "function") {
+				const rawGroupBy = getOption.call(this.config, "groupBy");
+				const propertyId = this.resolveGroupByPropertyFromValue(rawGroupBy);
+				const direction = this.resolveGroupByDirectionFromValue(rawGroupBy);
+				return { resolved: true, propertyId, direction };
+			}
+		} catch {
+			return { resolved: false, propertyId: null, direction: null };
+		}
+
+		return { resolved: false, propertyId: null, direction: null };
+	}
+
+	private resolveGroupByPropertyFromValue(rawGroupBy: unknown): string | null {
+		if (typeof rawGroupBy === "string") {
+			return this.asNonEmptyString(rawGroupBy);
+		}
+		if (rawGroupBy && typeof rawGroupBy === "object") {
+			const propertyCandidate = (rawGroupBy as { property?: unknown }).property;
+			return this.asNonEmptyString(propertyCandidate);
+		}
+		return null;
+	}
+
+	private resolveGroupByDirectionFromValue(rawGroupBy: unknown): GroupSortDirection | null {
+		if (!rawGroupBy || typeof rawGroupBy !== "object") return null;
+		const directionCandidate = (rawGroupBy as { direction?: unknown }).direction;
+		if (typeof directionCandidate !== "string") return null;
+		const normalized = directionCandidate.trim().toUpperCase();
+		if (normalized === "DESC") return "DESC";
+		if (normalized === "ASC") return "ASC";
+		return null;
+	}
+
+	private getPrimaryGroupByPropertyId(allowControllerFallback = true): string | null {
+		const configGroupBy = this.readPrimaryGroupByFromConfig();
+		if (configGroupBy.propertyId) return configGroupBy.propertyId;
+		if (!allowControllerFallback) return null;
+
 		const controller = this.basesController;
 		if (!controller?.query?.views || !controller?.viewName) return null;
 
@@ -619,7 +684,11 @@ export class CustomTableView extends BasesViewBase {
 		return null;
 	}
 
-	private getPrimaryGroupByDirection(): GroupSortDirection {
+	private getPrimaryGroupByDirection(allowControllerFallback = true): GroupSortDirection {
+		const configGroupBy = this.readPrimaryGroupByFromConfig();
+		if (configGroupBy.direction) return configGroupBy.direction;
+		if (!allowControllerFallback) return "ASC";
+
 		const controller = this.basesController;
 		if (!controller?.query?.views || !controller?.viewName) return "ASC";
 
