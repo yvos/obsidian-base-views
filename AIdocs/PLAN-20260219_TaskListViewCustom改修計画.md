@@ -54,28 +54,28 @@
 - TaskList本体で `file.*` を正しく解決できるよう、`getPropertyValue` を `propertyId直指定 + fallback` に見直し、必要に応じて `dataAdapter.getComputedProperty()` を利用。
 
 ## 4. 詳細タスク
-- [ ] 4.1 `TaskListViewCustom.ts` を新規作成（`TaskListView` 複製ベース）
-- [ ] 4.2 `TaskListViewCustom` の view option 読み込みを整理
+- [x] 4.1 `TaskListViewCustom.ts` を新規作成（`TaskListView` 複製ベース）
+- [x] 4.2 `TaskListViewCustom` の view option 読み込みを整理
   - `enableSearch` を読まない
   - `unnestMultiValueGroup` を追加（default true）
-- [ ] 4.3 サブグルーピング処理を unnest 対応へ変更
+- [x] 4.3 サブグルーピング処理を unnest 対応へ変更
   - `groupTasksBySubProperty` を `extractGroupKeys` ベースへ置換
-- [ ] 4.4 `file.*` 7種の値解決ロジックを追加
+- [x] 4.4 `file.*` 7種の値解決ロジックを追加
   - `file.ext` / `file.folder` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` 対応
-- [ ] 4.5 重複行ジャンプUIを追加
+- [x] 4.5 重複行ジャンプUIを追加
   - タスクカードに `git-branch` ボタンを条件表示
   - 通常描画・仮想描画で循環ジャンプ
-- [ ] 4.6 ジャンプ先ハイライト（必要なら）を追加
-  - 既存CustomTableと同様の「一時ハイライト→別行hoverで解除」を任意採用
-- [ ] 4.7 2段階目見出し+配下カードのインデントclassを追加
-- [ ] 4.8 `registration.ts` 更新
+- [x] 4.6 ジャンプ先ハイライト（必要なら）を追加
+  - 本件要件は「ジャンプ可能化」までのため、CustomTableの一時ハイライトは今回は未採用
+- [x] 4.7 2段階目見出し+配下カードのインデントclassを追加
+- [x] 4.8 `registration.ts` 更新
   - `buildTaskListViewCustomFactory` import
   - `tasknotesTaskListCustom` 登録
   - `subGroup` filter に file系7種許可
   - `unregisterBasesViews` に custom ID 追加
-- [ ] 4.9 `styles/bases-views.css` に新ビュー用スタイルを追加
-- [ ] 4.10 テスト追加/更新
-- [ ] 4.11 `AIdocs/IMPLEMENTATION.md` / `AIdocs/LOG-20260219.md` 更新
+- [x] 4.9 `styles/bases-views.css` に新ビュー用スタイルを追加
+- [x] 4.10 テスト追加/更新
+- [x] 4.11 `AIdocs/IMPLEMENTATION.md` / `AIdocs/LOG-20260219.md` 更新
 
 ## 5. 変更対象ファイル（予定）
 - 新規

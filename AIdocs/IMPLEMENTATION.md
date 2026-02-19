@@ -32,11 +32,13 @@
 - 2026-02-18 時点で `tasknotesCustomTable` の2段階グルーピング候補に file系7種（`file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags`）を追加。
 - 2026-02-18 時点で view一覧の左端表示で長文テキストを行枠内クリップに調整し、Custom Table の unnest 重複行へ `git-branch` ボタンで循環ジャンプできるように更新。
 - 2026-02-18 時点で Custom Table の重複行ジャンプ後、ジャンプ先行を一時ハイライトし、1フレーム後以降に別行ホバーで解除する挙動を追加。
+- 2026-02-19 時点で `tasknotesTaskListCustom`（`Task List view custom`）を追加し、検索ON/OFF option削除・unnest対応・`git-branch` 重複行ジャンプ・2段階目インデント・`subGroup` の file系7種対応を実装。
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
 - Bases カスタムビュー登録/解除
   - `tasknotesTaskList`
+  - `tasknotesTaskListCustom`
   - `tasknotesCustomTable`
   - `tasknotesKanban`
   - `tasknotesCalendar`
@@ -86,6 +88,18 @@
     - 狭幅時は設定に応じて `none/top/hide` を適用
     - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
     - 対象 `.base` の `modify/rename/delete` を監視し、YAMLキャッシュ削除後に600msデバウンスで該当leafのみ自動再描画
+- Task List View custom (`tasknotesTaskListCustom`)
+  - 既存 `tasknotesTaskList` を複製ベースにした別ビューとして登録し、既存Task Listとは独立して挙動を保持
+  - Grouping options
+    - `subGroup`（property）で2段階グルーピングを有効化
+      - `tasknotesTaskListCustom` では `note.*` / `task.*` / `formula.*` に加えて `file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` を候補として許可
+    - `unnestMultiValueGroup`（toggle, default: true）で list 値のサブグループ展開を切替
+  - 検索ボックス ON/OFF option（`enableSearch`）は追加せず、ネイティブ検索と重複しない構成に固定
+  - `extractGroupKeys()` を利用した unnest grouping を採用し、list値を複数グループへ展開可能
+  - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、タスクタイトル右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ
+    - 通常描画では該当カードへ `scrollIntoView`、仮想描画では `VirtualScroller.scrollToIndex` で移動
+  - 2段階グルーピング時に、2段目見出しと配下タスクカードへ専用インデントを適用
+  - `file.ext` は `file.extension` からのフォールバックに対応し、`file.folder` は `file.path` から導出、その他 `file.*` は必要時 `getComputedProperty()` で遅延解決
 - Custom Table View (`tasknotesCustomTable`)
   - Base フィルタ結果の全エントリを 1行=1ファイルで表示
   - `config.getOrder()` に従った列順
@@ -137,6 +151,10 @@
   - 真偽: `checked`, `unchecked`
 
 # 3. ファイル構造
+- `src/bases/TaskListView.ts`
+  - 既存 Task List View 本体
+- `src/bases/TaskListViewCustom.ts`
+  - `Task List view custom` 本体（unnest、重複行ジャンプ、2段階目インデント、file系subGroup対応）
 - `src/bases/CustomTableView.ts`
   - Custom Table View 本体
 - `src/bases/customTableVirtualization.ts`
@@ -197,6 +215,10 @@
   - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
 - `tests/unit/bases/registration.customTableOptions.test.ts`
   - `tasknotesCustomTable` の `rowHeight` option に `veryShort` が含まれることを検証
+- `tests/unit/bases/registration.taskListCustomOptions.test.ts`
+  - `tasknotesTaskListCustom` の option 構成（`enableSearch` なし、`unnestMultiValueGroup` あり、file7種filter）を検証
+- `tests/unit/bases/taskListCustomGrouping.test.ts`
+  - `TaskListViewCustom` の unnest ON/OFF と `file.ext` フォールバック解決を検証
 - `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
   - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
@@ -211,9 +233,13 @@
 - `columnSize: Record<propertyId, number>`
   - 列幅の永続化設定（変更列のみ）
 - `subGroupPropertyId: string | null`
-  - Custom Table の2段目グルーピング対象プロパティ
+  - Task List custom / Custom Table の2段目グルーピング対象プロパティ
 - `unnestMultiValueGroup: boolean`
-  - list値の group key を個別展開するかの設定（デフォルトON）
+  - list値の group key を個別展開するかの設定（デフォルトON、Task List custom / Custom Table で使用）
+- `duplicateNavigationIndex: DuplicateNavigationIndex`
+  - Task List custom の `file.path -> rowOrder[]` 循環ジャンプインデックス
+- `rowOrderToVirtualIndex: Map<number, number>`
+  - Task List custom の `rowOrder` から仮想リストindexへの逆引きマップ
 - `customTableShowIconicIconInNameColumn: boolean`
   - `file.name` 列で Iconic の file icon を表示するかの設定（デフォルトON）
 - `customTableShowGroupingPropertyName: boolean`
@@ -256,6 +282,12 @@
   - `viewListSize`: view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、文字列として保存）
 
 # 5. 挙動の詳細や注意点
+- `tasknotesTaskListCustom` は `enableSearch` optionを持たず、検索UIは常時無効（`enableSearch=false` 固定）。
+- `tasknotesTaskListCustom` の `subGroup` は `note.*` / `task.*` / `formula.*` + file系7種を許可する。
+- `tasknotesTaskListCustom` で `unnestMultiValueGroup=true` のとき、subGroup値がlistなら同一タスクを複数サブグループに展開する。
+- `tasknotesTaskListCustom` は unnest後の重複行に `git-branch` ボタンを表示し、次の同一ファイル行へ循環ジャンプできる（通常/仮想描画両対応）。
+- `tasknotesTaskListCustom` は2段階グルーピング時に、2段目見出しと配下タスクカードへ専用インデントclassを付与する。
+- `tasknotesTaskListCustom` の `file.ext` は `file.extension` へフォールバックし、`file.folder` は path導出、その他 `file.*` は `getComputedProperty()` 遅延解決にフォールバックする。
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
 - `subGroup` 設定時は `primary group -> sub group` の2段構造で表示し、summary は sub group 単位で表示する。
 - `unnestMultiValueGroup=true` のとき、group key が list 値なら各値ごとに展開して同一レコードを複数グループに表示する。
@@ -341,6 +373,12 @@
   - `src/bases/BasesViewBase.ts`
   - `src/bases/registration.ts`
   - `src/bases/api.ts`
+- Task List custom 変更時は以下を同時確認:
+  - 本体: `src/bases/TaskListViewCustom.ts`
+  - 登録: `src/bases/registration.ts`
+  - 再利用ロジック: `src/bases/customTableGrouping.ts`, `src/bases/customTableDuplicateNavigation.ts`
+  - スタイル: `styles/bases-views.css`
+  - テスト: `tests/unit/bases/registration.taskListCustomOptions.test.ts`, `tests/unit/bases/taskListCustomGrouping.test.ts`
 - Custom Table View 変更時は以下を同時確認:
   - 表示ロジック: `src/bases/CustomTableView.ts`
   - グルーピングロジック: `src/bases/customTableGrouping.ts`
@@ -367,15 +405,21 @@
 - `src/main.ts`
   - plugin起動時に `registerBasesTaskList()` を呼び、終了時に `unregisterBasesViews()` を呼ぶ。
 - `src/bases/registration.ts`
-  - `tasknotesTaskList` のview登録（view ID / name / icon / options）を定義する。
+  - `tasknotesTaskList` と `tasknotesTaskListCustom` のview登録（view ID / name / icon / options）を定義する。
 - `src/bases/api.ts`
   - Bases APIへの登録/解除ラッパーを提供する。
 - `src/bases/TaskListView.ts`
   - Task List描画本体（TaskNotes抽出、group描画、仮想スクロール、クリック処理）を担当する。
+- `src/bases/TaskListViewCustom.ts`
+  - Task List custom描画本体（unnestサブグルーピング、重複行ジャンプ、2段階目インデント、file系subGroup解決）を担当する。
 - `src/bases/TaskSearchFilter.ts`
   - Task List検索ボックスの全文検索フィルタを担当する。
 - `src/bases/groupTitleRenderer.ts`
   - grouped時の見出しリンク描画を担当する。
+- `tests/unit/bases/registration.taskListCustomOptions.test.ts`
+  - Task List customの登録option構成を検証する。
+- `tests/unit/bases/taskListCustomGrouping.test.ts`
+  - Task List customのunnest挙動と `file.ext` フォールバック解決を検証する。
 
 ## 10.2 Custom View（`tasknotesCustomTable`）の登録・表示に関わるファイル
 - `src/main.ts`

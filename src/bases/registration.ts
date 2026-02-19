@@ -2,6 +2,7 @@
 import TaskNotesPlugin from "../main";
 import { requireApiVersion } from "obsidian";
 import { buildTaskListViewFactory } from "./TaskListView";
+import { buildTaskListViewCustomFactory } from "./TaskListViewCustom";
 import { buildKanbanViewFactory } from "./KanbanView";
 import { buildCalendarViewFactory } from "./CalendarView";
 import { buildMiniCalendarViewFactory } from "./MiniCalendarView";
@@ -61,6 +62,30 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 						key: "enableSearch",
 						displayName: "Enable search box",
 						default: false,
+					},
+				],
+			});
+
+			// Register Task List custom view using public API
+			const taskListCustomSuccess = registerBasesView(plugin, "tasknotesTaskListCustom", {
+				name: "Task List view custom",
+				icon: "tasknotes-simple",
+				factory: buildTaskListViewCustomFactory(plugin),
+				options: () => [
+					{
+						type: "property",
+						key: "subGroup",
+						displayName: "Sub-group by",
+						placeholder: "Select property for sub-grouping (optional)",
+						filter: (prop: string) => {
+							return isCustomTableSubGroupProperty(prop);
+						},
+					},
+					{
+						type: "toggle",
+						key: "unnestMultiValueGroup",
+						displayName: "Unnest multi-value groups",
+						default: true,
 					},
 				],
 			});
@@ -574,7 +599,14 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 			});
 
 			// Consider it successful if any view registered successfully
-			if (!taskListSuccess && !customTableSuccess && !kanbanSuccess && !calendarSuccess && !miniCalendarSuccess) {
+			if (
+				!taskListSuccess &&
+				!taskListCustomSuccess &&
+				!customTableSuccess &&
+				!kanbanSuccess &&
+				!calendarSuccess &&
+				!miniCalendarSuccess
+			) {
 				console.debug("[TaskNotes][Bases] Bases plugin not available for registration");
 				return false;
 			}
@@ -627,6 +659,7 @@ export function unregisterBasesViews(plugin: TaskNotesPlugin): void {
 	try {
 		// Unregister views using wrapper (uses internal API as public API doesn't provide unregister)
 		unregisterBasesView(plugin, "tasknotesTaskList");
+		unregisterBasesView(plugin, "tasknotesTaskListCustom");
 		unregisterBasesView(plugin, "tasknotesCustomTable");
 		unregisterBasesView(plugin, "tasknotesKanban");
 		unregisterBasesView(plugin, "tasknotesCalendar");

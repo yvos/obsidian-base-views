@@ -185,10 +185,11 @@
 ### 8.1 Task List View の登録・表示に関わる主要ファイル
 - 登録導線
   - `src/main.ts`: plugin起動時に `registerBasesTaskList()` を呼び、終了時に `unregisterBasesViews()` を呼ぶ。
-  - `src/bases/registration.ts`: `tasknotesTaskList` の view ID・表示名・icon・option を定義して登録する。
+  - `src/bases/registration.ts`: `tasknotesTaskList` と `tasknotesTaskListCustom` の view ID・表示名・icon・option を定義して登録する。
   - `src/bases/api.ts`: `registerBasesView()` / `unregisterBasesView()` のBases APIラッパーを提供する。
 - 表示導線
   - `src/bases/TaskListView.ts`: Task List本体。データ抽出、grouped/flat描画、仮想スクロール、TaskCard描画連携を担当。
+  - `src/bases/TaskListViewCustom.ts`: Task List custom本体。unnestサブグルーピング、重複行ジャンプ、2段階目インデント、file系subGroup値解決を担当。
   - `src/bases/TaskSearchFilter.ts`: 検索ボックスのフィルタ処理を担当。
   - `src/bases/groupTitleRenderer.ts`: group見出し文字列のリンク化描画を担当。
 
