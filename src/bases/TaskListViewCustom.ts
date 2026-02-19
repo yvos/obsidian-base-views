@@ -13,7 +13,12 @@ import { RecurrenceContextMenu } from "../components/RecurrenceContextMenu";
 import { ReminderModal } from "../modals/ReminderModal";
 import { getDatePart, getTimePart, parseDateToUTC, createUTCDateFromLocalCalendarDate } from "../utils/dateUtils";
 import { VirtualScroller } from "../utils/VirtualScroller";
-import { extractGroupKeys } from "./customTableGrouping";
+import {
+	compareGroupKeys,
+	extractGroupKeys,
+	extractListValues,
+	type GroupSortDirection,
+} from "./customTableGrouping";
 import {
 	buildDuplicateNavigationIndex,
 	createEmptyDuplicateNavigationIndex,
@@ -42,9 +47,13 @@ export class TaskListViewCustom extends BasesViewBase {
 	private subGroupPropertyId: string | null = null; // Property ID for sub-grouping
 	private unnestMultiValueGroup = true;
 	private configLoaded = false; // Track if we've successfully loaded config
+	private hasHandledFirstDataUpdate = false;
+	private lastViewConfigSignature = "";
+	private readonly NORMAL_UPDATE_DEBOUNCE_MS = 300;
 	private duplicateNavigationIndex: DuplicateNavigationIndex =
 		createEmptyDuplicateNavigationIndex();
 	private rowOrderToVirtualIndex = new Map<number, number>();
+	private basesController: any = null;
 
 	/**
 	 * Threshold for enabling virtual scrolling in task list view.
@@ -59,6 +68,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		// BasesView now provides this.data, this.config, and this.app directly
 		// Update the data adapter to use this BasesView instance
 		(this.dataAdapter as any).basesView = this;
+		this.basesController = controller;
 	}
 
 	/**
@@ -68,8 +78,54 @@ export class TaskListViewCustom extends BasesViewBase {
 	onload(): void {
 		// Read view options now that config is available
 		this.readViewOptions();
+		this.lastViewConfigSignature = this.buildViewConfigSignature();
 		// Call parent onload which sets up container and listeners
 		super.onload();
+	}
+
+	/**
+	 * BasesView lifecycle: Called when Bases data/config changes.
+	 * Config changes are rendered immediately; regular data churn is debounced.
+	 */
+	onDataUpdated(): void {
+		if (!this.rootElement?.isConnected) {
+			return;
+		}
+
+		const currentSignature = this.buildViewConfigSignature();
+		const configChanged = currentSignature !== this.lastViewConfigSignature;
+		this.lastViewConfigSignature = currentSignature;
+		const shouldRenderImmediately = !this.hasHandledFirstDataUpdate || configChanged;
+		const delay = shouldRenderImmediately ? 0 : this.NORMAL_UPDATE_DEBOUNCE_MS;
+
+		if (this.dataUpdateDebounceTimer) {
+			clearTimeout(this.dataUpdateDebounceTimer);
+		}
+
+		const win = this.containerEl.ownerDocument.defaultView || window;
+		this.dataUpdateDebounceTimer = win.setTimeout(() => {
+			this.dataUpdateDebounceTimer = null;
+			this.hasHandledFirstDataUpdate = true;
+			void this.render().catch((error) => {
+				console.error(`[TaskNotes][${this.type}] Render error:`, error);
+				this.renderError(error as Error);
+			});
+		}, delay);
+	}
+
+	private buildViewConfigSignature(): string {
+		try {
+			const order = JSON.stringify(this.config?.getOrder?.() ?? []);
+			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
+			const subGroup = String(this.config?.getAsPropertyId?.("subGroup") ?? "");
+			const unnest = String(this.config?.get?.("unnestMultiValueGroup") ?? true);
+			const primaryGroupBy = this.getPrimaryGroupByPropertyId() ?? "";
+			const primaryGroupDirection = this.getPrimaryGroupByDirection();
+			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
+			return `${order}|${sort}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}`;
+		} catch {
+			return "";
+		}
 	}
 
 	/**
@@ -83,17 +139,34 @@ export class TaskListViewCustom extends BasesViewBase {
 		}
 
 		try {
-			this.subGroupPropertyId = this.config.getAsPropertyId('subGroup');
+			const subGroupValue = this.config.getAsPropertyId('subGroup');
+			this.subGroupPropertyId =
+				typeof subGroupValue === "string" && subGroupValue.trim().length > 0
+					? subGroupValue.trim()
+					: null;
 			// Custom Task List does not expose the legacy search box toggle.
 			this.enableSearch = false;
 			const unnestValue = this.config.get('unnestMultiValueGroup');
-			this.unnestMultiValueGroup = (unnestValue as boolean) ?? true;
+			this.unnestMultiValueGroup = this.parseBooleanOption(unnestValue, true);
 			// Mark config as successfully loaded
 			this.configLoaded = true;
 		} catch (e) {
 			// Use defaults
 			console.warn('[TaskListViewCustom] Failed to parse config:', e);
+			this.subGroupPropertyId = null;
+			this.unnestMultiValueGroup = true;
+			this.enableSearch = false;
 		}
+	}
+
+	private parseBooleanOption(value: unknown, fallback: boolean): boolean {
+		if (typeof value === "boolean") return value;
+		if (typeof value === "string") {
+			const normalized = value.trim().toLowerCase();
+			if (normalized === "true") return true;
+			if (normalized === "false") return false;
+		}
+		return fallback;
 	}
 
 	protected setupContainer(): void {
@@ -123,8 +196,8 @@ export class TaskListViewCustom extends BasesViewBase {
 	async render(): Promise<void> {
 		if (!this.itemsContainer || !this.rootElement) return;
 
-		// Ensure view options are read (in case config wasn't available in onload)
-		if (!this.configLoaded && this.config) {
+		// Always refresh options so config changes reflect without view switching.
+		if (this.config) {
 			this.readViewOptions();
 		}
 
@@ -384,11 +457,127 @@ export class TaskListViewCustom extends BasesViewBase {
 		this.lastFlatPaths = taskNotes.map((task) => task.path);
 	}
 
+	private getPrimaryGroupByPropertyId(): string | null {
+		const controller = this.basesController;
+		if (!controller?.query?.views || !controller?.viewName) return null;
+
+		const views = controller.query.views;
+		if (!Array.isArray(views)) return null;
+		const currentViewName = controller.viewName;
+		for (const view of views) {
+			if (!view || view.name !== currentViewName) continue;
+			const groupBy = view.groupBy;
+			if (!groupBy) return null;
+			if (typeof groupBy === "string") return groupBy;
+			if (typeof groupBy === "object" && typeof groupBy.property === "string") {
+				return groupBy.property;
+			}
+			return null;
+		}
+
+		return null;
+	}
+
+	private getPrimaryGroupByDirection(): GroupSortDirection {
+		const controller = this.basesController;
+		if (!controller?.query?.views || !controller?.viewName) return "ASC";
+
+		const views = controller.query.views;
+		if (!Array.isArray(views)) return "ASC";
+		const currentViewName = controller.viewName;
+		for (const view of views) {
+			if (!view || view.name !== currentViewName) continue;
+			const groupBy = view.groupBy;
+			if (typeof groupBy === "object" && typeof groupBy.direction === "string") {
+				const normalized = groupBy.direction.toUpperCase();
+				if (normalized === "DESC") return "DESC";
+			}
+			return "ASC";
+		}
+		return "ASC";
+	}
+
+	/**
+	 * Resolve primary groups.
+	 * Uses Bases groupedData by default, and rebuilds groups with unnest when primary groupBy is multi-value.
+	 */
+	private resolvePrimaryGroups(
+		taskNotes: TaskInfo[]
+	): Array<{ key: string; tasks: TaskInfo[] }> {
+		const basesGroups = this.dataAdapter.getGroupedData();
+		const taskByPath = new Map(taskNotes.map((task) => [task.path, task]));
+		const groupedByBases: Array<{ key: string; tasks: TaskInfo[] }> = [];
+
+		for (const group of basesGroups) {
+			const key = this.dataAdapter.convertGroupKeyToString(group?.key);
+			const tasks: TaskInfo[] = [];
+			const seen = new Set<string>();
+			const entries = Array.isArray(group?.entries) ? group.entries : [];
+			for (const entry of entries) {
+				const path = entry?.file?.path;
+				if (typeof path !== "string" || seen.has(path)) continue;
+				const task = taskByPath.get(path);
+				if (!task) continue;
+				seen.add(path);
+				tasks.push(task);
+			}
+			if (tasks.length > 0) {
+				groupedByBases.push({ key, tasks });
+			}
+		}
+
+		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId();
+		if (!this.unnestMultiValueGroup || !primaryGroupByPropertyId) {
+			return groupedByBases;
+		}
+
+		const pathToProps = this.buildPathToPropsMap();
+		const pathToBasesEntry = this.buildPathToBasesEntryMap();
+		const hasPrimaryMultiValue = taskNotes.some((task) => {
+			const props = pathToProps.get(task.path) || {};
+			const basesEntry = pathToBasesEntry.get(task.path);
+			const value = this.getPropertyValue(props, primaryGroupByPropertyId, basesEntry);
+			const listValues = extractListValues(value);
+			return Array.isArray(listValues) && listValues.length > 1;
+		});
+
+		if (!hasPrimaryMultiValue) {
+			return groupedByBases;
+		}
+
+		const grouped = new Map<string, TaskInfo[]>();
+		for (const task of taskNotes) {
+			const props = pathToProps.get(task.path) || {};
+			const basesEntry = pathToBasesEntry.get(task.path);
+			const value = this.getPropertyValue(props, primaryGroupByPropertyId, basesEntry);
+			const keys = this.extractSubGroupKeys(value);
+			const uniqueKeys = new Set(keys);
+
+			for (const key of uniqueKeys) {
+				if (!grouped.has(key)) {
+					grouped.set(key, []);
+				}
+				grouped.get(key)!.push(task);
+			}
+		}
+
+		const direction = this.getPrimaryGroupByDirection();
+		const sortedKeys = Array.from(grouped.keys()).sort((left, right) =>
+			compareGroupKeys(left, right, direction)
+		);
+		return sortedKeys.map((key) => ({
+			key,
+			tasks: grouped.get(key) ?? [],
+		}));
+	}
+
 	/**
 	 * Build flattened list of render items (headers + tasks) for grouped view
 	 * Shared between renderGrouped() and refreshGroupedView()
 	 */
-	private buildGroupedRenderItems(groups: any[], taskNotes: TaskInfo[]): any[] {
+	private buildGroupedRenderItems(
+		primaryGroups: Array<{ key: string; tasks: TaskInfo[] }>
+	): any[] {
 		type RenderItem =
 			| { type: 'primary-header'; groupKey: string; groupTitle: string; taskCount: number; groupEntries: any[]; isCollapsed: boolean }
 			| { type: 'sub-header'; groupKey: string; subGroupKey: string; subGroupTitle: string; taskCount: number; isCollapsed: boolean; parentKey: string }
@@ -401,10 +590,9 @@ export class TaskListViewCustom extends BasesViewBase {
 		const pathToProps = this.subGroupPropertyId ? this.buildPathToPropsMap() : new Map();
 		const pathToBasesEntry = this.subGroupPropertyId ? this.buildPathToBasesEntryMap() : new Map();
 
-		for (const group of groups) {
-			const primaryKey = this.dataAdapter.convertGroupKeyToString(group.key);
-			const groupPaths = new Set(group.entries.map((e: any) => e.file.path));
-			const groupTasks = taskNotes.filter((t) => groupPaths.has(t.path));
+		for (const group of primaryGroups) {
+			const primaryKey = group.key;
+			const groupTasks = group.tasks;
 
 			// Skip groups with no matching tasks (e.g., after search filtering)
 			if (groupTasks.length === 0) continue;
@@ -417,7 +605,7 @@ export class TaskListViewCustom extends BasesViewBase {
 				groupKey: primaryKey,
 				groupTitle: primaryKey,
 				taskCount: groupTasks.length,
-				groupEntries: group.entries,
+				groupEntries: [],
 				isCollapsed: isPrimaryCollapsed
 			});
 
@@ -575,7 +763,6 @@ export class TaskListViewCustom extends BasesViewBase {
 
 	private async renderGrouped(taskNotes: TaskInfo[]): Promise<void> {
 		const visibleProperties = this.getVisibleProperties();
-		const groups = this.dataAdapter.getGroupedData();
 
 		// Apply search filter
 		const filteredTasks = this.applySearchFilter(taskNotes);
@@ -594,7 +781,8 @@ export class TaskListViewCustom extends BasesViewBase {
 		const cardOptions = this.getCardOptions(targetDate);
 
 		// Build flattened list of items using shared method
-		const items = this.buildGroupedRenderItems(groups, filteredTasks);
+		const primaryGroups = this.resolvePrimaryGroups(filteredTasks);
+		const items = this.buildGroupedRenderItems(primaryGroups);
 		this.rebuildDuplicateNavigationState(items);
 
 		// Use virtual scrolling if we have many items
@@ -924,6 +1112,9 @@ export class TaskListViewCustom extends BasesViewBase {
 		this.useVirtualScrolling = false;
 		this.collapsedGroups.clear();
 		this.collapsedSubGroups.clear();
+		this.hasHandledFirstDataUpdate = false;
+		this.lastViewConfigSignature = "";
+		this.configLoaded = false;
 		this.resetDuplicateNavigationState();
 	}
 
@@ -1081,10 +1272,11 @@ export class TaskListViewCustom extends BasesViewBase {
 		const dataItems = this.dataAdapter.extractDataItems();
 		await this.computeFormulas(dataItems);
 		const taskNotes = await identifyTaskNotesFromBasesData(dataItems, this.plugin);
-		const groups = this.dataAdapter.getGroupedData();
+		const filteredTasks = this.applySearchFilter(taskNotes);
 
 		// Build flattened list of items using shared method
-		const items = this.buildGroupedRenderItems(groups, taskNotes);
+		const primaryGroups = this.resolvePrimaryGroups(filteredTasks);
+		const items = this.buildGroupedRenderItems(primaryGroups);
 		this.rebuildDuplicateNavigationState(items);
 
 		// Update virtual scroller with new items

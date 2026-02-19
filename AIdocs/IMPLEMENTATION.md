@@ -285,9 +285,11 @@
 - `tasknotesTaskListCustom` は `enableSearch` optionを持たず、検索UIは常時無効（`enableSearch=false` 固定）。
 - `tasknotesTaskListCustom` の `subGroup` は `note.*` / `task.*` / `formula.*` + file系7種を許可する。
 - `tasknotesTaskListCustom` で `unnestMultiValueGroup=true` のとき、subGroup値がlistなら同一タスクを複数サブグループに展開する。
+- `tasknotesTaskListCustom` で `unnestMultiValueGroup=true` かつ primary groupBy がmulti-valueの場合、1段階目グループも複数グループへ展開する。
 - `tasknotesTaskListCustom` は unnest後の重複行に `git-branch` ボタンを表示し、次の同一ファイル行へ循環ジャンプできる（通常/仮想描画両対応）。
 - `tasknotesTaskListCustom` は2段階グルーピング時に、2段目見出しと配下タスクカードへ専用インデントclassを付与する。
 - `tasknotesTaskListCustom` の `file.ext` は `file.extension` へフォールバックし、`file.folder` は path導出、その他 `file.*` は `getComputedProperty()` 遅延解決にフォールバックする。
+- `tasknotesTaskListCustom` は `render()` 毎に view option を再読込し、`onDataUpdated()` で設定差分を検知した場合は即時再描画する（通常更新のみ300msデバウンス）。
 - grouped 時は各グループのテーブル先頭に summary 行を表示。
 - `subGroup` 設定時は `primary group -> sub group` の2段構造で表示し、summary は sub group 単位で表示する。
 - `unnestMultiValueGroup=true` のとき、group key が list 値なら各値ごとに展開して同一レコードを複数グループに表示する。
