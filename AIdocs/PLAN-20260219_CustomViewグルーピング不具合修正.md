@@ -38,3 +38,8 @@
 - [x] 1段階目グルーピングの unnest 回帰を修正
   - `config.getAsPropertyId("groupBy")` が `null` の場合でも `config.get("groupBy")` の object 形式から property を解決する。
   - grouped時のみ controller fallback を許可する既存方針を維持し、解除時の安定化を壊さない。
+
+## 7. フォローアップ（同日追加）
+- [x] 2段階グルーピング時の視覚インデント階層を調整
+  - 2段階目グループ見出しは1段階インデントを維持。
+  - 2段階目に所属する実レコード（および同階層summary）は2段階インデントへ変更。

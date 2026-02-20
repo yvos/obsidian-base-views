@@ -608,6 +608,8 @@ button.tn-bases-view-list__item-menu {
     --tn-bases-row-height: 40px;
     --tn-bases-row-line-clamp: 1;
     --tn-bases-group-indent: 1.25rem;
+    --tn-bases-secondary-group-indent: var(--tn-bases-group-indent);
+    --tn-bases-secondary-row-indent: calc(var(--tn-bases-group-indent) * 2);
     --tn-bases-table-body-font-size: var(--font-ui-smaller);
     --tn-bases-table-header-font-size: var(--font-ui-small);
     --tn-bases-table-group-font-size: var(--font-ui-small);
@@ -649,7 +651,7 @@ button.tn-bases-view-list__item-menu {
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-wrapper--nested {
-    margin-left: var(--tn-bases-group-indent);
+    margin-left: var(--tn-bases-secondary-row-indent);
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-virtual {
@@ -924,24 +926,24 @@ button.tn-bases-view-list__item-menu {
     background: var(--tn-bg-primary);
     font-size: var(--tn-bases-table-group-secondary-font-size);
     padding: var(--tn-bases-group-row-secondary-padding-y) 12px
-        var(--tn-bases-group-row-secondary-padding-y) calc(12px + var(--tn-bases-group-indent));
+        var(--tn-bases-group-row-secondary-padding-y) calc(12px + var(--tn-bases-secondary-group-indent));
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-subgroup-title {
     margin: var(--tn-bases-subgroup-margin-top) 0 var(--tn-bases-subgroup-margin-bottom);
     padding: 0 2px;
-    margin-left: var(--tn-bases-group-indent);
+    margin-left: var(--tn-bases-secondary-group-indent);
     font-size: var(--tn-bases-table-group-secondary-font-size);
     font-weight: var(--tn-font-weight-medium);
     color: var(--tn-text-muted);
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-row--nested > .tn-bases-table-cell:first-child {
-    padding-left: calc(12px + var(--tn-bases-group-indent));
+    padding-left: calc(12px + var(--tn-bases-secondary-row-indent));
 }
 
 .tn-tasknotesCustomTable .tn-bases-table-summary-row--nested > .tn-bases-table-summary-cell:first-child {
-    padding-left: calc(12px + var(--tn-bases-group-indent));
+    padding-left: calc(12px + var(--tn-bases-secondary-row-indent));
 }
 
 /* Row height options */

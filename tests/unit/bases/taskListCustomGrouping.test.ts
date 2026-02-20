@@ -128,6 +128,59 @@ describe("TaskListViewCustom grouping", () => {
 		expect(primaryGroups[1].tasks.map((task) => task.path)).toEqual(["B.md"]);
 	});
 
+	it("groupBy が config object 形式でも1段階目 unnest を適用できる", () => {
+		const view = createView() as any;
+		view.unnestMultiValueGroup = true;
+		view.basesController = null;
+		view.config = {
+			getAsPropertyId: jest.fn((key: string) => (key === "groupBy" ? null : "")),
+			get: jest.fn((key: string) =>
+				key === "groupBy" ? { property: "note.tags", direction: "ASC" } : undefined
+			),
+		};
+
+		const entryA = { file: { path: "A.md" }, properties: { tags: ["alpha", "beta"] } };
+		const entryB = { file: { path: "B.md" }, properties: { tags: ["beta"] } };
+		view.data = {
+			data: [entryA, entryB],
+			groupedData: [
+				{ key: "alpha, beta", entries: [entryA] },
+				{ key: "beta", entries: [entryB] },
+			],
+		};
+
+		const primaryGroups = view.resolvePrimaryGroups([
+			{ path: "A.md", title: "A", status: "open", priority: "normal" },
+			{ path: "B.md", title: "B", status: "open", priority: "normal" },
+		]) as Array<{ key: string; tasks: Array<{ path: string }> }>;
+
+		expect(primaryGroups.map((group) => group.key)).toEqual(["alpha", "beta"]);
+		expect(primaryGroups[0].tasks.map((task) => task.path)).toEqual(["A.md"]);
+		expect(primaryGroups[1].tasks.map((task) => task.path)).toEqual(["A.md", "B.md"]);
+	});
+
+	it("flat想定では stale な controller groupBy へフォールバックしない", () => {
+		const view = createView() as any;
+		view.config = {
+			getAsPropertyId: jest.fn((key: string) => (key === "groupBy" ? null : "")),
+			get: jest.fn((key: string) => (key === "groupBy" ? null : undefined)),
+		};
+		view.basesController = {
+			viewName: "task-list-custom-test",
+			query: {
+				views: [
+					{
+						name: "task-list-custom-test",
+						groupBy: { property: "note.tags", direction: "DESC" },
+					},
+				],
+			},
+		};
+
+		expect(view.getPrimaryGroupByPropertyId(false)).toBeNull();
+		expect(view.getPrimaryGroupByDirection(false)).toBe("ASC");
+	});
+
 	it("file.ext は file.extension からフォールバック解決できる", () => {
 		const view = createView() as any;
 		view.unnestMultiValueGroup = true;

@@ -119,9 +119,10 @@ export class TaskListViewCustom extends BasesViewBase {
 			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
 			const subGroup = String(this.config?.getAsPropertyId?.("subGroup") ?? "");
 			const unnest = String(this.config?.get?.("unnestMultiValueGroup") ?? true);
-			const primaryGroupBy = this.getPrimaryGroupByPropertyId() ?? "";
-			const primaryGroupDirection = this.getPrimaryGroupByDirection();
 			const grouped = this.dataAdapter.isGrouped() ? "grouped" : "flat";
+			const allowControllerGroupByFallback = grouped === "grouped";
+			const primaryGroupBy = this.getPrimaryGroupByPropertyId(allowControllerGroupByFallback) ?? "";
+			const primaryGroupDirection = this.getPrimaryGroupByDirection(allowControllerGroupByFallback);
 			return `${order}|${sort}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}`;
 		} catch {
 			return "";
@@ -167,6 +168,12 @@ export class TaskListViewCustom extends BasesViewBase {
 			if (normalized === "false") return false;
 		}
 		return fallback;
+	}
+
+	private asNonEmptyString(value: unknown): string | null {
+		if (typeof value !== "string") return null;
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : null;
 	}
 
 	protected setupContainer(): void {
@@ -457,7 +464,69 @@ export class TaskListViewCustom extends BasesViewBase {
 		this.lastFlatPaths = taskNotes.map((task) => task.path);
 	}
 
-	private getPrimaryGroupByPropertyId(): string | null {
+	private readPrimaryGroupByFromConfig(): {
+		resolved: boolean;
+		propertyId: string | null;
+		direction: GroupSortDirection | null;
+	} {
+		if (!this.config) {
+			return { resolved: false, propertyId: null, direction: null };
+		}
+
+		try {
+			const getAsPropertyId = this.config.getAsPropertyId;
+			if (typeof getAsPropertyId === "function") {
+				const propertyCandidate = getAsPropertyId.call(this.config, "groupBy");
+				const propertyId = this.asNonEmptyString(propertyCandidate);
+				if (propertyCandidate == null || typeof propertyCandidate === "string") {
+					const rawGroupBy =
+						typeof this.config.get === "function" ? this.config.get("groupBy") : null;
+					const propertyFromRaw = this.resolveGroupByPropertyFromValue(rawGroupBy);
+					const direction = this.resolveGroupByDirectionFromValue(rawGroupBy);
+					return { resolved: true, propertyId: propertyId ?? propertyFromRaw, direction };
+				}
+			}
+
+			const getOption = this.config.get;
+			if (typeof getOption === "function") {
+				const rawGroupBy = getOption.call(this.config, "groupBy");
+				const propertyId = this.resolveGroupByPropertyFromValue(rawGroupBy);
+				const direction = this.resolveGroupByDirectionFromValue(rawGroupBy);
+				return { resolved: true, propertyId, direction };
+			}
+		} catch {
+			return { resolved: false, propertyId: null, direction: null };
+		}
+
+		return { resolved: false, propertyId: null, direction: null };
+	}
+
+	private resolveGroupByPropertyFromValue(rawGroupBy: unknown): string | null {
+		if (typeof rawGroupBy === "string") {
+			return this.asNonEmptyString(rawGroupBy);
+		}
+		if (rawGroupBy && typeof rawGroupBy === "object") {
+			const propertyCandidate = (rawGroupBy as { property?: unknown }).property;
+			return this.asNonEmptyString(propertyCandidate);
+		}
+		return null;
+	}
+
+	private resolveGroupByDirectionFromValue(rawGroupBy: unknown): GroupSortDirection | null {
+		if (!rawGroupBy || typeof rawGroupBy !== "object") return null;
+		const directionCandidate = (rawGroupBy as { direction?: unknown }).direction;
+		if (typeof directionCandidate !== "string") return null;
+		const normalized = directionCandidate.trim().toUpperCase();
+		if (normalized === "DESC") return "DESC";
+		if (normalized === "ASC") return "ASC";
+		return null;
+	}
+
+	private getPrimaryGroupByPropertyId(allowControllerFallback = true): string | null {
+		const configGroupBy = this.readPrimaryGroupByFromConfig();
+		if (configGroupBy.propertyId) return configGroupBy.propertyId;
+		if (!allowControllerFallback) return null;
+
 		const controller = this.basesController;
 		if (!controller?.query?.views || !controller?.viewName) return null;
 
@@ -478,7 +547,11 @@ export class TaskListViewCustom extends BasesViewBase {
 		return null;
 	}
 
-	private getPrimaryGroupByDirection(): GroupSortDirection {
+	private getPrimaryGroupByDirection(allowControllerFallback = true): GroupSortDirection {
+		const configGroupBy = this.readPrimaryGroupByFromConfig();
+		if (configGroupBy.direction) return configGroupBy.direction;
+		if (!allowControllerFallback) return "ASC";
+
 		const controller = this.basesController;
 		if (!controller?.query?.views || !controller?.viewName) return "ASC";
 
@@ -526,7 +599,8 @@ export class TaskListViewCustom extends BasesViewBase {
 			}
 		}
 
-		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId();
+		const isGrouped = this.dataAdapter.isGrouped();
+		const primaryGroupByPropertyId = this.getPrimaryGroupByPropertyId(isGrouped);
 		if (!this.unnestMultiValueGroup || !primaryGroupByPropertyId) {
 			return groupedByBases;
 		}
@@ -561,7 +635,7 @@ export class TaskListViewCustom extends BasesViewBase {
 			}
 		}
 
-		const direction = this.getPrimaryGroupByDirection();
+		const direction = this.getPrimaryGroupByDirection(isGrouped);
 		const sortedKeys = Array.from(grouped.keys()).sort((left, right) =>
 			compareGroupKeys(left, right, direction)
 		);
