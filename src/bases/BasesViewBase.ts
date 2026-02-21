@@ -1,4 +1,4 @@
-import { Component, App, setIcon } from "obsidian";
+import { Component, App, Notice, normalizePath, setIcon } from "obsidian";
 import TaskNotesPlugin from "../main";
 import { BasesDataAdapter } from "./BasesDataAdapter";
 import { PropertyMappingService } from "./PropertyMappingService";
@@ -357,128 +357,43 @@ export abstract class BasesViewBase extends Component {
 		baseFileName: string,
 		frontmatterProcessor?: (frontmatter: any) => void
 	): Promise<void> {
-		const { TaskCreationModal } = await import("../modals/TaskCreationModal");
-
-		// Extract any default values from the frontmatter processor if provided
-		const prePopulatedValues: Partial<TaskInfo> = {};
-		const customFrontmatter: Record<string, any> = {};
-
-		if (frontmatterProcessor) {
-			// Create a mock frontmatter object to extract defaults
-			const mockFrontmatter: any = {};
-			frontmatterProcessor(mockFrontmatter);
-
-			// Get field mapper for property name mapping
-			const fm = this.plugin.fieldMapper;
-
-			// Map core TaskNotes properties from frontmatter
-			if (mockFrontmatter[fm.toUserField("title")]) {
-				prePopulatedValues.title = String(mockFrontmatter[fm.toUserField("title")]);
-			}
-			if (mockFrontmatter[fm.toUserField("status")]) {
-				prePopulatedValues.status = String(mockFrontmatter[fm.toUserField("status")]);
-			}
-			if (mockFrontmatter[fm.toUserField("priority")]) {
-				prePopulatedValues.priority = String(mockFrontmatter[fm.toUserField("priority")]);
-			}
-			if (mockFrontmatter[fm.toUserField("due")]) {
-				prePopulatedValues.due = String(mockFrontmatter[fm.toUserField("due")]);
-			}
-			if (mockFrontmatter[fm.toUserField("scheduled")]) {
-				prePopulatedValues.scheduled = String(mockFrontmatter[fm.toUserField("scheduled")]);
-			}
-			if (mockFrontmatter[fm.toUserField("contexts")]) {
-				const contexts = mockFrontmatter[fm.toUserField("contexts")];
-				prePopulatedValues.contexts = Array.isArray(contexts) ? contexts : [contexts];
-			}
-			if (mockFrontmatter[fm.toUserField("projects")]) {
-				const projects = mockFrontmatter[fm.toUserField("projects")];
-				prePopulatedValues.projects = Array.isArray(projects) ? projects : [projects];
-			}
-
-			// Tags - check both the standard 'tags' property and archiveTag
-			if (mockFrontmatter.tags) {
-				const tags = mockFrontmatter.tags;
-				prePopulatedValues.tags = Array.isArray(tags) ? tags : [tags];
-			}
-
-			// Archived - check for archive tag
-			if (mockFrontmatter.tags && Array.isArray(mockFrontmatter.tags)) {
-				const archiveTag = fm.toUserField("archiveTag");
-				prePopulatedValues.archived = mockFrontmatter.tags.includes(archiveTag);
-			}
-
-			if (mockFrontmatter[fm.toUserField("timeEstimate")]) {
-				prePopulatedValues.timeEstimate = Number(mockFrontmatter[fm.toUserField("timeEstimate")]);
-			}
-			if (mockFrontmatter[fm.toUserField("recurrence")]) {
-				prePopulatedValues.recurrence = String(mockFrontmatter[fm.toUserField("recurrence")]);
-			}
-			if (mockFrontmatter[fm.toUserField("completedDate")]) {
-				prePopulatedValues.completedDate = String(mockFrontmatter[fm.toUserField("completedDate")]);
-			}
-			if (mockFrontmatter[fm.toUserField("dateCreated")]) {
-				prePopulatedValues.dateCreated = String(mockFrontmatter[fm.toUserField("dateCreated")]);
-			}
-			if (mockFrontmatter[fm.toUserField("blockedBy")]) {
-				const blockedBy = mockFrontmatter[fm.toUserField("blockedBy")];
-				prePopulatedValues.blockedBy = Array.isArray(blockedBy) ? blockedBy : [blockedBy];
-			}
-
-			// Handle user-defined custom fields
-			const userFields = this.plugin.settings.userFields || [];
-			for (const userField of userFields) {
-				if (mockFrontmatter[userField.key] !== undefined) {
-					// Store in customFrontmatter for TaskCreationData
-					customFrontmatter[userField.key] = mockFrontmatter[userField.key];
-				}
-			}
-
-			// Capture any other frontmatter properties that weren't mapped above
-			// This ensures we don't lose any Bases-specific values
-			const mappedKeys = new Set([
-				fm.toUserField("title"),
-				fm.toUserField("status"),
-				fm.toUserField("priority"),
-				fm.toUserField("due"),
-				fm.toUserField("scheduled"),
-				fm.toUserField("contexts"),
-				fm.toUserField("projects"),
-				"tags", // Not in FieldMapping
-				fm.toUserField("archiveTag"), // For archived status
-				fm.toUserField("timeEstimate"),
-				fm.toUserField("recurrence"),
-				fm.toUserField("completedDate"),
-				fm.toUserField("dateCreated"),
-				fm.toUserField("blockedBy"),
-				...userFields.map(uf => uf.key),
-			]);
-
-			for (const [key, value] of Object.entries(mockFrontmatter)) {
-				if (!mappedKeys.has(key)) {
-					customFrontmatter[key] = value;
-				}
-			}
-		}
-
-		// Build the complete pre-populated values (TaskCreationData structure)
-		const taskCreationData: any = { ...prePopulatedValues };
-		if (Object.keys(customFrontmatter).length > 0) {
-			taskCreationData.customFrontmatter = customFrontmatter;
-		}
-
-		// Open TaskNotes creation modal
-		// Use this.app if available (set by Bases), otherwise fall back to plugin.app
 		const app = this.app || this.plugin.app;
-		const modal = new TaskCreationModal(app, this.plugin, {
-			prePopulatedValues: taskCreationData,
-			onTaskCreated: (task: TaskInfo) => {
-				// Refresh the view after task creation so it appears immediately
-				this.refresh();
-			},
-		});
 
-		modal.open();
+		const runtimeResolver = (
+			this.plugin as unknown as { getTaskNotesRuntime?: () => unknown }
+		).getTaskNotesRuntime;
+		if (typeof runtimeResolver === "function") {
+			const runtime = runtimeResolver.call(this.plugin) as
+				| { openTaskCreationModal?: () => unknown }
+				| null;
+			if (runtime && typeof runtime.openTaskCreationModal === "function") {
+				runtime.openTaskCreationModal();
+				return;
+			}
+		}
+
+		const folder = this.plugin.settings.tasksFolder || "TaskNotes/Tasks";
+		const safeName = (baseFileName || "New Task")
+			.replace(/[\\\\/:*?\"<>|]/g, " ")
+			.trim()
+			.replace(/\\s+/g, " ");
+		const filename = `${safeName || "New Task"}-${Date.now()}.md`;
+		const filePath = normalizePath(`${folder}/${filename}`);
+
+		try {
+			await app.vault.createFolder(folder).catch(() => undefined);
+			const file = await app.vault.create(filePath, "");
+			await app.workspace.getLeaf(false).openFile(file);
+		} catch (error) {
+			console.error("[BaseViews][Bases] Failed to create file from Bases new action:", error);
+			const noticeKey = "notices.basesCreateFileFailed";
+			const translated = this.plugin.i18n?.translate(noticeKey);
+			new Notice(
+				translated && translated !== noticeKey
+					? translated
+					: "Failed to create a new note from Bases view."
+			);
+		}
 	}
 
 	/**

@@ -3,7 +3,7 @@
 最終仕様は `AIdocs/SPEC.md`（存在する場合）を優先し、本書は仕様確定文書ではありません。
 
 # 1. 実装状況のサマリー
-- Bases 連携として、Task List / Kanban / Calendar / Mini Calendar の各カスタムビューを実装済み。
+- 2026-02-21 時点で、ランタイム機能は `view一覧` / `Task List View (Custom)` / `Table View (Custom)` の3機能に限定。
 - 2026-02-09 時点で `tasknotesCustomTable`（Custom Table View）を追加し、テーブル表示と組み込み summary を実装。
 - 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
 - 2026-02-12 時点で `tasknotesCustomTable` に仮想スクロールを段階導入し、ungrouped / grouped の大規模データ描画を高速化。
@@ -37,12 +37,9 @@
 
 # 2. 実装済み機能
 - Bases カスタムビュー登録/解除
-  - `tasknotesTaskList`
   - `tasknotesTaskListCustom`
   - `tasknotesCustomTable`
-  - `tasknotesKanban`
-  - `tasknotesCalendar`
-  - `tasknotesMiniCalendar`
+  - 旧 `tasknotesTaskList` / `tasknotesKanban` / `tasknotesCalendar` / `tasknotesMiniCalendar` は登録対象外（unregister cleanupのみ）。
 - Bases view一覧サイドバー（`.base` 向け）
   - 対象: `viewType === "bases"` かつ `file.extension === "base"`
   - 一覧取得: `query.views[].{name,type,property}` → `getQueryViewNames()` → YAML `views[].{name,type,property}` の順でフォールバック
@@ -151,8 +148,6 @@
   - 真偽: `checked`, `unchecked`
 
 # 3. ファイル構造
-- `src/bases/TaskListView.ts`
-  - 既存 Task List View 本体
 - `src/bases/TaskListViewCustom.ts`
   - `Task List view custom` 本体（unnest、重複行ジャンプ、2段階目インデント、file系subGroup対応）
 - `src/bases/CustomTableView.ts`
@@ -185,11 +180,9 @@
   - `.base` YAML の `formulas`（`tnViewList*` + `viewListSize`）/ `views[].description` 読み書き補助
 - `src/bases/api.ts`
   - Bases API ラッパー型
-- `src/releaseNotes.ts`
-  - リリースノート束ね込みファイルのフォールバック（未生成時のコンパイル用）
 - `styles/bases-views.css`
   - Bases 系 view のスタイル（view一覧サイドバー関連スタイルを含む）
-- `src/settings/tabs/generalTab.ts`
+- `src/settings/BaseViewsSettingTab.ts`
   - Bases view一覧サイドバーの設定UI（トグル/表示モード/配置/フォントサイズ/プロパティ/アイコン/top overflow/狭幅挙動）
 - `src/settings/defaults.ts`
   - view一覧サイドバー設定のデフォルト値
@@ -366,7 +359,6 @@
 - 仮想スクロールは導入済みだが、セル編集・複数セル選択・コピー/貼り付けは未対応。
 - grouped 仮想化ではグループ見出しの「固定表示（sticky）」は未対応。
 - 検証コマンド（`npm run typecheck`, `npm run build`）は、実行環境に `node`/`npm` がないため未実行。
-- `src/releaseNotes.ts` はビルド時に `generate-release-notes-import.mjs` で上書きされる想定。
 - view一覧サイドバーの実機DOM表示確認は、`npm` 不在で `main.js` 再ビルドができないため未完了。
 - 本セッションでは Obsidian CLI も `UtilBindVsockAnyPort` エラーで起動不可のため、CLIによるDOM確認は未実施。
 
@@ -395,7 +387,7 @@
   - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
   - サービス: `src/bases/BasesViewListSidebarService.ts`
   - ネイティブ設定ブリッジ: `src/integrations/bases/nativeViewSettingsBridge.ts`, `src/integrations/bases/types.ts`
-  - 設定UI: `src/settings/tabs/generalTab.ts`
+  - 設定UI: `src/settings/BaseViewsSettingTab.ts`
   - 設定型/初期値: `src/types/settings.ts`, `src/settings/defaults.ts`
   - スタイル: `styles/bases-views.css`
   - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`, `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
@@ -454,7 +446,7 @@
   - view行3点メニューからネイティブview設定UIを開くDOMブリッジを担当する。
 - `src/integrations/bases/types.ts`
   - ネイティブ設定起動ブリッジの入力/結果型を定義する。
-- `src/settings/tabs/generalTab.ts`
+- `src/settings/BaseViewsSettingTab.ts`
   - view一覧関連設定UI（enable/placement/font/property/icons など）を提供する。
 - `src/settings/defaults.ts`
   - view一覧関連設定のデフォルト値を定義する。
@@ -483,3 +475,47 @@
 - `TaskListView` は `src/ui/TaskCard.ts` と日付/優先度/再発メニュー系コンポーネントに依存するため、Task List modified版だけを残す場合でも関連UIは連動して残す必要がある。
 - `CustomTableView` は `src/integrations/iconic/iconicFileIconResolver.ts` を参照するため、Iconic連携を残すか無効化するかを先に決める必要がある。
 - 3機能のみへ絞る場合でも、`src/main.ts` は大きいため、初期化処理を分割して `bases` 専用エントリへ再構成するのが安全。
+- 2026-02-21 時点で `10.4` の削除候補は実施済みで、`src/main.ts` 起点の未到達 `src` 実装は 0 件。
+
+# 11. 2026-02-21 3機能切り出しの実施結果
+
+## 11.1 現在有効な機能（runtime）
+- `view一覧`（`BasesViewListSidebarService`）
+- `Task List View (Custom)`（view id: `tasknotesTaskListCustom`）
+- `Table View (Custom)`（view id: `tasknotesCustomTable`）
+
+## 11.2 登録/初期化の現状
+- `src/main.ts` は3機能向けの軽量エントリへ再構成済み。
+- `src/bases/registration.ts` は `tasknotesTaskListCustom` / `tasknotesCustomTable` のみ登録する。
+- `tasknotesTaskList` / `tasknotesKanban` / `tasknotesCalendar` / `tasknotesMiniCalendar` は登録対象から削除済み（unregister cleanupのみ残す）。
+
+## 11.3 TaskNotes 協調方針
+- `src/integrations/tasknotes/TaskNotesRuntimeBridge.ts` を追加し、外部 TaskNotes runtime 連携を境界化した。
+- `Task List View (Custom)` は runtime 有無で動作分岐する。
+  - runtime あり: 既存の TaskCard 表示/操作経路を利用。
+  - runtime なし: read-only 表示（ノートを開く操作のみ）へフォールバック。
+- `BasesViewBase#createFileForView` は runtime の `openTaskCreationModal` を優先し、重複ロジックを避ける。
+
+## 11.4 ファイル削減の結果
+- `src/main.ts` 起点の到達判定で未到達だった `src` 実装を削除した（API/editor/views/旧settings tabs/対象外services 等）。
+- 削除後、到達判定は `unreachable_count=0`。
+
+## 11.5 注意点
+- `src/settings/defaults.ts` / `src/types/settings.ts` は後方互換と既存参照維持のため、未使用設定項目を含んだまま。
+- 本環境では `node` が見つからないため、`npm run build` / `npm test` は未実行。
+
+## 11.6 2026-02-21 i18n復旧
+- `src/settings/BaseViewsSettingTab.ts` は i18n 経由で文言を表示し、UI言語切替（`system` / 各ロケール）を提供する。
+- `src/main.ts` の `saveSettings()` で `uiLanguage` を `i18n.setLocale()` に同期し、設定変更を反映する。
+- `Task List View (Custom)` の read-only ヒント/Notice は i18n キー参照に変更。
+- `tasknotesTaskListCustom` の view アイコンは `list-todo` を使用する。
+
+## 11.7 2026-02-21 テスト実行対象の絞り込み
+- `jest.config.js` は以下のみ実行対象。
+  - `tests/unit/bases/**/*.test.ts`
+  - `tests/unit/integrations/**/*.test.ts`
+  - `tests/unit/SearchBox.test.ts`
+  - `tests/unit/TaskSearchFilter.test.ts`
+  - `tests/unit/services/i18nService.test.ts`
+- `jest.integration.config.js` は `tests/integration/baseviews/**/*.test.ts` のみ対象とし、現状は `passWithNoTests: true`。
+- 旧TaskNotes本体機能のテストファイルはリポジトリに残っていても、デフォルト実行対象からは除外される。

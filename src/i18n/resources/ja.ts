@@ -89,6 +89,11 @@ export const ja: TranslationTree = {
 			collapseAllGroups: "すべてのグループを折りたたみ",
 			noTasksFound: "選択されたフィルターにタスクが見つかりませんでした。",
 		},
+		taskListCustom: {
+			readOnlyHint:
+				"Task List View (Custom): 読み取り専用モードです（TaskNotesプラグインが有効ではありません）。",
+			readOnlyNotice: "Task List View (Custom) は読み取り専用モードで動作しています。",
+		},
 		notes: {
 			title: "ノート",
 			refreshButton: "更新",
@@ -1485,6 +1490,18 @@ export const ja: TranslationTree = {
 					name: "Bases統合を有効にする",
 					description: "TaskNotesビューをObsidian Basesプラグイン内で使用できるようにします。これが機能するにはBasesプラグインが有効である必要があります。",
 				},
+				customViews: {
+					header: "カスタムビュー",
+					showIconicIcon: {
+						name: "Table View (Custom) に Iconic アイコンを表示",
+						description:
+							"利用可能な場合、ファイル名の前に Iconic のファイルアイコンを表示します。",
+					},
+					showGroupingPropertyName: {
+						name: "Table View (Custom) でグループ化プロパティ名を表示",
+						description: "グループ見出しを「property: value」形式で表示します。",
+					},
+				},
 				viewCommands: {
 					header: "ビューとBaseファイル",
 					description: "TaskNotesはObsidian Basesファイル（.base）を使用してビューを表示します。これらのファイルは起動時に存在しない場合に自動的に生成され、現在の設定（タスク識別、フィールドマッピング、ステータスなど）で構成されます。",
@@ -2183,6 +2200,9 @@ export const ja: TranslationTree = {
 	},
 	notices: {
 		languageChanged: "言語を{language}に変更しました。",
+		taskNotesRuntimeRequiredForTagSearch:
+			"タグ検索操作には TaskNotes ランタイムが必要です。",
+		basesCreateFileFailed: "Bases ビューから新しいノートの作成に失敗しました。",
 		exportTasksFailed: "タスクのICSファイルエクスポートに失敗しました",
 		icsNoteCreatedSuccess: "ノートが正常に作成されました",
 		icsCreationModalOpenFailed: "作成モーダルを開けませんでした",

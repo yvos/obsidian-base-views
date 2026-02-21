@@ -26,6 +26,7 @@ import {
 	hasDuplicateNavigationTarget,
 	type DuplicateNavigationIndex,
 } from "./customTableDuplicateNavigation";
+import { openTaskNotesFile } from "../integrations/tasknotes/TaskNotesRuntimeBridge";
 
 // Bases上でTaskNotesタスクのみをカード一覧表示するTask Listビュー本体。
 export class TaskListViewCustom extends BasesViewBase {
@@ -54,6 +55,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		createEmptyDuplicateNavigationIndex();
 	private rowOrderToVirtualIndex = new Map<number, number>();
 	private basesController: any = null;
+	private hasShownReadOnlyNotice = false;
 
 	/**
 	 * Threshold for enabling virtual scrolling in task list view.
@@ -225,7 +227,12 @@ export class TaskListViewCustom extends BasesViewBase {
 			// Compute Bases formulas for TaskNotes items
 			await this.computeFormulas(dataItems);
 
-			const taskNotes = await identifyTaskNotesFromBasesData(dataItems, this.plugin);
+			const taskNotesRuntime = this.getTaskNotesRuntimePlugin();
+			const taskNotes = await identifyTaskNotesFromBasesData(
+				dataItems,
+				taskNotesRuntime ?? this.plugin
+			);
+			this.syncReadOnlyStateHint(taskNotesRuntime);
 
 			if (taskNotes.length === 0) {
 				this.clearAllTaskElements();
@@ -376,7 +383,7 @@ export class TaskListViewCustom extends BasesViewBase {
 				overscan: 5,
 				renderItem: (taskInfo: TaskInfo, index: number) => {
 					// Create card using lazy mode
-					const card = createTaskCard(taskInfo, this.plugin, visibleProperties, cardOptions);
+					const card = this.createTaskCardElement(taskInfo, visibleProperties, cardOptions);
 
 					// Cache task info for event handlers
 					this.taskInfoCache.set(taskInfo.path, taskInfo);
@@ -421,12 +428,11 @@ export class TaskListViewCustom extends BasesViewBase {
 			const needsUpdate = signature !== previousSignature || !cardEl;
 
 			if (!cardEl || needsUpdate) {
-				const newCard = createTaskCard(
-					taskInfo,
-					this.plugin,
-					visibleProperties,
-					cardOptions
-				);
+					const newCard = this.createTaskCardElement(
+						taskInfo,
+						visibleProperties,
+						cardOptions
+					);
 				if (cardEl && cardEl.isConnected) {
 					cardEl.replaceWith(newCard);
 				}
@@ -908,7 +914,11 @@ export class TaskListViewCustom extends BasesViewBase {
 					if (item.type === 'primary-header' || item.type === 'sub-header') {
 						return this.createGroupHeader(item);
 					} else {
-						const cardEl = createTaskCard(item.task, this.plugin, visibleProperties, cardOptions);
+							const cardEl = this.createTaskCardElement(
+								item.task,
+								visibleProperties,
+								cardOptions
+							);
 						this.decorateGroupedTaskCard(cardEl, item);
 						this.taskInfoCache.set(item.task.path, item.task);
 						this.lastTaskSignatures.set(item.task.path, this.buildTaskSignature(item.task));
@@ -944,7 +954,11 @@ export class TaskListViewCustom extends BasesViewBase {
 				const headerEl = this.createGroupHeader(item);
 				this.itemsContainer!.appendChild(headerEl);
 			} else {
-				const cardEl = createTaskCard(item.task, this.plugin, visibleProperties, cardOptions);
+				const cardEl = this.createTaskCardElement(
+					item.task,
+					visibleProperties,
+					cardOptions
+				);
 				this.decorateGroupedTaskCard(cardEl, item);
 				this.itemsContainer!.appendChild(cardEl);
 				this.currentTaskElements.set(item.task.path, cardEl);
@@ -1114,7 +1128,11 @@ export class TaskListViewCustom extends BasesViewBase {
 			const existingElement = this.currentTaskElements.get(task.path);
 			if (existingElement && existingElement.isConnected) {
 				const visibleProperties = this.getVisibleProperties();
-				const replacement = createTaskCard(task, this.plugin, visibleProperties, this.getCardOptions(this.currentTargetDate));
+				const replacement = this.createTaskCardElement(
+					task,
+					visibleProperties,
+					this.getCardOptions(this.currentTargetDate)
+				);
 				existingElement.replaceWith(replacement);
 				replacement.classList.add("task-card--updated");
 				// Use correct window for pop-out window support
@@ -1253,6 +1271,121 @@ export class TaskListViewCustom extends BasesViewBase {
 		};
 	}
 
+	private getTaskNotesRuntimePlugin(): any | null {
+		const resolver = (this.plugin as unknown as { getTaskNotesRuntime?: () => unknown })
+			.getTaskNotesRuntime;
+		if (typeof resolver !== "function") return null;
+		try {
+			const runtime = resolver.call(this.plugin);
+			return runtime && typeof runtime === "object" ? runtime : null;
+		} catch {
+			return null;
+		}
+	}
+
+	private syncReadOnlyStateHint(runtimePlugin: any | null): void {
+		if (!this.rootElement) return;
+		const hintClass = "tn-task-list-custom-runtime-hint";
+		const existing = this.rootElement.querySelector<HTMLElement>(`.${hintClass}`);
+
+		if (runtimePlugin) {
+			existing?.remove();
+			return;
+		}
+
+		if (!existing) {
+			const hint = this.rootElement.ownerDocument.createElement("div");
+			hint.className = hintClass;
+			hint.textContent = this.translateWithFallback(
+				"views.taskListCustom.readOnlyHint",
+				"Task List View (Custom): read-only mode (TaskNotes plugin is not enabled)."
+			);
+			this.rootElement.prepend(hint);
+		}
+
+		if (!this.hasShownReadOnlyNotice) {
+			this.hasShownReadOnlyNotice = true;
+			new Notice(
+				this.translateWithFallback(
+					"views.taskListCustom.readOnlyNotice",
+					"Task List View (Custom) is running in read-only mode."
+				)
+			);
+		}
+	}
+
+	private translateWithFallback(
+		key: string,
+		fallback: string,
+		params?: Record<string, string | number>
+	): string {
+		const translated = this.plugin.i18n?.translate(key, params);
+		if (translated && translated !== key) {
+			return translated;
+		}
+		return fallback;
+	}
+
+	private createTaskCardElement(
+		task: TaskInfo,
+		visibleProperties: string[] | undefined,
+		cardOptions: any
+	): HTMLElement {
+		const runtimePlugin = this.getTaskNotesRuntimePlugin();
+		if (runtimePlugin) {
+			return createTaskCard(task, runtimePlugin, visibleProperties, cardOptions);
+		}
+		return this.createReadOnlyTaskCard(task);
+	}
+
+	private createReadOnlyTaskCard(task: TaskInfo): HTMLElement {
+		const doc = this.containerEl.ownerDocument;
+		const card = doc.createElement("article");
+		card.className = "task-card task-card--readonly tn-task-list-custom-readonly-card";
+		card.dataset.taskPath = task.path;
+
+		const mainRow = doc.createElement("div");
+		mainRow.className = "task-card__main-row";
+
+		const title = doc.createElement("div");
+		title.className = "task-card__title";
+		title.textContent = task.title || task.path.split("/").pop() || task.path;
+		mainRow.appendChild(title);
+
+		if (task.path) {
+			const pathRow = doc.createElement("div");
+			pathRow.className = "task-card__details";
+			pathRow.textContent = task.path;
+			mainRow.appendChild(pathRow);
+		}
+
+		card.appendChild(mainRow);
+
+		const handleOpen = async (event: MouseEvent, newTab: boolean) => {
+			event.preventDefault();
+			event.stopPropagation();
+			const app = this.app || this.plugin.app;
+			const opened = await openTaskNotesFile(app, task.path, newTab);
+			if (!opened) {
+				new Notice(`File not found: ${task.path}`);
+			}
+		};
+
+		card.addEventListener("click", (event) => {
+			const mouseEvent = event as MouseEvent;
+			void handleOpen(mouseEvent, mouseEvent.ctrlKey || mouseEvent.metaKey);
+		});
+
+		card.addEventListener("auxclick", (event) => {
+			const mouseEvent = event as MouseEvent;
+			if (mouseEvent.button === 1) {
+				void handleOpen(mouseEvent, true);
+			}
+		});
+
+		return card;
+	}
+
 	private clearClickTimeouts(): void {
 		for (const timeout of this.clickTimeouts.values()) {
 			if (timeout) {
@@ -1345,7 +1478,11 @@ export class TaskListViewCustom extends BasesViewBase {
 
 		const dataItems = this.dataAdapter.extractDataItems();
 		await this.computeFormulas(dataItems);
-		const taskNotes = await identifyTaskNotesFromBasesData(dataItems, this.plugin);
+		const taskNotesRuntime = this.getTaskNotesRuntimePlugin();
+		const taskNotes = await identifyTaskNotesFromBasesData(
+			dataItems,
+			taskNotesRuntime ?? this.plugin
+		);
 		const filteredTasks = this.applySearchFilter(taskNotes);
 
 		// Build flattened list of items using shared method

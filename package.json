@@ -1,7 +1,7 @@
 {
-	"name": "tasknotes",
-	"version": "4.3.0",
-	"description": "Note-based task management with calendar, pomodoro and time-tracking integration.",
+	"name": "base-views",
+	"version": "0.1.0",
+	"description": "Always show the view list for base files (including several custom base views).",
 	"main": "main.js",
 	"scripts": {
 		"build": "npm run build-css && node generate-release-notes-import.mjs && tsc -noEmit --skipLibCheck && node esbuild.config.mjs production",
@@ -67,19 +67,9 @@
 		"typescript": "^5.9.2"
 	},
 	"dependencies": {
-		"@codemirror/view": "^6.37.2",
-		"@fullcalendar/core": "^6.1.17",
-		"@fullcalendar/daygrid": "^6.1.17",
-		"@fullcalendar/interaction": "^6.1.17",
-		"@fullcalendar/list": "^6.1.17",
-		"@fullcalendar/multimonth": "^6.1.17",
-		"@fullcalendar/timegrid": "^6.1.17",
 		"chrono-node": "^2.7.5",
 		"date-fns": "^4.1.0",
-		"ical.js": "^2.2.1",
 		"obsidian-daily-notes-interface": "^0.9.4",
-		"reflect-metadata": "^0.2.2",
-		"rrule": "^2.8.1",
-		"yaml": "^2.3.1"
+		"rrule": "^2.8.1"
 	}
 }

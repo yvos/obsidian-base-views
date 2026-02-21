@@ -577,6 +577,20 @@ button.tn-bases-view-list__item-menu {
     color: var(--text-normal);
 }
 
+.tn-tasknotesTaskListCustom .tn-task-list-custom-runtime-hint {
+    margin: var(--tn-spacing-xs) 0 var(--tn-spacing-sm);
+    padding: var(--tn-spacing-xs) var(--tn-spacing-sm);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    background: var(--background-secondary);
+}
+
+.tn-tasknotesTaskListCustom .tn-task-list-custom-readonly-card {
+    cursor: var(--cursor-link);
+}
+
 /* Task cards container */
 .tn-bases-tasknotes-list .tasks-container.task-cards {
     display: flex;

@@ -174,7 +174,7 @@
 - `src/types/settings.ts`
 - `src/settings/defaults.ts`
 - `src/main.ts`
-- `src/settings/tabs/generalTab.ts`
+- `src/settings/BaseViewsSettingTab.ts`
 - `src/i18n/resources/en.ts`
 - `src/i18n/resources/ja.ts`
 - `tests/unit/bases/BasesViewListSidebarService.test.ts`
@@ -215,7 +215,7 @@
   - `src/integrations/bases/nativeViewSettingsBridge.ts`: 3点メニューからネイティブview設定UI起動。
   - `src/integrations/bases/types.ts`: 上記ブリッジの型。
 - 設定導線
-  - `src/settings/tabs/generalTab.ts`: 設定画面のview一覧関連UI。
+  - `src/settings/BaseViewsSettingTab.ts`: 設定画面のview一覧関連UI。
   - `src/settings/defaults.ts`: view一覧設定の初期値。
   - `src/types/settings.ts`: view一覧設定型。
   - `styles/bases-views.css`: view一覧UIスタイル。
@@ -227,3 +227,9 @@
 - 案2（bases機能のみの別リポジトリ化）
   - 最小コアは `src/bases/`（Task List / Custom Table / view一覧関連）、`src/integrations/bases/`、該当設定型/UI、`styles/bases-views.css`。
   - `src/api/`, `src/views/`, `src/services/` の大半、calendar/pomodoro/ICS/editor系は分離対象（bases以外機能）。
+
+## 9. 2026-02-21 実施結果（現状）
+- 本ドキュメントの「8.*」は棚卸し時点（2026-02-19）の記録であり、現状は以下へ更新された。
+- 登録対象は `tasknotesTaskListCustom` / `tasknotesCustomTable` の2件のみ（`tasknotesTaskList` は削除済み）。
+- 設定UIは `src/settings/BaseViewsSettingTab.ts` に統合済み。
+- `src/main.ts` から未到達の `src` 実装は削除済み（到達判定で `unreachable_count=0`）。

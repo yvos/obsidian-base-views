@@ -172,6 +172,7 @@ const KNOWN_VIEW_ICONS: Record<string, string> = {
 	list: "list",
 	tasknotesCustomTable: "table-cells-merge",
 	tasknotesTaskList: "list",
+	tasknotesTaskListCustom: "list-todo",
 	tasknotesKanban: "layout-columns",
 	tasknotesCalendar: "calendar",
 	tasknotesMiniCalendar: "calendar-days",

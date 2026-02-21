@@ -1,5 +1,4 @@
 import { setIcon } from 'obsidian';
-import { debounce } from '../../settings/components/settingHelpers';
 
 /**
  * SearchBox - UI component for task search functionality
@@ -18,6 +17,7 @@ export class SearchBox {
 
 	private debouncedSearch: ((term: string) => void) | null = null;
 	private destroyed = false;
+	private debounceTimer: number | null = null;
 
 	/**
 	 * @param container - Parent container element
@@ -34,16 +34,21 @@ export class SearchBox {
 		this.debounceMs = debounceMs;
 
 		// Create debounced search handler with destroyed check
-		this.debouncedSearch = debounce(
-			(term: string) => {
+		this.debouncedSearch = (term: string) => {
+			if (this.debounceTimer !== null) {
+				const win = this.container.ownerDocument.defaultView || window;
+				win.clearTimeout(this.debounceTimer);
+			}
+
+			const win = this.container.ownerDocument.defaultView || window;
+			this.debounceTimer = win.setTimeout(() => {
+				this.debounceTimer = null;
 				// Don't execute if component has been destroyed
 				if (!this.destroyed) {
 					this.onSearch(term);
 				}
-			},
-			this.debounceMs,
-			false // trailing debounce
-		);
+			}, this.debounceMs);
+		};
 	}
 
 	/**
@@ -213,6 +218,11 @@ export class SearchBox {
 		}
 
 		// Clear references
+		if (this.debounceTimer !== null) {
+			const win = this.container.ownerDocument.defaultView || window;
+			win.clearTimeout(this.debounceTimer);
+			this.debounceTimer = null;
+		}
 		this.inputEl = null;
 		this.clearBtnEl = null;
 		this.searchBoxEl = null;

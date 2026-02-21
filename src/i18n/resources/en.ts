@@ -89,6 +89,11 @@ export const en: TranslationTree = {
 			collapseAllGroups: "Collapse All Groups",
 			noTasksFound: "No tasks found for the selected filters.",
 		},
+		taskListCustom: {
+			readOnlyHint:
+				"Task List View (Custom): read-only mode (TaskNotes plugin is not enabled).",
+			readOnlyNotice: "Task List View (Custom) is running in read-only mode.",
+		},
 		notes: {
 			title: "Notes",
 			refreshButton: "Refresh",
@@ -1519,6 +1524,17 @@ export const en: TranslationTree = {
 					description:
 						"Enable TaskNotes views to be used within Obsidian Bases plugin. Bases plugin must be enabled for this to work.",
 				},
+				customViews: {
+					header: "Custom views",
+					showIconicIcon: {
+						name: "Show Iconic icon in Table View (Custom)",
+						description: "Display Iconic file icon before file name when available.",
+					},
+					showGroupingPropertyName: {
+						name: "Show grouping property name in Table View (Custom)",
+						description: 'Display group headers as "property: value".',
+					},
+				},
 				viewCommands: {
 					header: "Views & base files",
 					description: "TaskNotes uses Obsidian Bases files (.base) to power its views. These files are generated automatically on startup if they don't exist, configured with your current settings (task identification, field mappings, statuses, etc.).",
@@ -2236,6 +2252,9 @@ export const en: TranslationTree = {
 	},
 	notices: {
 		languageChanged: "Language changed to {language}.",
+		taskNotesRuntimeRequiredForTagSearch:
+			"TaskNotes runtime is required for tag search actions.",
+		basesCreateFileFailed: "Failed to create a new note from Bases view.",
 		exportTasksFailed: "Failed to export tasks as ICS file",
 		// ICS Event Info Modal notices
 		icsNoteCreatedSuccess: "Note created successfully",

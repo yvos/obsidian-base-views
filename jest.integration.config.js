@@ -4,28 +4,24 @@ module.exports = {
   displayName: 'Integration Tests',
   roots: ['<rootDir>/tests/integration'],
   testMatch: [
-    '**/integration/**/*.test.ts'
+    '<rootDir>/tests/integration/baseviews/**/*.test.ts'
   ],
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
   setupFilesAfterEnv: ['<rootDir>/tests/test-setup.ts'],
   moduleNameMapper: {
-    // Only mock Obsidian and UI libraries - use real date/parsing libraries
-    '^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts',
-    '^@fullcalendar/(.*)$': '<rootDir>/tests/__mocks__/fullcalendar.ts',
-    '^yaml$': '<rootDir>/tests/__mocks__/yaml.ts'
-    // chrono-node, rrule, ical.js, date-fns will use real implementations
+    '^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts'
   },
-  // Integration tests may need more time for complex workflows
+  // No integration tests are currently defined for Base Views.
+  passWithNoTests: true,
   testTimeout: 30000,
   clearMocks: true,
   restoreMocks: true,
-  // Less strict coverage for integration tests (focus on workflow completion)
   collectCoverageFrom: [
-    'src/**/*.ts',
+    'src/bases/**/*.ts',
+    'src/integrations/**/*.ts',
     '!src/**/*.d.ts',
-    '!src/main.ts',
     '!tests/**/*'
   ]
 };
