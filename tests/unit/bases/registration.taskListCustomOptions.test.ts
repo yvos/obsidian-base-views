@@ -11,11 +11,14 @@ describe("registerBasesTaskList task list custom options", () => {
 		(registerBasesView as jest.Mock).mockClear().mockReturnValue(true);
 	});
 
-	const createPlugin = () =>
+	const createPlugin = (settingsOverride: Record<string, unknown> = {}) =>
 		({
 			settings: {
 				enableBases: true,
+				enableBasesTaskListCustomView: true,
+				enableBasesCustomTableView: true,
 				calendarViewSettings: {},
+				...settingsOverride,
 			},
 			app: {},
 			i18n: {
@@ -79,5 +82,19 @@ describe("registerBasesTaskList task list custom options", () => {
 		expect(filter("file.path")).toBe(false);
 		expect(filter("file.ctime")).toBe(false);
 		expect(filter("file.extension")).toBe(false);
+	});
+
+	it("does not register Task List View (Custom) when its feature toggle is off", async () => {
+		await registerBasesTaskList(
+			createPlugin({
+				enableBasesTaskListCustomView: false,
+				enableBasesCustomTableView: true,
+			})
+		);
+
+		const taskListCustomCall = (registerBasesView as jest.Mock).mock.calls.find(
+			(args: unknown[]) => args[1] === "tasknotesTaskListCustom"
+		);
+		expect(taskListCustomCall).toBeUndefined();
 	});
 });

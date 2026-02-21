@@ -570,7 +570,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private isFeatureEnabled(): boolean {
-		return this.plugin.settings.enableBases && this.plugin.settings.enableBasesViewListSidebar;
+		return this.plugin.settings.enableBasesViewListSidebar !== false;
 	}
 
 	private getDefaultPlacement(): LayoutPlacement {

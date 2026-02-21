@@ -9,5 +9,11 @@ describe('Settings defaults', () => {
     expect(DEFAULT_SETTINGS.basesViewListPlacement).toBe('left');
     expect(DEFAULT_SETTINGS.basesViewListSidePanePlacement).toBe('top');
   });
+
+  test('base views feature toggles default to enabled', () => {
+    expect(DEFAULT_SETTINGS.enableBasesViewListSidebar).toBe(true);
+    expect(DEFAULT_SETTINGS.enableBasesCustomTableView).toBe(true);
+    expect(DEFAULT_SETTINGS.enableBasesTaskListCustomView).toBe(true);
+  });
 });
 

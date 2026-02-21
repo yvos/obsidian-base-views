@@ -519,3 +519,12 @@
   - `tests/unit/services/i18nService.test.ts`
 - `jest.integration.config.js` は `tests/integration/baseviews/**/*.test.ts` のみ対象とし、現状は `passWithNoTests: true`。
 - 旧TaskNotes本体機能のテストファイルはリポジトリに残っていても、デフォルト実行対象からは除外される。
+
+## 11.8 2026-02-21 設定先頭3トグルの再編
+- `src/settings/BaseViewsSettingTab.ts` の先頭に、以下3機能のON/OFFトグルを集約。
+  - `view一覧`（`enableBasesViewListSidebar`）
+  - `Table View (Custom)`（`enableBasesCustomTableView`）
+  - `Task List View (Custom)`（`enableBasesTaskListCustomView`）
+- `src/main.ts` は3トグルに連動して、カスタムビュー登録とview一覧サービスを起動/停止する。
+- `src/bases/registration.ts` は Table/Task List(Custom) を個別トグルで登録制御する。
+- 旧 `enableBases` は互換目的で保持し、保存時は3トグルの集約値として同期する。

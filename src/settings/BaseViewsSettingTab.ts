@@ -32,16 +32,78 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl("h2", {
-			text: this.t("settings.integrations.basesIntegration.header", "Bases integration"),
-		});
-
-		containerEl.createEl("p", {
+		containerEl.createEl("h3", {
 			text: this.t(
-				"settings.integrations.basesIntegration.description",
-				"Configure integration with Obsidian Bases."
+				"settings.integrations.basesIntegration.featureToggles.header",
+				"Feature switches"
 			),
 		});
+
+		new Setting(containerEl)
+			.setName(
+				this.t(
+					"settings.integrations.basesIntegration.viewListSidebar.enable.name",
+					"Enable view list sidebar"
+				)
+			)
+			.setDesc(
+				this.t(
+					"settings.integrations.basesIntegration.viewListSidebar.enable.description",
+					"Show a clickable list of views in base files."
+				)
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableBasesViewListSidebar !== false)
+					.onChange(async (value) => {
+						this.plugin.settings.enableBasesViewListSidebar = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(
+				this.t(
+					"settings.integrations.basesIntegration.featureToggles.tableViewCustom.name",
+					"Enable Table View (Custom)"
+				)
+			)
+			.setDesc(
+				this.t(
+					"settings.integrations.basesIntegration.featureToggles.tableViewCustom.description",
+					"Register Table View (Custom) in Bases."
+				)
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableBasesCustomTableView !== false)
+					.onChange(async (value) => {
+						this.plugin.settings.enableBasesCustomTableView = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(
+				this.t(
+					"settings.integrations.basesIntegration.featureToggles.taskListViewCustom.name",
+					"Enable Task List View (Custom)"
+				)
+			)
+			.setDesc(
+				this.t(
+					"settings.integrations.basesIntegration.featureToggles.taskListViewCustom.description",
+					"Register Task List View (Custom) in Bases."
+				)
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableBasesTaskListCustomView !== false)
+					.onChange(async (value) => {
+						this.plugin.settings.enableBasesTaskListCustomView = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		containerEl.createEl("h3", {
 			text: this.t("settings.general.uiLanguage.header", "Interface language"),
@@ -76,89 +138,9 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 					});
 			});
 
-		new Setting(containerEl)
-			.setName(
-				this.t("settings.integrations.basesIntegration.enable.name", "Enable Bases integration")
-			)
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.enable.description",
-					"Register custom Base view types in Obsidian Bases."
-				)
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.enableBases).onChange(async (value) => {
-					this.plugin.settings.enableBases = value;
-					await this.plugin.saveSettings();
-				})
-			);
-
-		containerEl.createEl("h3", {
-			text: this.t("settings.integrations.basesIntegration.customViews.header", "Custom views"),
-		});
-
-		new Setting(containerEl)
-			.setName(
-				this.t(
-					"settings.integrations.basesIntegration.customViews.showIconicIcon.name",
-					"Show Iconic icon in Table View (Custom)"
-				)
-			)
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.customViews.showIconicIcon.description",
-					"Display Iconic file icon before file name when available."
-				)
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.customTableShowIconicIconInNameColumn)
-					.onChange(async (value) => {
-						this.plugin.settings.customTableShowIconicIconInNameColumn = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName(
-				this.t(
-					"settings.integrations.basesIntegration.customViews.showGroupingPropertyName.name",
-					"Show grouping property name in Table View (Custom)"
-				)
-			)
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.customViews.showGroupingPropertyName.description",
-					"Display group headers as \"property: value\"."
-				)
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.customTableShowGroupingPropertyName)
-					.onChange(async (value) => {
-						this.plugin.settings.customTableShowGroupingPropertyName = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
 		containerEl.createEl("h3", {
 			text: this.t("settings.integrations.basesIntegration.viewListSidebar.title", "Views"),
 		});
-
-		new Setting(containerEl)
-			.setName(this.t("settings.integrations.basesIntegration.viewListSidebar.enable.name", "Enable view list sidebar"))
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.enable.description",
-					"Show a clickable list of views in base files."
-				)
-			)
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.enableBasesViewListSidebar).onChange(async (value) => {
-					this.plugin.settings.enableBasesViewListSidebar = value;
-					await this.plugin.saveSettings();
-				})
-			);
 
 		new Setting(containerEl)
 			.setName(
@@ -514,6 +496,54 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 							this.plugin.settings.basesViewListNarrowThresholdPx = parsed;
 							await this.plugin.saveSettings();
 						}
+					})
+			);
+
+		containerEl.createEl("h3", {
+			text: this.t("settings.integrations.basesIntegration.customViews.header", "Custom views"),
+		});
+
+		new Setting(containerEl)
+			.setName(
+				this.t(
+					"settings.integrations.basesIntegration.customViews.showIconicIcon.name",
+					"Show Iconic icon in Table View (Custom)"
+				)
+			)
+			.setDesc(
+				this.t(
+					"settings.integrations.basesIntegration.customViews.showIconicIcon.description",
+					"Display Iconic file icon before file name when available."
+				)
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.customTableShowIconicIconInNameColumn)
+					.onChange(async (value) => {
+						this.plugin.settings.customTableShowIconicIconInNameColumn = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(
+				this.t(
+					"settings.integrations.basesIntegration.customViews.showGroupingPropertyName.name",
+					"Show grouping property name in Table View (Custom)"
+				)
+			)
+			.setDesc(
+				this.t(
+					"settings.integrations.basesIntegration.customViews.showGroupingPropertyName.description",
+					"Display group headers as \"property: value\"."
+				)
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.customTableShowGroupingPropertyName)
+					.onChange(async (value) => {
+						this.plugin.settings.customTableShowGroupingPropertyName = value;
+						await this.plugin.saveSettings();
 					})
 			);
 	}

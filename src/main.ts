@@ -26,6 +26,7 @@ export default class TaskNotesPlugin extends Plugin {
 	private localEmitter = new Events();
 	private taskNotesRuntime: TaskNotesRuntimeLike | null = null;
 	private basesRegistered = false;
+	private registeredCustomViewConfig: string | null = null;
 	private basesViewListSidebarService: BasesViewListSidebarService | null = null;
 
 	private getSystemUILocale(): string {
@@ -59,13 +60,7 @@ export default class TaskNotesPlugin extends Plugin {
 
 		this.addSettingTab(new BaseViewsSettingTab(this.app, this));
 
-		if (this.settings.enableBases) {
-			await registerBasesTaskList(this);
-			this.basesRegistered = true;
-		}
-
-		this.basesViewListSidebarService = new BasesViewListSidebarService(this);
-		this.basesViewListSidebarService.start();
+		await this.syncBasesFeatureBindings();
 
 		this.registerEvent(
 			this.app.workspace.on("layout-change", () => {
@@ -80,22 +75,94 @@ export default class TaskNotesPlugin extends Plugin {
 			this.basesViewListSidebarService = null;
 		}
 
-		if (this.settings.enableBases && this.basesRegistered) {
+		if (this.basesRegistered) {
 			unregisterBasesViews(this);
 			this.basesRegistered = false;
+			this.registeredCustomViewConfig = null;
 		}
 	}
 
 	async loadSettings() {
-		const loadedData = await this.loadData();
+		const loadedData = (await this.loadData()) as Partial<TaskNotesSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData || {});
+
+		// Legacy migration: when only the old global switch exists, fan out to the 3 feature toggles.
+		const legacyEnableBases =
+			loadedData && typeof loadedData.enableBases === "boolean"
+				? loadedData.enableBases
+				: null;
+		if (legacyEnableBases !== null) {
+			if (typeof loadedData?.enableBasesViewListSidebar !== "boolean") {
+				this.settings.enableBasesViewListSidebar = legacyEnableBases;
+			}
+			if (typeof loadedData?.enableBasesCustomTableView !== "boolean") {
+				this.settings.enableBasesCustomTableView = legacyEnableBases;
+			}
+			if (typeof loadedData?.enableBasesTaskListCustomView !== "boolean") {
+				this.settings.enableBasesTaskListCustomView = legacyEnableBases;
+			}
+		}
+
+		this.settings.enableBases = this.hasAnyFeatureEnabled();
 	}
 
 	async saveSettings() {
+		this.settings.enableBases = this.hasAnyFeatureEnabled();
 		await this.saveData(this.settings);
 		this.i18n?.setLocale(this.settings.uiLanguage ?? "system");
+		await this.syncBasesFeatureBindings();
 		this.emitSettingsChanged();
 		this.syncTaskNotesRuntimeBindings();
+	}
+
+	private hasAnyFeatureEnabled(): boolean {
+		return (
+			this.settings.enableBasesViewListSidebar ||
+			this.settings.enableBasesCustomTableView ||
+			this.settings.enableBasesTaskListCustomView
+		);
+	}
+
+	private getCustomViewFeatureConfigKey(): string {
+		const customTable = this.settings.enableBasesCustomTableView ? "1" : "0";
+		const taskListCustom = this.settings.enableBasesTaskListCustomView ? "1" : "0";
+		return `${customTable}:${taskListCustom}`;
+	}
+
+	private async syncBasesFeatureBindings(): Promise<void> {
+		const customViewConfigKey = this.getCustomViewFeatureConfigKey();
+		const shouldRegisterCustomViews =
+			this.settings.enableBasesCustomTableView || this.settings.enableBasesTaskListCustomView;
+		const shouldReRegisterCustomViews =
+			shouldRegisterCustomViews &&
+			(!this.basesRegistered || this.registeredCustomViewConfig !== customViewConfigKey);
+
+		if (shouldReRegisterCustomViews) {
+			if (this.basesRegistered) {
+				unregisterBasesViews(this);
+			}
+			await registerBasesTaskList(this);
+			this.basesRegistered = true;
+			this.registeredCustomViewConfig = customViewConfigKey;
+		} else if (!shouldRegisterCustomViews && this.basesRegistered) {
+			unregisterBasesViews(this);
+			this.basesRegistered = false;
+			this.registeredCustomViewConfig = null;
+		}
+
+		const shouldRunViewListService = this.settings.enableBasesViewListSidebar;
+		if (shouldRunViewListService) {
+			if (!this.basesViewListSidebarService) {
+				this.basesViewListSidebarService = new BasesViewListSidebarService(this);
+			}
+			this.basesViewListSidebarService.start();
+			return;
+		}
+
+		if (this.basesViewListSidebarService) {
+			this.basesViewListSidebarService.stop();
+			this.basesViewListSidebarService = null;
+		}
 	}
 
 	hasTaskNotesRuntime(): boolean {

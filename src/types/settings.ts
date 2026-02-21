@@ -202,7 +202,9 @@ export interface TaskNotesSettings {
 	// Default visible properties for inline task cards (task link widgets in editor)
 	inlineVisibleProperties?: string[];
 	// Bases integration settings
-	enableBases: boolean;
+	enableBases: boolean; // Legacy aggregate toggle (derived from feature-specific toggles)
+	enableBasesCustomTableView: boolean; // Enable Table View (Custom) registration
+	enableBasesTaskListCustomView: boolean; // Enable Task List View (Custom) registration
 	autoCreateDefaultBasesFiles: boolean; // Auto-create missing default Base files on startup
 	customTableShowIconicIconInNameColumn: boolean; // Show Iconic file icon before file name in Custom Table view
 	customTableShowGroupingPropertyName: boolean; // Show grouped headers as "property: value" in Custom Table view

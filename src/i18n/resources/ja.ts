@@ -1486,6 +1486,17 @@ export const ja: TranslationTree = {
 			basesIntegration: {
 				header: "Bases統合",
 				description: "Obsidian Basesプラグインとの統合を設定します。これは実験的機能で、現在非公開のObsidian APIに依存しています。動作が変更または破損する可能性があります。",
+				featureToggles: {
+					header: "機能のオン/オフ",
+					tableViewCustom: {
+						name: "Table View (Custom) を有効にする",
+						description: "Basesで Table View (Custom) を登録します。",
+					},
+					taskListViewCustom: {
+						name: "Task List View (Custom) を有効にする",
+						description: "Basesで Task List View (Custom) を登録します。",
+					},
+				},
 				enable: {
 					name: "Bases統合を有効にする",
 					description: "TaskNotesビューをObsidian Basesプラグイン内で使用できるようにします。これが機能するにはBasesプラグインが有効である必要があります。",
@@ -1521,7 +1532,7 @@ export const ja: TranslationTree = {
 					resetTooltip: "デフォルトパスにリセット",
 				},
 					viewListSidebar: {
-						title: "ビュー",
+						title: "ビュー一覧",
 						enable: {
 							name: "Baseビュー一覧サイドバーを有効にする",
 							description:

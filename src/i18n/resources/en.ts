@@ -1519,6 +1519,17 @@ export const en: TranslationTree = {
 				header: "Bases integration",
 				description:
 					"Configure integration with the Obsidian Bases plugin. This is an experimental feature, and currently relies on undocumented Obsidian APIs. Behaviour may change or break.",
+				featureToggles: {
+					header: "Feature switches",
+					tableViewCustom: {
+						name: "Enable Table View (Custom)",
+						description: "Register Table View (Custom) in Bases.",
+					},
+					taskListViewCustom: {
+						name: "Enable Task List View (Custom)",
+						description: "Register Task List View (Custom) in Bases.",
+					},
+				},
 				enable: {
 					name: "Enable Bases integration",
 					description:
@@ -1554,7 +1565,7 @@ export const en: TranslationTree = {
 					resetTooltip: "Reset to default path",
 				},
 					viewListSidebar: {
-						title: "Views",
+						title: "View list",
 						enable: {
 							name: "Enable base view list sidebar",
 							description:

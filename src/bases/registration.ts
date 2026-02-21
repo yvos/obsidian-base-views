@@ -26,65 +26,75 @@ function isSubGroupProperty(prop: string): boolean {
 
 // Register Base Views custom views only.
 export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<void> {
-	if (!plugin.settings.enableBases) return;
+	const legacyEnabled = plugin.settings.enableBases !== false;
+	const enableTaskListCustom =
+		plugin.settings.enableBasesTaskListCustomView ?? legacyEnabled;
+	const enableCustomTable = plugin.settings.enableBasesCustomTableView ?? legacyEnabled;
+	if (!enableTaskListCustom && !enableCustomTable) return;
 	if (!requireApiVersion("1.10.1")) return;
 
 	const attemptRegistration = async (): Promise<boolean> => {
 		try {
-			const taskListCustomSuccess = registerBasesView(plugin, "tasknotesTaskListCustom", {
-				name: "Task List View (Custom)",
-				icon: "list-todo",
-				factory: buildTaskListViewCustomFactory(plugin),
-				options: () => [
-					{
-						type: "property",
-						key: "subGroup",
-						displayName: "Sub-group by",
-						placeholder: "Select property for sub-grouping (optional)",
-						filter: (prop: string) => isSubGroupProperty(prop),
-					},
-					{
-						type: "toggle",
-						key: "unnestMultiValueGroup",
-						displayName: "Unnest multi-value groups",
-						default: true,
-					},
-				],
-			});
-
-			const customTableSuccess = registerBasesView(plugin, "tasknotesCustomTable", {
-				name: "Table View (Custom)",
-				icon: "table-cells-merge",
-				factory: buildCustomTableViewFactory(plugin),
-				options: () => [
-					{
-						type: "property",
-						key: "subGroup",
-						displayName: "Sub-group by",
-						placeholder: "Select property for sub-grouping (optional)",
-						filter: (prop: string) => isSubGroupProperty(prop),
-					},
-					{
-						type: "toggle",
-						key: "unnestMultiValueGroup",
-						displayName: "Unnest multi-value groups",
-						default: true,
-					},
-					{
-						type: "dropdown",
-						key: "rowHeight",
-						displayName: "Row height",
-						default: "medium",
-						options: {
-							veryShort: "Very short",
-							short: "Short",
-							medium: "Medium",
-							tall: "Tall",
-							extraTall: "Extra tall",
+			let taskListCustomSuccess = false;
+			if (enableTaskListCustom) {
+				taskListCustomSuccess = registerBasesView(plugin, "tasknotesTaskListCustom", {
+					name: "Task List View (Custom)",
+					icon: "list-todo",
+					factory: buildTaskListViewCustomFactory(plugin),
+					options: () => [
+						{
+							type: "property",
+							key: "subGroup",
+							displayName: "Sub-group by",
+							placeholder: "Select property for sub-grouping (optional)",
+							filter: (prop: string) => isSubGroupProperty(prop),
 						},
-					},
-				],
-			});
+						{
+							type: "toggle",
+							key: "unnestMultiValueGroup",
+							displayName: "Unnest multi-value groups",
+							default: true,
+						},
+					],
+				});
+			}
+
+			let customTableSuccess = false;
+			if (enableCustomTable) {
+				customTableSuccess = registerBasesView(plugin, "tasknotesCustomTable", {
+					name: "Table View (Custom)",
+					icon: "table-cells-merge",
+					factory: buildCustomTableViewFactory(plugin),
+					options: () => [
+						{
+							type: "property",
+							key: "subGroup",
+							displayName: "Sub-group by",
+							placeholder: "Select property for sub-grouping (optional)",
+							filter: (prop: string) => isSubGroupProperty(prop),
+						},
+						{
+							type: "toggle",
+							key: "unnestMultiValueGroup",
+							displayName: "Unnest multi-value groups",
+							default: true,
+						},
+						{
+							type: "dropdown",
+							key: "rowHeight",
+							displayName: "Row height",
+							default: "medium",
+							options: {
+								veryShort: "Very short",
+								short: "Short",
+								medium: "Medium",
+								tall: "Tall",
+								extraTall: "Extra tall",
+							},
+						},
+					],
+				});
+			}
 
 			if (!taskListCustomSuccess && !customTableSuccess) {
 				console.debug("[BaseViews][Bases] Bases plugin not available for registration");
