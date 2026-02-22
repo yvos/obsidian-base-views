@@ -31,6 +31,7 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+		const supportedLocales = ["en", "ja"];
 
 		containerEl.createEl("h3", {
 			text: this.t(
@@ -118,18 +119,16 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 				)
 			)
 			.addDropdown((dropdown) => {
-				dropdown.addOption(
-					"system",
-					this.t("common.systemDefault", "System default")
-				);
-
-				const availableLocales = this.plugin.i18n?.getAvailableLocales() ?? ["en", "ja"];
-				for (const locale of [...availableLocales].sort()) {
+				for (const locale of supportedLocales) {
 					dropdown.addOption(locale, this.getLanguageOptionLabel(locale));
 				}
 
+				const currentLanguage = supportedLocales.includes(this.plugin.settings.uiLanguage)
+					? this.plugin.settings.uiLanguage
+					: "en";
+
 				dropdown
-					.setValue(this.plugin.settings.uiLanguage ?? "system")
+					.setValue(currentLanguage)
 					.onChange(async (value) => {
 						this.plugin.settings.uiLanguage = value;
 						this.plugin.i18n?.setLocale(value);

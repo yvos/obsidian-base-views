@@ -1,4 +1,4 @@
-import { Events, Notice, Plugin, getLanguage } from "obsidian";
+import { Events, Notice, Plugin } from "obsidian";
 import { TaskNotesSettings } from "./types/settings";
 import { DEFAULT_SETTINGS } from "./settings/defaults";
 import { createI18nService, I18nService } from "./i18n";
@@ -28,30 +28,13 @@ export default class TaskNotesPlugin extends Plugin {
 	private basesRegistered = false;
 	private registeredCustomViewConfig: string | null = null;
 	private basesViewListSidebarService: BasesViewListSidebarService | null = null;
-
-	private getSystemUILocale(): string {
-		try {
-			const obsidianLanguage = getLanguage();
-			if (obsidianLanguage) {
-				return obsidianLanguage;
-			}
-		} catch {
-			// no-op
-		}
-
-		if (typeof navigator !== "undefined" && navigator.language) {
-			return navigator.language;
-		}
-
-		return "en";
-	}
+	private static readonly SUPPORTED_UI_LANGUAGES = new Set(["en", "ja"]);
 
 	async onload() {
 		await this.loadSettings();
 
 		this.i18n = createI18nService({
-			initialLocale: this.settings.uiLanguage ?? "system",
-			getSystemLocale: () => this.getSystemUILocale(),
+			initialLocale: this.settings.uiLanguage ?? "en",
 		});
 
 		this.fieldMapper = new FieldMapper(this.settings.fieldMapping);
@@ -103,16 +86,25 @@ export default class TaskNotesPlugin extends Plugin {
 			}
 		}
 
+		this.settings.uiLanguage = this.normalizeUILanguage(this.settings.uiLanguage);
 		this.settings.enableBases = this.hasAnyFeatureEnabled();
 	}
 
 	async saveSettings() {
 		this.settings.enableBases = this.hasAnyFeatureEnabled();
+		this.settings.uiLanguage = this.normalizeUILanguage(this.settings.uiLanguage);
 		await this.saveData(this.settings);
-		this.i18n?.setLocale(this.settings.uiLanguage ?? "system");
+		this.i18n?.setLocale(this.settings.uiLanguage ?? "en");
 		await this.syncBasesFeatureBindings();
 		this.emitSettingsChanged();
 		this.syncTaskNotesRuntimeBindings();
+	}
+
+	private normalizeUILanguage(language: string | null | undefined): string {
+		if (typeof language === "string" && TaskNotesPlugin.SUPPORTED_UI_LANGUAGES.has(language)) {
+			return language;
+		}
+		return "en";
 	}
 
 	private hasAnyFeatureEnabled(): boolean {

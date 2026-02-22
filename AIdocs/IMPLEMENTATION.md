@@ -505,7 +505,7 @@
 - 本環境では `node` が見つからないため、`npm run build` / `npm test` は未実行。
 
 ## 11.6 2026-02-21 i18n復旧
-- `src/settings/BaseViewsSettingTab.ts` は i18n 経由で文言を表示し、UI言語切替（`system` / 各ロケール）を提供する。
+- `src/settings/BaseViewsSettingTab.ts` は i18n 経由で文言を表示し、UI言語切替を提供する（2026-02-22 時点では英語/日本語のみ）。
 - `src/main.ts` の `saveSettings()` で `uiLanguage` を `i18n.setLocale()` に同期し、設定変更を反映する。
 - `Task List View (Custom)` の read-only ヒント/Notice は i18n キー参照に変更。
 - `tasknotesTaskListCustom` の view アイコンは `list-todo` を使用する。
@@ -517,8 +517,10 @@
   - `tests/unit/SearchBox.test.ts`
   - `tests/unit/TaskSearchFilter.test.ts`
   - `tests/unit/services/i18nService.test.ts`
-- `jest.integration.config.js` は `tests/integration/baseviews/**/*.test.ts` のみ対象とし、現状は `passWithNoTests: true`。
-- 旧TaskNotes本体機能のテストファイルはリポジトリに残っていても、デフォルト実行対象からは除外される。
+- 2026-02-21 後続作業で、旧TaskNotes本体機能のテスト過剰分は物理削除済み。
+  - `*.test.ts` は 259件中17件を残して242件を削除
+  - `tests/components`, `tests/helpers`, `tests/integration`, `tests/manual`, `tests/services`, `tests/types`, `tests/utils` などの旧補助ディレクトリも削除
+- `jest.integration.config.js` は削除済みで、テスト実行系は `jest.config.js` に一本化されている。
 
 ## 11.8 2026-02-21 設定先頭3トグルの再編
 - `src/settings/BaseViewsSettingTab.ts` の先頭に、以下3機能のON/OFFトグルを集約。
@@ -528,3 +530,31 @@
 - `src/main.ts` は3トグルに連動して、カスタムビュー登録とview一覧サービスを起動/停止する。
 - `src/bases/registration.ts` は Table/Task List(Custom) を個別トグルで登録制御する。
 - 旧 `enableBases` は互換目的で保持し、保存時は3トグルの集約値として同期する。
+
+## 11.9 2026-02-21 不要資産の削除（TaskNotes由来の開発資産整理）
+- 削除済み:
+  - `.clump/`, `docs/`, `media/`, `e2e/`, `issue-analysis/`, `tasknotes-e2e-vault/`
+  - `e2e-launch.sh`, `e2e-setup.sh`, `playwright.config.ts`, `mkdocs.yml`
+  - `copy-files.mjs`, `generate-release-notes-import.mjs`, `apply-translations.js`
+  - `i18n-state.config.json`, `i18n.manifest.json`, `i18n.state.json`
+  - `I18N_GUIDE.md`, `Tasknotes-Development-Guidelines.md`, `NLP_*`, `PROOF_OF_CONCEPT_*`, `test-overdue-setting.md`, `test-webhook.js`
+  - `scripts/` 内の i18n 補助スクリプト（`scripts/sync-manifest-version.js` のみ残置）
+  - `src/releaseNotes.ts`
+- `package.json` は削除後構成に合わせて整理済み。
+  - `e2e*` / `i18n:*` / `build:test` / `copy-files` / `test:integration` / `test:performance` / `test:build` を削除
+  - `@playwright/test` / `@electron/asar` / `i18n-state-manager` を削除
+- `README.md` は Base Views 向け最小構成へ更新済み。
+- 注意:
+  - 実行環境に `node` / `npm` がないため、`package-lock.json` 再生成（`npm install`）は未実施。
+
+## 11.10 2026-02-22 UI翻訳の英語/日本語限定化
+- `src/i18n/index.ts` の `translationResources` は `en` / `ja` のみを登録。
+- `src/i18n/resources` は `en.ts` / `ja.ts` のみ保持し、他言語ファイルは削除済み。
+- UI言語の設定方針:
+  - `src/settings/defaults.ts` の既定値は `uiLanguage: "en"`。
+  - `src/main.ts` で `uiLanguage` を `en/ja` のみ許容するよう正規化し、非対応値は `en` に寄せる。
+  - `src/settings/BaseViewsSettingTab.ts` の言語ドロップダウンは英語/日本語のみ（`system` は選択不可）。
+- テスト:
+  - `tests/unit/services/i18nService.test.ts` は `en/ja` 前提へ更新済み（非対応ロケール選択時は `en` 解決を検証）。
+- 注意:
+  - 実行環境に `node` / `npm` がないため、テスト実行は未実施。

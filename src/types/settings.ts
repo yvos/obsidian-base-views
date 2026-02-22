@@ -130,7 +130,7 @@ export interface TaskNotesSettings {
 	enableNaturalLanguageInput: boolean;
 	nlpDefaultToScheduled: boolean;
 	nlpLanguage: string; // Language code for natural language processing (e.g., 'en', 'es', 'fr')
-	uiLanguage: string; // 'system' or supported locale code for UI translations
+	uiLanguage: string; // supported locale code for UI translations (Base Views: 'en' | 'ja')
 
 	// NLP status suggestion trigger (empty to disable) - DEPRECATED: Use nlpTriggers instead
 	statusSuggestionTrigger: string;
