@@ -13,9 +13,9 @@
 ## 2. 現在の機能
 - 対象leaf判定: `viewType === "bases"` かつ `file.extension === "base"`
 - view取得優先順:
-  1. `controller.query.views[]`（`name/type` + 設定キーのプロパティ値）
+  1. `controller.query.views[]`（`name/type/description`）
   2. `controller.getQueryViewNames()`（`name`のみ）
-  3. `.base` YAML `views[].{name,type,<propertyKey>}`（fallback）
+  3. `.base` YAML `views[].{name,type,description}`（fallback）
 - view切替優先順:
   1. `controller.selectView(viewName)`
   2. `workspace.openLinkText(`${file.path}#${viewName}`, file.path, false)`
@@ -52,13 +52,12 @@
     - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）では復帰導線維持のため強制表示
 - view行表示:
   - view名は常に左寄せ
-  - 設定ON時は2行目に viewプロパティを表示
-  - top配置 + プロパティ表示ON時は、空値viewにも空行を描画して行高を統一
+  - 設定ON時は2行目に `description` を表示
+  - top配置 + `description` 表示ON時は、空値viewにも空行を描画して行高を統一
   - 配列値は `, ` 区切り
   - 空値は2行目を出さない
   - view行右クリックで `description` 編集モーダルを表示可能
-  - 一覧右クリックでプロパティ表示ON/OFFを切替可能（base formulaへ保存、plugin設定は既定値として維持）
-  - 一覧右クリックで表示プロパティキーを変更可能（存在しないキー入力時はbase override削除）
+  - 一覧右クリックで `description` 表示ON/OFFを切替可能（base formulaへ保存、plugin設定は既定値として維持）
   - 一覧右クリックでフォントサイズ（`Default/Small/Very Small`）を切替可能
   - 一覧右クリックで view一覧の再描画を実行可能
   - 編集モーダルは既存descriptionをplaceholder表示し、空文字で確定すると `description` キー削除
@@ -77,18 +76,16 @@
   - `basesViewListPlacement`（global default: main pane）
   - `basesViewListSidePanePlacement`（global default: side pane）
   - `basesViewListFontSize`（global）
-  - `basesViewListShowProperty`（global default）
-  - `basesViewListPropertyKey`（global default）
+  - `basesViewListShowProperty`（global default, `description` 表示ON/OFF）
   - `basesViewListShowNativeToolbar`（global）
   - `basesViewListShowIcons`（global）
   - `basesViewListTopOverflowMode`（global default）
   - `basesViewListNarrowBehavior`（global）
   - `basesViewListNarrowThresholdPx`（global）
-  - `formulas.tnViewListPosition`（per `.base`, main pane override）
-  - `formulas.tnViewListSidePanePosition`（per `.base`, side pane override）
-  - `formulas.tnViewListShowProperty`（per `.base`）
-  - `formulas.tnViewListPropertyKey`（per `.base`）
-  - `formulas.tnViewListTopOverflowMode`（per `.base`）
+  - `formulas.bvViewListPosition`（per `.base`, main pane override）
+  - `formulas.bvViewListSidePanePosition`（per `.base`, side pane override）
+  - `formulas.bvViewListShowProperty`（per `.base`）
+  - `formulas.bvViewListTopOverflowMode`（per `.base`）
   - `formulas.viewListSize`（per `.base`）
 
 ## 3. 依存関係
@@ -114,14 +111,14 @@
 
 ## 4. 切り出し時に残す最小インターフェース
 - 設定I/O境界
-  - `getSettings(): { enabled, dropdownMode, placement, sidePanePlacement, fontSize, showPropertyDefault, propertyKeyDefault, showNativeToolbar, showIcons, topOverflowModeDefault, narrowBehavior, narrowThresholdPx }`
+  - `getSettings(): { enabled, dropdownMode, placement, sidePanePlacement, fontSize, showPropertyDefault, showNativeToolbar, showIcons, topOverflowModeDefault, narrowBehavior, narrowThresholdPx }`
   - `setSettings(partial): Promise<void>`
 - i18n境界
   - 必須キーのみ提供する `t(key, fallback)`
 - icon解決境界
   - `resolveViewTypeIcon(type): string`
-- property抽出境界
-  - `resolveViewPropertyText(view, propertyKey): string | null`
+- description抽出境界
+  - `resolveViewDescriptionText(view): string | null`
 - lifecycle境界
   - `start()` / `stop()`
   - `refresh()`
@@ -145,16 +142,15 @@
   - left/top配置切替とヘッダー表示仕様
   - closeボタン小型クラス
   - フォントサイズクラス（M/S/XS）
-  - property表示ON/OFF・空値非表示・配列のカンマ区切り
-  - top配置 + プロパティ表示ON時の行高統一（空値行の空行描画）
+  - `description` 表示ON/OFF・空値非表示・配列のカンマ区切り
+  - top配置 + `description` 表示ON時の行高統一（空値行の空行描画）
   - icon表示ON/OFF
   - top overflow (`wrap/scroll`)
   - 狭幅挙動 (`none/top/hide`) と閾値
   - ネイティブツールバー表示ON/OFFと一覧非表示時の強制表示
   - 自動幅短縮（初期幅時のみ）
   - 右クリックメニュー生成（view行でdescription編集項目が追加）
-  - 右クリックメニューでプロパティ表示ON/OFF・ネイティブツールバーON/OFFトグル
-  - 右クリックメニューで表示プロパティ変更（存在チェック + fallback）
+  - 右クリックメニューで `description` 表示ON/OFF・ネイティブツールバーON/OFFトグル
   - 右クリックメニューで base永続left/top/none のトグル保存
   - 右クリックメニューでフォントサイズ切替と再描画アクション
   - `none` 初期表示 + open trigger + close復帰挙動
@@ -162,7 +158,7 @@
   - 幅ドラッグ更新とclamp（`formulas.viewListSize` 保存/削除）
   - refresh連打での非増殖
 - 手動:
-  - 複数base間移動で base永続設定（position/property/overflow）と幅が独立して維持されること
+  - 複数base間移動で base永続設定（position/description表示/overflow）と幅が独立して維持されること
   - 配置切替（設定/右クリック）の即時反映
   - top配置の挿入位置（`bases-header` 直下）
   - list-only / combined の既存挙動維持

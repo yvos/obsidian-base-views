@@ -173,7 +173,6 @@ describe("BasesViewListSidebarService", () => {
 				basesViewListSidePanePlacement: "top",
 				basesViewListFontSize: "m",
 				basesViewListShowProperty: true,
-				basesViewListPropertyKey: "description",
 				basesViewListShowNativeToolbar: true,
 				basesViewListShowIcons: true,
 				basesViewListTopOverflowMode: "wrap",
@@ -231,11 +230,9 @@ describe("BasesViewListSidebarService", () => {
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showTop":
 							"Show on top",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showProperty":
-							"Show property",
+							"Show description",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideProperty":
-							"Hide property",
-						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.changePropertyKey":
-							"Change displayed property",
+							"Hide description",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showNativeToolbar":
 							"Show native toolbar",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideNativeToolbar":
@@ -266,12 +263,6 @@ describe("BasesViewListSidebarService", () => {
 							"in side pane",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.redrawViewList":
 							"Redraw view list",
-						"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.title":
-							"Change displayed property",
-						"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.confirm":
-							"Save",
-						"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.cancel":
-							"Cancel",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.title":
 							"Edit description: {viewName}",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.placeholder":
@@ -280,8 +271,6 @@ describe("BasesViewListSidebarService", () => {
 							"Save",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.cancel":
 							"Cancel",
-						"settings.integrations.basesIntegration.viewListSidebar.notices.propertyKeyNotFoundReset":
-							"Property \"{propertyKey}\" is not found in this base views. Reverted to default property key.",
 					};
 					const template = translations[key] ?? key;
 					if (!params) return template;
@@ -1078,14 +1067,13 @@ describe("BasesViewListSidebarService", () => {
 		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-icon")).toBeNull();
 	});
 
-	it("renders property line and joins list property values with commas", async () => {
-		plugin.settings.basesViewListPropertyKey = "tags";
+	it("renders description line from view description", async () => {
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
 					views: [
-						{ name: "Table", type: "table", tags: ["alpha", "beta"] },
-						{ name: "Cards", type: "cards", tags: "single" },
+						{ name: "Table", type: "table", description: "Alpha, beta" },
+						{ name: "Cards", type: "cards", description: "Single" },
 					],
 				},
 			},
@@ -1099,7 +1087,7 @@ describe("BasesViewListSidebarService", () => {
 		const properties = Array.from(
 			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-property")
 		).map((el) => el.textContent?.trim());
-		expect(properties).toEqual(["alpha, beta", "single"]);
+		expect(properties).toEqual(["Alpha, beta", "Single"]);
 		expect(
 			setup.rootEl
 				.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[0]
@@ -1140,7 +1128,6 @@ describe("BasesViewListSidebarService", () => {
 	it("keeps top-list row heights uniform when property display is enabled", async () => {
 		plugin.settings.basesViewListPlacement = "top";
 		plugin.settings.basesViewListShowProperty = true;
-		plugin.settings.basesViewListPropertyKey = "description";
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1395,8 +1382,7 @@ describe("BasesViewListSidebarService", () => {
 		const menuInstance = getLastMenuInstance();
 		expect(menuInstance).toBeTruthy();
 		expect(menuInstance.showAtMouseEvent).toHaveBeenCalled();
-		expect(getMenuItemByTitle(menuInstance, "Hide property")).toBeTruthy();
-		expect(getMenuItemByTitle(menuInstance, "Change displayed property")).toBeTruthy();
+		expect(getMenuItemByTitle(menuInstance, "Hide description")).toBeTruthy();
 		expect(getMenuItemByTitle(menuInstance, "Hide native toolbar")).toBeTruthy();
 		expect(getMenuItemByTitle(menuInstance, "Font size: Default")).toBeTruthy();
 		expect(getMenuItemByTitle(menuInstance, "Redraw view list")).toBeTruthy();
@@ -1474,7 +1460,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const menuInstance = getLastMenuInstance();
-		const toggleItem = getMenuItemByTitle(menuInstance, "Hide property");
+		const toggleItem = getMenuItemByTitle(menuInstance, "Hide description");
 		const onClickHandler = toggleItem?.onClick?.mock?.calls?.[0]?.[0];
 		expect(typeof onClickHandler).toBe("function");
 
@@ -1484,88 +1470,8 @@ describe("BasesViewListSidebarService", () => {
 		expect(plugin.settings.basesViewListShowProperty).toBe(true);
 		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
 		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas.tnViewListShowProperty).toBe("false");
+		expect(parsed.formulas.bvViewListShowProperty).toBe("false");
 		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-property")).toBeNull();
-	});
-
-	it("changes displayed property key per base and stores formula override", async () => {
-		(showTextInputModal as jest.Mock).mockResolvedValue("note");
-		plugin.settings.basesViewListPropertyKey = "description";
-		const setup = createBaseLeaf({
-			controller: {
-				query: {
-					views: [
-						{ name: "Table", type: "table", description: "Desc", note: "Note A" },
-						{ name: "Cards", type: "cards", description: "Desc2", note: "Note B" },
-					],
-				},
-			},
-		});
-		mountedRoots.push(setup.hostEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
-
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-		await flushTimersAndPromises();
-
-		const menuInstance = getLastMenuInstance();
-		const changeItem = getMenuItemByTitle(menuInstance, "Change displayed property");
-		const onClickHandler = changeItem?.onClick?.mock?.calls?.[0]?.[0];
-		expect(typeof onClickHandler).toBe("function");
-
-		await onClickHandler();
-		await flushTimersAndPromises(3);
-
-		expect(showTextInputModal).toHaveBeenCalled();
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas.tnViewListPropertyKey).toBe("note");
-		const properties = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-property")
-		).map((el) => el.textContent?.trim());
-		expect(properties).toEqual(["Note A", "Note B"]);
-	});
-
-	it("removes property key override when entered key is missing", async () => {
-		(showTextInputModal as jest.Mock).mockResolvedValue("missing");
-		vaultCachedRead.mockResolvedValue(
-			"formulas:\n  tnViewListPropertyKey: description\nviews:\n  - type: table\n    name: Table\n    description: Desc\n  - type: cards\n    name: Cards\n    description: Desc2\n"
-		);
-		const setup = createBaseLeaf({
-			controller: {
-				query: {
-					views: [
-						{ name: "Table", type: "table", description: "Desc" },
-						{ name: "Cards", type: "cards", description: "Desc2" },
-					],
-				},
-			},
-		});
-		mountedRoots.push(setup.hostEl);
-		workspace.leaves = [setup.leaf];
-
-		service.start();
-		await flushTimersAndPromises();
-
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-		await flushTimersAndPromises();
-
-		const menuInstance = getLastMenuInstance();
-		const changeItem = getMenuItemByTitle(menuInstance, "Change displayed property");
-		const onClickHandler = changeItem?.onClick?.mock?.calls?.[0]?.[0];
-		await onClickHandler();
-		await flushTimersAndPromises(3);
-
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas?.tnViewListPropertyKey).toBeUndefined();
-		expect(Notice).toHaveBeenCalledWith(
-			'Property "missing" is not found in this base views. Reverted to default property key.'
-		);
 	});
 
 	it("stores persistent none placement per base from context menu", async () => {
@@ -1601,7 +1507,7 @@ describe("BasesViewListSidebarService", () => {
 
 		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
 		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas.tnViewListPosition).toBe("none");
+		expect(parsed.formulas.bvViewListPosition).toBe("none");
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
 		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
 	});

@@ -90,11 +90,10 @@ describe("BaseViewListYamlStore", () => {
 		cachedRead.mockResolvedValue(
 			[
 				"formulas:",
-				"  tnViewListPosition: left",
-				"  tnViewListSidePanePosition: none",
-				"  tnViewListShowProperty: \"false\"",
-				"  tnViewListPropertyKey: subtitle",
-				"  tnViewListTopOverflowMode: scroll",
+				"  bvViewListPosition: left",
+				"  bvViewListSidePanePosition: none",
+				"  bvViewListShowProperty: \"false\"",
+				"  bvViewListTopOverflowMode: scroll",
 				"views:",
 				"  - type: table",
 				"    name: Table",
@@ -106,7 +105,6 @@ describe("BaseViewListYamlStore", () => {
 			position: "left",
 			sidePanePosition: "none",
 			showProperty: false,
-			propertyKey: "subtitle",
 			topOverflowMode: "scroll",
 		});
 	});
@@ -119,21 +117,21 @@ describe("BaseViewListYamlStore", () => {
 		let updated = await store.setViewListPosition(file, "normal", "none");
 		expect(updated).toBe(true);
 		let parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
-		expect(parsed.formulas.tnViewListPosition).toBe("none");
+		expect(parsed.formulas.bvViewListPosition).toBe("none");
 
 		cachedRead.mockResolvedValue(modify.mock.calls[0][1] as string);
 		updated = await store.setViewListPosition(file, "sidePane", "top");
 		expect(updated).toBe(true);
 		parsed = parseYaml(modify.mock.calls[1][1] as string) as any;
-		expect(parsed.formulas.tnViewListPosition).toBe("none");
-		expect(parsed.formulas.tnViewListSidePanePosition).toBe("top");
+		expect(parsed.formulas.bvViewListPosition).toBe("none");
+		expect(parsed.formulas.bvViewListSidePanePosition).toBe("top");
 
 		cachedRead.mockResolvedValue(modify.mock.calls[1][1] as string);
 		updated = await store.setViewListPosition(file, "normal", null);
 		expect(updated).toBe(true);
 		parsed = parseYaml(modify.mock.calls[2][1] as string) as any;
-		expect(parsed.formulas.tnViewListPosition).toBeUndefined();
-		expect(parsed.formulas.tnViewListSidePanePosition).toBe("top");
+		expect(parsed.formulas.bvViewListPosition).toBeUndefined();
+		expect(parsed.formulas.bvViewListSidePanePosition).toBe("top");
 	});
 
 	it("stores showProperty as YAML string", async () => {
@@ -143,17 +141,17 @@ describe("BaseViewListYamlStore", () => {
 		const updated = await store.setViewListShowProperty(file, true);
 		expect(updated).toBe(true);
 		const parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
-		expect(parsed.formulas.tnViewListShowProperty).toBe("true");
-		expect(typeof parsed.formulas.tnViewListShowProperty).toBe("string");
+		expect(parsed.formulas.bvViewListShowProperty).toBe("true");
+		expect(typeof parsed.formulas.bvViewListShowProperty).toBe("string");
 	});
 
 	it("ignores invalid enum values and falls back to null", async () => {
 		cachedRead.mockResolvedValue(
 			[
 				"formulas:",
-				"  tnViewListPosition: invalid",
-				"  tnViewListSidePanePosition: unknown",
-				"  tnViewListTopOverflowMode: broken",
+				"  bvViewListPosition: invalid",
+				"  bvViewListSidePanePosition: unknown",
+				"  bvViewListTopOverflowMode: broken",
 				"views:",
 				"  - type: table",
 				"    name: Table",
@@ -170,14 +168,14 @@ describe("BaseViewListYamlStore", () => {
 		cachedRead.mockResolvedValue(
 			[
 				"formulas:",
-				"  tnViewListPropertyKey: description",
+				"  bvViewListShowProperty: \"true\"",
 				"views:",
 				"  - type: table",
 				"    name: Table",
 			].join("\n")
 		);
 
-		const updated = await store.setViewListPropertyKey(file, null);
+		const updated = await store.setViewListShowProperty(file, null);
 		expect(updated).toBe(true);
 		const parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
 		expect(parsed.formulas).toBeUndefined();
@@ -190,7 +188,7 @@ describe("BaseViewListYamlStore", () => {
 		let updated = await store.setViewListTopOverflowMode(file, "wrap");
 		expect(updated).toBe(true);
 		let parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
-		expect(parsed.formulas.tnViewListTopOverflowMode).toBe("wrap");
+		expect(parsed.formulas.bvViewListTopOverflowMode).toBe("wrap");
 
 		cachedRead.mockResolvedValue(modify.mock.calls[0][1] as string);
 		updated = await store.setViewListTopOverflowMode(file, null);

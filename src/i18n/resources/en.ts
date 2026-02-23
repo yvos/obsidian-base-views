@@ -1613,14 +1613,8 @@ export const en: TranslationTree = {
 						},
 						property: {
 							show: {
-								name: "Show view property",
-								description:
-									"Show a secondary property line under each view name.",
-							},
-							key: {
-								name: "Default property key to show",
-								description:
-									"Default property key shown under each view (for example: description). You can change it per base via the right-click menu.",
+								name: "Show description",
+								description: "Show the description line under each view name.",
 							},
 						},
 						topOverflow: {
@@ -1650,9 +1644,8 @@ export const en: TranslationTree = {
 						contextMenu: {
 							showLeft: "Show on left",
 							showTop: "Show on top",
-							showProperty: "Show property",
-							hideProperty: "Hide property",
-							changePropertyKey: "Change displayed property",
+							showProperty: "Show description",
+							hideProperty: "Hide description",
 							showNativeToolbar: "Show native toolbar",
 							hideNativeToolbar: "Hide native toolbar",
 							editDescription: "Edit description",
@@ -1670,11 +1663,6 @@ export const en: TranslationTree = {
 								sidePane: "in side pane",
 							},
 							redrawViewList: "Redraw view list",
-						},
-						changePropertyKeyModal: {
-							title: "Change displayed property",
-							confirm: "Save",
-							cancel: "Cancel",
 						},
 						editDescriptionModal: {
 							title: "Edit description: {viewName}",
@@ -1703,8 +1691,6 @@ export const en: TranslationTree = {
 								"Could not open native view settings.",
 							nativeViewSettingsOpenPartial:
 								"Could not open this view's native settings. The native view list is open.",
-							propertyKeyNotFoundReset:
-								"Property \"{propertyKey}\" is not found in this base views. Reverted to default property key.",
 						},
 						singleViewHidden: {
 							description:

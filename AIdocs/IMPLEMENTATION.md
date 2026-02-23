@@ -42,7 +42,7 @@
   - 旧 `tasknotesTaskList` / `tasknotesKanban` / `tasknotesCalendar` / `tasknotesMiniCalendar` は登録対象外（unregister cleanupのみ）。
 - Bases view一覧サイドバー（`.base` 向け）
   - 対象: `viewType === "bases"` かつ `file.extension === "base"`
-  - 一覧取得: `query.views[].{name,type,property}` → `getQueryViewNames()` → YAML `views[].{name,type,property}` の順でフォールバック
+  - 一覧取得: `query.views[].{name,type,description}` → `getQueryViewNames()` → YAML `views[].{name,type,description}` の順でフォールバック
   - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
   - 設定:
     - `enableBasesViewListSidebar`（ON/OFF）
@@ -50,8 +50,7 @@
     - `basesViewListPlacement`（`left` / `top` / `none`、通常ペイン既定）
     - `basesViewListSidePanePlacement`（`left` / `top` / `none`、サイドペイン既定）
     - `basesViewListFontSize`（`m` / `s` / `xs`）
-    - `basesViewListShowProperty`（viewプロパティ行表示ON/OFFの既定）
-    - `basesViewListPropertyKey`（表示対象プロパティキーの既定）
+    - `basesViewListShowProperty`（view `description` 行表示ON/OFFの既定）
     - `basesViewListShowNativeToolbar`（一覧表示中の `.bases-header` / `.bases-toolbar` 表示）
     - `basesViewListShowIcons`（viewアイコン表示ON/OFF）
     - `basesViewListTopOverflowMode`（`wrap` / `scroll` の既定）
@@ -68,8 +67,7 @@
     - `top` ではタイトル文字列を出さず close のみ表示
     - 一覧領域の右クリックメニューで `left/top` を leaf一時切替可能
     - 一覧領域の右クリックメニューで base永続の `left/top/none` をトグル保存可能
-    - 一覧領域の右クリックメニューでプロパティ表示ON/OFFを base単位で保存可能
-    - 一覧領域の右クリックメニューで表示プロパティキーを base単位で変更可能（存在しないキー入力時はoverride削除）
+    - 一覧領域の右クリックメニューで `description` 表示ON/OFFを base単位で保存可能
     - 一覧領域の右クリックメニューでネイティブツールバー表示ON/OFFを切替可能
     - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
     - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
@@ -80,7 +78,7 @@
     - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
     - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
     - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`、`tasknotesCustomTable` は `table-cells-merge`）
-    - 設定ON時は view名の下にプロパティ行を表示（配列はカンマ区切り、空値は非表示）
+    - 設定ON時は view名の下に `description` 行を表示（空値は非表示）
     - 左端表示では長いview名/プロパティを行ボーダー内でクリップ表示
     - 狭幅時は設定に応じて `none/top/hide` を適用
     - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
@@ -177,7 +175,7 @@
 - `src/integrations/bases/types.ts`
   - Basesネイティブ設定ブリッジの入力/結果型定義
 - `src/bases/BaseViewListYamlStore.ts`
-  - `.base` YAML の `formulas`（`tnViewList*` + `viewListSize`）/ `views[].description` 読み書き補助
+  - `.base` YAML の `formulas`（`bvViewList*` + `viewListSize`）/ `views[].description` 読み書き補助
 - `src/bases/api.ts`
   - Bases API ラッパー型
 - `styles/bases-views.css`
@@ -215,7 +213,7 @@
 - `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
   - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
-  - `tnViewList*` / `viewListSize` / `description` YAML更新のユニットテスト
+  - `bvViewList*` / `viewListSize` / `description` YAML更新のユニットテスト
 
 # 4. データ構造
 - `tableSummaries: Record<propertyId, summaryKey>`
@@ -255,9 +253,7 @@
 - `basesViewListShowNativeToolbar: boolean`
   - 一覧表示中にネイティブBasesツールバーを表示するか
 - `basesViewListShowProperty: boolean`
-  - 各viewの2行目プロパティ表示の既定値
-- `basesViewListPropertyKey: string`
-  - 2行目に表示するプロパティキーの既定値（例: `description`）
+  - 各viewの2行目 `description` 表示ON/OFFの既定値
 - `basesViewListShowIcons: boolean`
   - view一覧のアイコン表示ON/OFF
 - `basesViewListTopOverflowMode: "wrap" | "scroll"`
@@ -267,11 +263,10 @@
 - `basesViewListNarrowThresholdPx: number`
   - 狭幅判定閾値px
 - `.base formulas`（base単位override）
-  - `tnViewListPosition`: 通常ペイン配置 (`left` / `top` / `none`)
-  - `tnViewListSidePanePosition`: サイドペイン配置 (`left` / `top` / `none`)
-  - `tnViewListShowProperty`: プロパティ表示ON/OFF（YAML string: `"true"` / `"false"`）
-  - `tnViewListPropertyKey`: 表示プロパティキー
-  - `tnViewListTopOverflowMode`: top overflow (`wrap` / `scroll`)
+  - `bvViewListPosition`: 通常ペイン配置 (`left` / `top` / `none`)
+  - `bvViewListSidePanePosition`: サイドペイン配置 (`left` / `top` / `none`)
+  - `bvViewListShowProperty`: `description` 表示ON/OFF（YAML string: `"true"` / `"false"`）
+  - `bvViewListTopOverflowMode`: top overflow (`wrap` / `scroll`)
   - `viewListSize`: view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、文字列として保存）
 
 # 5. 挙動の詳細や注意点
@@ -327,7 +322,7 @@
 - `button` 既定 `height` 競合を避けるため、一覧行は `height: auto` を明示し、文字サイズに連動してアイコンと行高を調整する。
 - 一覧領域の右クリックメニューで `left/top` を leaf一時変更できる。
 - 一覧領域の右クリックメニューで base永続 `left/top/none` をトグル保存できる。
-- 一覧領域の右クリックメニューでプロパティ表示ON/OFF・表示プロパティキー・top overflowを base単位で保存できる（plugin設定は既定値として維持）。
+- 一覧領域の右クリックメニューで `description` 表示ON/OFF・top overflowを base単位で保存できる（plugin設定は既定値として維持）。
 - 一覧領域の右クリックメニュー `Redraw view list` は、view一覧DOM再構築に加えて対象 `bases` leaf の `refresh()` も実行する。
 - view行右クリックでは `description` 編集項目を追加表示する。
 - view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
@@ -565,3 +560,15 @@
 - `src/i18n/I18nService.ts` の `getNativeLanguageName()` は `en` / `ja` のみ定義。
 - `src/i18n/resources/en.ts` / `src/i18n/resources/ja.ts` の `common.languages` は `en` / `ja` のみ定義。
 - `src/services/NaturalLanguageParser.ts` の非ASCII境界判定は `ja` のみに簡素化。
+
+## 11.12 2026-02-23 view一覧のdescription固定化とbvキー移行
+- view一覧2行目は任意プロパティではなく `description` 固定で描画。
+- `basesViewListShowProperty` は「description表示ON/OFF」として継続。
+- `basesViewListPropertyKey` は settings 型/初期値/設定UI から削除。
+- 右クリックメニューから「表示プロパティ変更」を削除（ON/OFFのみ維持）。
+- `.base formulas` の保存キーは `tn*` から `bv*` へ変更。
+  - `bvViewListPosition`
+  - `bvViewListSidePanePosition`
+  - `bvViewListShowProperty`
+  - `bvViewListTopOverflowMode`
+- 旧 `tn*` との互換処理は実装しない（読み書きしない）。

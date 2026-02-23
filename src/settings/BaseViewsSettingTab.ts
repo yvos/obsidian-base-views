@@ -311,13 +311,13 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 			.setName(
 				this.t(
 					"settings.integrations.basesIntegration.viewListSidebar.property.show.name",
-					"Show view property"
+					"Show description"
 				)
 			)
 			.setDesc(
 				this.t(
 					"settings.integrations.basesIntegration.viewListSidebar.property.show.description",
-					"Show a secondary property line under each view name."
+					"Show the description line under each view name."
 				)
 			)
 			.addToggle((toggle) =>
@@ -325,29 +325,6 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 					this.plugin.settings.basesViewListShowProperty = value;
 					await this.plugin.saveSettings();
 				})
-			);
-
-		new Setting(containerEl)
-			.setName(
-				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.property.key.name",
-					"Default property key to show"
-				)
-			)
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.property.key.description",
-					"Default property key shown under each view."
-				)
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("description")
-					.setValue(this.plugin.settings.basesViewListPropertyKey ?? "")
-					.onChange(async (value) => {
-						this.plugin.settings.basesViewListPropertyKey = value.trim();
-						await this.plugin.saveSettings();
-					})
 			);
 
 		new Setting(containerEl)

@@ -20,7 +20,6 @@ export interface BaseViewListFormulaPrefs {
 	position: ViewListFormulaPlacement | null;
 	sidePanePosition: ViewListFormulaPlacement | null;
 	showProperty: boolean | null;
-	propertyKey: string | null;
 	topOverflowMode: ViewListFormulaTopOverflowMode | null;
 }
 
@@ -31,11 +30,10 @@ interface CachedBaseYaml {
 }
 
 const VIEW_LIST_SIZE_KEY = "viewListSize";
-const VIEW_LIST_POSITION_KEY = "tnViewListPosition";
-const VIEW_LIST_SIDE_PANE_POSITION_KEY = "tnViewListSidePanePosition";
-const VIEW_LIST_SHOW_PROPERTY_KEY = "tnViewListShowProperty";
-const VIEW_LIST_PROPERTY_KEY = "tnViewListPropertyKey";
-const VIEW_LIST_TOP_OVERFLOW_KEY = "tnViewListTopOverflowMode";
+const VIEW_LIST_POSITION_KEY = "bvViewListPosition";
+const VIEW_LIST_SIDE_PANE_POSITION_KEY = "bvViewListSidePanePosition";
+const VIEW_LIST_SHOW_PROPERTY_KEY = "bvViewListShowProperty";
+const VIEW_LIST_TOP_OVERFLOW_KEY = "bvViewListTopOverflowMode";
 
 // `.base` YAMLのview一覧関連キーを読み書きするストアを提供する。
 export class BaseViewListYamlStore {
@@ -67,7 +65,6 @@ export class BaseViewListYamlStore {
 					formulas[VIEW_LIST_SIDE_PANE_POSITION_KEY]
 				),
 				showProperty: this.parseBoolean(formulas[VIEW_LIST_SHOW_PROPERTY_KEY]),
-				propertyKey: this.normalizeText(formulas[VIEW_LIST_PROPERTY_KEY]),
 				topOverflowMode: this.parseTopOverflowMode(formulas[VIEW_LIST_TOP_OVERFLOW_KEY]),
 			};
 		} catch {
@@ -104,18 +101,6 @@ export class BaseViewListYamlStore {
 			normalized ?? undefined,
 			(current) => this.normalizeBooleanFormulaString(current) === normalized,
 			"[TaskNotes][Bases] Failed to update view list showProperty formula"
-		);
-	}
-
-	// 表示対象プロパティキーを `.base formulas` に保存する。
-	async setViewListPropertyKey(file: TFile, value: string | null): Promise<boolean> {
-		const normalized = this.normalizeText(value);
-		return this.updateFormulaField(
-			file,
-			VIEW_LIST_PROPERTY_KEY,
-			normalized ?? undefined,
-			(current) => this.normalizeText(current) === normalized,
-			"[TaskNotes][Bases] Failed to update view list property key formula"
 		);
 	}
 
@@ -376,7 +361,6 @@ export class BaseViewListYamlStore {
 			position: null,
 			sidePanePosition: null,
 			showProperty: null,
-			propertyKey: null,
 			topOverflowMode: null,
 		};
 	}

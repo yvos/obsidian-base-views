@@ -1579,13 +1579,8 @@ export const ja: TranslationTree = {
 						},
 						property: {
 							show: {
-								name: "viewのプロパティを表示",
-								description: "各view名の下に指定プロパティを表示します。",
-							},
-							key: {
-								name: "表示するプロパティ名のデフォルト値",
-								description:
-									"各viewの下に表示する既定のプロパティキーです（例: description）。右クリックメニューからbaseごとに変更できます。",
+								name: "descriptionを表示",
+								description: "各view名の下にdescriptionを表示します。",
 							},
 						},
 						topOverflow: {
@@ -1613,9 +1608,8 @@ export const ja: TranslationTree = {
 						contextMenu: {
 							showLeft: "左に表示",
 							showTop: "上に表示",
-							showProperty: "プロパティを表示",
-							hideProperty: "プロパティを非表示",
-							changePropertyKey: "表示プロパティを変更",
+							showProperty: "descriptionを表示",
+							hideProperty: "descriptionを非表示",
 							showNativeToolbar: "ネイティブツールバーを表示",
 							hideNativeToolbar: "ネイティブツールバーを非表示",
 							editDescription: "descriptionの編集",
@@ -1633,11 +1627,6 @@ export const ja: TranslationTree = {
 								sidePane: "サイドペインで",
 							},
 							redrawViewList: "ビュー一覧を再描画",
-						},
-						changePropertyKeyModal: {
-							title: "表示プロパティを変更",
-							confirm: "保存",
-							cancel: "キャンセル",
 						},
 						editDescriptionModal: {
 							title: "descriptionを編集: {viewName}",
@@ -1666,8 +1655,6 @@ export const ja: TranslationTree = {
 								"ネイティブのビュー設定を開けませんでした。",
 							nativeViewSettingsOpenPartial:
 								"このビューのネイティブ設定を開けませんでした。ネイティブのビュー一覧は開いています。",
-							propertyKeyNotFoundReset:
-								"プロパティ「{propertyKey}」はこのbaseのviewに存在しないため、既定の表示プロパティに戻しました。",
 						},
 						singleViewHidden: {
 							description:

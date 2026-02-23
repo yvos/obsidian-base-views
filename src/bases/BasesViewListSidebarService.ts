@@ -111,7 +111,6 @@ interface ResolvedViewListPrefs {
 	formulaPrefs: BaseViewListFormulaPrefs;
 	placement: LayoutPlacement;
 	showProperty: boolean;
-	propertyKey: string;
 	topOverflowMode: TopOverflowMode;
 }
 
@@ -480,11 +479,7 @@ export class BasesViewListSidebarService {
 		if (!this.running) return;
 
 		const toolbarEl = this.findToolbarEl(leaf);
-		const viewEntries = await this.getViewEntries(
-			leaf,
-			resolvedPrefs.propertyKey,
-			resolvedPrefs.showProperty
-		);
+		const viewEntries = await this.getViewEntries(leaf, resolvedPrefs.showProperty);
 		if (!this.running) return;
 		const rootEl = this.resolveRootEl(leaf, basesViewEl);
 
@@ -622,11 +617,6 @@ export class BasesViewListSidebarService {
 		return this.plugin.settings.basesViewListShowProperty === true;
 	}
 
-	private getDefaultPropertyKey(): string {
-		const key = this.plugin.settings.basesViewListPropertyKey;
-		return typeof key === "string" ? key.trim() : "";
-	}
-
 	private isSidePaneLeaf(leaf: WorkspaceLeaf): boolean {
 		const containerEl = this.getLeafView(leaf)?.containerEl;
 		if (!containerEl) return false;
@@ -688,17 +678,14 @@ export class BasesViewListSidebarService {
 		const persistentPlacement = this.resolvePersistentPlacement(paneContext, formulaPrefs);
 		const temporaryPlacement = this.getTemporaryPlacement(leaf, file.path);
 
-		const propertyKey = (formulaPrefs.propertyKey ?? this.getDefaultPropertyKey()).trim();
 		const showPropertyDefault = this.getDefaultShowProperty();
-		const showProperty =
-			(formulaPrefs.showProperty ?? showPropertyDefault) === true && propertyKey.length > 0;
+		const showProperty = (formulaPrefs.showProperty ?? showPropertyDefault) === true;
 
 		return {
 			paneContext,
 			formulaPrefs,
 			placement: temporaryPlacement ?? persistentPlacement,
 			showProperty,
-			propertyKey,
 			topOverflowMode: formulaPrefs.topOverflowMode ?? this.getDefaultTopOverflowMode(),
 		};
 	}
@@ -1451,13 +1438,6 @@ export class BasesViewListSidebarService {
 		});
 
 		menu.addItem((item) => {
-			item.setTitle(this.getContextMenuChangePropertyKeyLabel());
-			item.onClick(() => {
-				void this.promptAndSetPerBasePropertyKey(leaf, file);
-			});
-		});
-
-		menu.addItem((item) => {
 			item.setTitle(
 				showNativeToolbar
 					? this.getContextMenuHideNativeToolbarLabel()
@@ -1637,88 +1617,6 @@ export class BasesViewListSidebarService {
 		this.scheduleRefresh(0);
 	}
 
-	private async promptAndSetPerBasePropertyKey(leaf: WorkspaceLeaf, file: TFile): Promise<void> {
-		const prefs = await this.resolveViewListPrefs(leaf, file);
-		const currentKey = prefs.propertyKey || this.getDefaultPropertyKey();
-		const input = await showTextInputModal(this.plugin.app, {
-			title: this.getChangePropertyKeyModalTitle(),
-			placeholder: currentKey || "description",
-			initialValue: currentKey,
-			confirmText: this.getChangePropertyKeyModalConfirmText(),
-			cancelText: this.getChangePropertyKeyModalCancelText(),
-			allowEmptyResult: true,
-		});
-		if (input === null) return;
-
-		const requestedKey = input.trim();
-		if (!requestedKey) {
-			await this.yamlStore.setViewListPropertyKey(file, null);
-			this.scheduleRefresh(0);
-			return;
-		}
-
-		const availableKeys = await this.collectAvailablePropertyKeys(leaf, file);
-		const resolvedKey = this.resolveAvailablePropertyKey(requestedKey, availableKeys);
-		if (!resolvedKey) {
-			await this.yamlStore.setViewListPropertyKey(file, null);
-			new Notice(this.getPropertyKeyNotFoundNotice(requestedKey));
-			this.scheduleRefresh(0);
-			return;
-		}
-
-		await this.yamlStore.setViewListPropertyKey(file, resolvedKey);
-		this.scheduleRefresh(0);
-	}
-
-	private async collectAvailablePropertyKeys(
-		leaf: WorkspaceLeaf,
-		file: TFile
-	): Promise<Set<string>> {
-		const keys = new Set<string>();
-		const skip = new Set([
-			"name",
-			"type",
-			"icon",
-			"filters",
-			"sort",
-			"groupBy",
-			"limit",
-			"formulas",
-		]);
-
-		const controllerViews = this.getController(leaf)?.query?.views;
-		if (Array.isArray(controllerViews)) {
-			for (const view of controllerViews) {
-				if (!view || typeof view !== "object") continue;
-				for (const key of Object.keys(view as Record<string, unknown>)) {
-					const trimmed = key.trim();
-					if (!trimmed || skip.has(trimmed)) continue;
-					keys.add(trimmed);
-				}
-			}
-		}
-
-		const yamlViews = await this.yamlStore.getViews(file);
-		for (const row of yamlViews) {
-			for (const key of Object.keys(row.raw)) {
-				const trimmed = key.trim();
-				if (!trimmed || skip.has(trimmed)) continue;
-				keys.add(trimmed);
-			}
-		}
-
-		return keys;
-	}
-
-	private resolveAvailablePropertyKey(input: string, availableKeys: Set<string>): string | null {
-		if (availableKeys.has(input)) return input;
-		const lowerInput = input.toLowerCase();
-		for (const key of availableKeys) {
-			if (key.toLowerCase() === lowerInput) return key;
-		}
-		return null;
-	}
-
 	private async setPerBaseTopOverflowMode(
 		file: TFile,
 		mode: TopOverflowMode
@@ -1865,21 +1763,14 @@ export class BasesViewListSidebarService {
 	private getContextMenuShowPropertyLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showProperty",
-			"Show property"
+			"Show description"
 		);
 	}
 
 	private getContextMenuHidePropertyLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideProperty",
-			"Hide property"
-		);
-	}
-
-	private getContextMenuChangePropertyKeyLabel(): string {
-		return this.translateWithFallback(
-			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.changePropertyKey",
-			"Change displayed property"
+			"Hide description"
 		);
 	}
 
@@ -1980,35 +1871,6 @@ export class BasesViewListSidebarService {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.topOverflowForced",
 			"Narrow pane: forced to horizontal scroll"
-		);
-	}
-
-	private getChangePropertyKeyModalTitle(): string {
-		return this.translateWithFallback(
-			"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.title",
-			"Change displayed property"
-		);
-	}
-
-	private getChangePropertyKeyModalConfirmText(): string {
-		return this.translateWithFallback(
-			"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.confirm",
-			"Save"
-		);
-	}
-
-	private getChangePropertyKeyModalCancelText(): string {
-		return this.translateWithFallback(
-			"settings.integrations.basesIntegration.viewListSidebar.changePropertyKeyModal.cancel",
-			"Cancel"
-		);
-	}
-
-	private getPropertyKeyNotFoundNotice(propertyKey: string): string {
-		return this.translateWithFallbackWithParams(
-			"settings.integrations.basesIntegration.viewListSidebar.notices.propertyKeyNotFoundReset",
-			`Property "${propertyKey}" is not found in this base views. Reverted to default property key.`,
-			{ propertyKey }
 		);
 	}
 
@@ -2414,13 +2276,9 @@ export class BasesViewListSidebarService {
 		return label || null;
 	}
 
-	private async getViewEntries(
-		leaf: WorkspaceLeaf,
-		propertyKey: string,
-		showProperty: boolean
-	): Promise<ViewEntry[]> {
+	private async getViewEntries(leaf: WorkspaceLeaf, showProperty: boolean): Promise<ViewEntry[]> {
 		const controller = this.getController(leaf);
-		const fromController = this.getViewEntriesFromController(controller, propertyKey);
+		const fromController = this.getViewEntriesFromController(controller);
 		if (fromController.length > 0) {
 			const file = this.getLeafFile(leaf);
 			if (!file) return fromController;
@@ -2432,7 +2290,7 @@ export class BasesViewListSidebarService {
 				return fromController;
 			}
 
-			const yamlMetadata = await this.getYamlViewMetadataMap(file, propertyKey);
+			const yamlMetadata = await this.getYamlViewMetadataMap(file);
 			if (yamlMetadata.size === 0) return fromController;
 
 			return fromController.map((entry) => {
@@ -2449,7 +2307,7 @@ export class BasesViewListSidebarService {
 
 		const file = this.getLeafFile(leaf);
 		if (!file) return [];
-		return this.getViewEntriesFromYamlFile(file, propertyKey);
+		return this.getViewEntriesFromYamlFile(file);
 	}
 
 	private async getPreferredWidth(leaf: WorkspaceLeaf): Promise<PreferredWidthResult> {
@@ -2475,10 +2333,7 @@ export class BasesViewListSidebarService {
 		};
 	}
 
-	private async getViewEntriesFromYamlFile(
-		file: TFile,
-		propertyKey: string
-	): Promise<ViewEntry[]> {
+	private async getViewEntriesFromYamlFile(file: TFile): Promise<ViewEntry[]> {
 		const rows = await this.yamlStore.getViews(file);
 		if (rows.length === 0) return [];
 		const entries: PartialViewEntry[] = rows.map((row) => {
@@ -2486,17 +2341,14 @@ export class BasesViewListSidebarService {
 			return {
 				name: row.name,
 				type: row.type,
-				propertyText: this.extractPropertyText(view, propertyKey),
-				descriptionText: this.extractPropertyText(view, "description"),
+				propertyText: this.extractDescriptionText(view),
+				descriptionText: this.extractDescriptionText(view),
 			};
 		});
 		return this.normalizeViewEntries(entries);
 	}
 
-	private async getYamlViewMetadataMap(
-		file: TFile,
-		propertyKey: string
-	): Promise<
+	private async getYamlViewMetadataMap(file: TFile): Promise<
 		Map<
 			string,
 			{
@@ -2522,25 +2374,22 @@ export class BasesViewListSidebarService {
 			const view = row.raw as BasesSubViewLike;
 			map.set(row.name, {
 				type: row.type,
-				propertyText: this.extractPropertyText(view, propertyKey),
-				descriptionText: this.extractPropertyText(view, "description"),
+				propertyText: this.extractDescriptionText(view),
+				descriptionText: this.extractDescriptionText(view),
 			});
 		}
 		return map;
 	}
 
-	private getViewEntriesFromController(
-		controller: BasesControllerLike | null,
-		propertyKey: string
-	): ViewEntry[] {
+	private getViewEntriesFromController(controller: BasesControllerLike | null): ViewEntry[] {
 		if (!controller) return [];
 
 		if (Array.isArray(controller.query?.views)) {
 			const fromQuery = controller.query.views.map((view): PartialViewEntry => ({
 				name: typeof view?.name === "string" ? view.name : "",
 				type: typeof view?.type === "string" ? view.type : null,
-				propertyText: this.extractPropertyText(view, propertyKey),
-				descriptionText: this.extractPropertyText(view, "description"),
+				propertyText: this.extractDescriptionText(view),
+				descriptionText: this.extractDescriptionText(view),
 			}));
 			const normalized = this.normalizeViewEntries(fromQuery);
 			if (normalized.length > 0) {
@@ -2598,17 +2447,16 @@ export class BasesViewListSidebarService {
 		return normalized;
 	}
 
-	private extractPropertyText(view: BasesSubViewLike, propertyKey: string): string | null {
-		if (!propertyKey) return null;
+	private extractDescriptionText(view: BasesSubViewLike): string | null {
 		let rawValue: unknown;
 
-		if (Object.prototype.hasOwnProperty.call(view, propertyKey)) {
-			rawValue = view[propertyKey];
+		if (Object.prototype.hasOwnProperty.call(view, "description")) {
+			rawValue = view.description;
 		}
 
 		if (typeof rawValue === "undefined" && typeof view.get === "function") {
 			try {
-				rawValue = view.get(propertyKey);
+				rawValue = view.get("description");
 			} catch {
 				// Ignore getter errors from internal API objects.
 			}
