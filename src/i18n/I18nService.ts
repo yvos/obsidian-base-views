@@ -63,12 +63,6 @@ export class I18nService extends Events {
 	getNativeLanguageName(languageCode: string): string {
 		const nativeNames: Record<string, string> = {
 			en: "English",
-			fr: "Français",
-			de: "Deutsch",
-			es: "Español",
-			pt: "Português",
-			ru: "Русский",
-			zh: "中文",
 			ja: "日本語",
 		};
 		return nativeNames[languageCode] || languageCode;

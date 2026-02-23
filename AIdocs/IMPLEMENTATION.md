@@ -558,3 +558,10 @@
   - `tests/unit/services/i18nService.test.ts` は `en/ja` 前提へ更新済み（非対応ロケール選択時は `en` 解決を検証）。
 - 注意:
   - 実行環境に `node` / `npm` がないため、テスト実行は未実施。
+
+## 11.11 2026-02-23 NLPロケール残存の英語/日本語限定化
+- `src/locales` は `en.ts` / `ja.ts` / `index.ts` / `types.ts` のみ保持。
+- `src/locales/index.ts` の `languageRegistry` は `en` / `ja` のみを登録。
+- `src/i18n/I18nService.ts` の `getNativeLanguageName()` は `en` / `ja` のみ定義。
+- `src/i18n/resources/en.ts` / `src/i18n/resources/ja.ts` の `common.languages` は `en` / `ja` のみ定義。
+- `src/services/NaturalLanguageParser.ts` の非ASCII境界判定は `ja` のみに簡素化。

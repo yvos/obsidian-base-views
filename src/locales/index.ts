@@ -1,33 +1,13 @@
 import { LanguageRegistry, NLPLanguageConfig } from "./types";
 import { enConfig } from "./en";
-import { esConfig } from "./es";
-import { frConfig } from "./fr";
-import { deConfig } from "./de";
-import { ruConfig } from "./ru";
-import { zhConfig } from "./zh";
 import { jaConfig } from "./ja";
-import { itConfig } from "./it";
-import { nlConfig } from "./nl";
-import { ptConfig } from "./pt";
-import { svConfig } from "./sv";
-import { ukConfig } from "./uk";
 
 /**
  * Registry of all available language configurations
  */
 export const languageRegistry: LanguageRegistry = {
 	en: enConfig,
-	es: esConfig,
-	fr: frConfig,
-	de: deConfig,
-	ru: ruConfig,
-	zh: zhConfig,
 	ja: jaConfig,
-	it: itConfig,
-	nl: nlConfig,
-	pt: ptConfig,
-	sv: svConfig,
-	uk: ukConfig,
 };
 
 /**

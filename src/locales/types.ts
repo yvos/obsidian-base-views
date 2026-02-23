@@ -4,13 +4,13 @@
  */
 
 export interface NLPLanguageConfig {
-	/** Language code (e.g., 'en', 'es', 'fr') */
+	/** Language code (e.g., 'en', 'ja') */
 	code: string;
 
 	/** Display name of the language */
 	name: string;
 
-	/** Chrono-node locale key (e.g., 'en', 'es', 'fr') */
+	/** Chrono-node locale key (e.g., 'en', 'ja') */
 	chronoLocale: string;
 
 	/** Date-related trigger words */

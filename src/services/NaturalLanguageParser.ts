@@ -121,7 +121,7 @@ export class NaturalLanguageParser {
 	 * Non-ASCII languages (with accented characters, non-Latin scripts) need flexible boundaries.
 	 */
 	private createBoundaryConfig(): BoundaryConfig {
-		const isNonAscii = ["ru", "zh", "ja", "uk", "fr"].includes(this.languageConfig.code);
+		const isNonAscii = this.languageConfig.code === "ja";
 		return {
 			boundary: isNonAscii ? "(?:^|\\s)" : "\\b",
 			endBoundary: isNonAscii ? "(?=\\s|$)" : "\\b",

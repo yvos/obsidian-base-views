@@ -13,14 +13,7 @@ export const ja: TranslationTree = {
 		loading: "読み込み中...",
 		languages: {
 			en: "英語",
-			fr: "フランス語",
-			ru: "ロシア語",
-			zh: "中国語",
-			de: "ドイツ語",
-			es: "スペイン語",
 			ja: "日本語",
-			pt: "ポルトガル語（ブラジル）",
-			ko: "韓国語",
 		},
 		weekdays: {
 			sunday: "日曜日",
