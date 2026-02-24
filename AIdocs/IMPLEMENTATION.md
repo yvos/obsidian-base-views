@@ -1,8 +1,15 @@
-# 0. この文章の意義、位置づけ
-このファイルは、TaskNotes の**現在の実装状態**を共有するためのスナップショットです。  
+# 0. この文章の意義、位置づけ、およびBaseViewsの概要
+
+このファイルは、ノートアプリObsidianのプラグイン、BaseViewsの**現在の実装状態**を共有するためのスナップショットです。  
 最終仕様は `AIdocs/SPEC.md`（存在する場合）を優先し、本書は仕様確定文書ではありません。
+本リポジトリのBaseViewsはObsidian用プラグインですが、元は別のタスク管理プラグインTaskNotesをフォークしたものです。しかし、BaseViewsは以下の3つを主な機能とします。
+1.View一覧:baseファイルのViewを一覧表示する
+2.Table View (Custom):Obsidian組み込みのBasesのTable Viewを模したものに機能を追加したもの。TaskNotesのカスタムビュー Task List Viewを元にカスタマイズしたもの
+3.Task List View (Custom):TaskNotesのカスタムビュー Task List Viewに2の追加機能を追加してカスタムしたもの。
+2と3はフォーク元のTaskNotesの一部であるTask List Viewを元にしているものの、それはフォーク元のごく一部に過ぎないため、当初無関係な機能が大量に含まれている状態でした。TaskNotesに含まれていたが、1～3に無関係なコードや開発支援機能は、積極的に消去していく方針です。
 
 # 1. 実装状況のサマリー
+
 - 2026-02-21 時点で、ランタイム機能は `view一覧` / `Task List View (Custom)` / `Table View (Custom)` の3機能に限定。
 - 2026-02-09 時点で `tasknotesCustomTable`（Custom Table View）を追加し、テーブル表示と組み込み summary を実装。
 - 2026-02-12 時点で `tasknotesCustomTable` の再描画タイミングを最適化し、初回更新・設定変更時の待機を短縮。
@@ -36,240 +43,244 @@
 - Custom Table View は MVP 範囲（表示中心）で、セル編集や複数セル操作は未対応。
 
 # 2. 実装済み機能
+
 - Bases カスタムビュー登録/解除
-  - `tasknotesTaskListCustom`
-  - `tasknotesCustomTable`
-  - 旧 `tasknotesTaskList` / `tasknotesKanban` / `tasknotesCalendar` / `tasknotesMiniCalendar` は登録対象外（unregister cleanupのみ）。
+    - `tasknotesTaskListCustom`
+    - `tasknotesCustomTable`
+    - 旧 `tasknotesTaskList` / `tasknotesKanban` / `tasknotesCalendar` / `tasknotesMiniCalendar` は登録対象外（unregister cleanupのみ）。
 - Bases view一覧サイドバー（`.base` 向け）
-  - 対象: `viewType === "bases"` かつ `file.extension === "base"`
-  - 一覧取得: `query.views[].{name,type,description}` → `getQueryViewNames()` → YAML `views[].{name,type,description}` の順でフォールバック
-  - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
-  - 設定:
-    - `enableBasesViewListSidebar`（ON/OFF）
-    - `basesViewListDropdownMode`（`list-only` / `combined`）
-    - `basesViewListPlacement`（`left` / `top` / `none`、通常ペイン既定）
-    - `basesViewListSidePanePlacement`（`left` / `top` / `none`、サイドペイン既定）
-    - `basesViewListFontSize`（`m` / `s` / `xs`）
-    - `basesViewListShowProperty`（view `description` 行表示ON/OFFの既定）
-    - `basesViewListShowNativeToolbar`（一覧表示中の `.bases-header` / `.bases-toolbar` 表示）
-    - `basesViewListShowIcons`（viewアイコン表示ON/OFF）
-    - `basesViewListTopOverflowMode`（`wrap` / `scroll` の既定）
-    - `basesViewListNarrowBehavior`（`none` / `top` / `hide`）
-    - `basesViewListNarrowThresholdPx`（狭幅判定閾値px）
-  - 表示:
-    - 解決優先順位は `temporary(leaf) > base formulas(.base) > plugin default`
-    - viewが1件以下のbaseでは一覧UI/トグルを表示しない（完全非表示）
-    - `left` は左サイドバー表示
-    - `top` は `bases-header` 直下（fallback: toolbar直前）に横並び表示
-    - `none` は一覧非表示 + toolbar左端の `list-plus` トリガのみ表示
-    - 一覧ヘッダー左の `x` で閉じると temporary `none` へ戻る
-    - `list-plus` トリガで開くと、通常ペインは temporary `left`、サイドペインは temporary `top` を適用
-    - `top` ではタイトル文字列を出さず close のみ表示
-    - 一覧領域の右クリックメニューで `left/top` を leaf一時切替可能
-    - 一覧領域の右クリックメニューで base永続の `left/top/none` をトグル保存可能
-    - 一覧領域の右クリックメニューで `description` 表示ON/OFFを base単位で保存可能
-    - 一覧領域の右クリックメニューでネイティブツールバー表示ON/OFFを切替可能
-    - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
-    - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
-    - view行右クリックで `description` 編集 + 配置切替メニューを表示
-    - 各view行右端の3点ボタンでネイティブview設定UI起動を試行（成功時はネイティブUI、失敗時はNoticeのみ）
-    - 3点ボタンは view行の右端内側に絶対配置し、hover/focus時のみ表示（枠線/背景なし、アイコン色のみ変化）
-    - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
-    - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
-    - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
-    - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`、`tasknotesCustomTable` は `table-cells-merge`）
-    - 設定ON時は view名の下に `description` 行を表示（空値は非表示）
-    - 左端表示では長いview名/プロパティを行ボーダー内でクリップ表示
-    - 狭幅時は設定に応じて `none/top/hide` を適用
-    - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
-    - 対象 `.base` の `modify/rename/delete` を監視し、YAMLキャッシュ削除後に600msデバウンスで該当leafのみ自動再描画
+    - 対象: `viewType === "bases"` かつ `file.extension === "base"`
+    - 一覧取得: `query.views[].{name,type,description}` → `getQueryViewNames()` → YAML `views[].{name,type,description}` の順でフォールバック
+    - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
+    - 設定:
+        - `enableBasesViewListSidebar`（ON/OFF）
+        - `basesViewListDropdownMode`（`list-only` / `combined`）
+        - `basesViewListPlacement`（`left` / `top` / `none`、通常ペイン既定）
+        - `basesViewListSidePanePlacement`（`left` / `top` / `none`、サイドペイン既定）
+        - `basesViewListFontSize`（`m` / `s` / `xs`）
+        - `basesViewListShowProperty`（view `description` 行表示ON/OFFの既定）
+        - `basesViewListShowNativeToolbar`（一覧表示中の `.bases-header` / `.bases-toolbar` 表示）
+        - `basesViewListShowIcons`（viewアイコン表示ON/OFF）
+        - `basesViewListTopOverflowMode`（`wrap` / `scroll` の既定）
+        - `basesViewListNarrowBehavior`（`none` / `top` / `hide`）
+        - `basesViewListNarrowThresholdPx`（狭幅判定閾値px）
+    - 表示:
+        - 解決優先順位は `temporary(leaf) > base formulas(.base) > plugin default`
+        - viewが1件以下のbaseでは一覧UI/トグルを表示しない（完全非表示）
+        - `left` は左サイドバー表示
+        - `top` は `bases-header` 直下（fallback: toolbar直前）に横並び表示
+        - `none` は一覧非表示 + toolbar左端の `list-plus` トリガのみ表示
+        - 一覧ヘッダー左の `x` で閉じると temporary `none` へ戻る
+        - `list-plus` トリガで開くと、通常ペインは temporary `left`、サイドペインは temporary `top` を適用
+        - `top` ではタイトル文字列を出さず close のみ表示
+        - 一覧領域の右クリックメニューで `left/top` を leaf一時切替可能
+        - 一覧領域の右クリックメニューで base永続の `left/top/none` をトグル保存可能
+        - 一覧領域の右クリックメニューで `description` 表示ON/OFFを base単位で保存可能
+        - 一覧領域の右クリックメニューでネイティブツールバー表示ON/OFFを切替可能
+        - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
+        - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
+        - view行右クリックで `description` 編集 + 配置切替メニューを表示
+        - 各view行右端の3点ボタンでネイティブview設定UI起動を試行（成功時はネイティブUI、失敗時はNoticeのみ）
+        - 3点ボタンは view行の右端内側に絶対配置し、hover/focus時のみ表示（枠線/背景なし、アイコン色のみ変化）
+        - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
+        - 手動変更幅は `.base` の `formulas.viewListSize` として保存（デフォルト復帰時は削除）
+        - 保存幅が初期値のときのみ、表示内容が短い場合に自動幅短縮（非永続）
+        - 各view行の先頭に view type 対応アイコンを表示（設定OFF時は非表示、未知typeは `list`、`tasknotesCustomTable` は `table-cells-merge`）
+        - 設定ON時は view名の下に `description` 行を表示（空値は非表示）
+        - 左端表示では長いview名/プロパティを行ボーダー内でクリップ表示
+        - 狭幅時は設定に応じて `none/top/hide` を適用
+        - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）のときはネイティブツールバーを強制表示
+        - 対象 `.base` の `modify/rename/delete` を監視し、YAMLキャッシュ削除後に600msデバウンスで該当leafのみ自動再描画
 - Task List View custom (`tasknotesTaskListCustom`)
-  - 既存 `tasknotesTaskList` を複製ベースにした別ビューとして登録し、既存Task Listとは独立して挙動を保持
-  - Grouping options
-    - `subGroup`（property）で2段階グルーピングを有効化
-      - `tasknotesTaskListCustom` では `note.*` / `task.*` / `formula.*` に加えて `file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` を候補として許可
-    - `unnestMultiValueGroup`（toggle, default: true）で list 値のサブグループ展開を切替
-  - 検索ボックス ON/OFF option（`enableSearch`）は追加せず、ネイティブ検索と重複しない構成に固定
-  - `extractGroupKeys()` を利用した unnest grouping を採用し、list値を複数グループへ展開可能
-  - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、タスクタイトル右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ
-    - 通常描画では該当カードへ `scrollIntoView`、仮想描画では `VirtualScroller.scrollToIndex` で移動
-  - 2段階グルーピング時に、2段目見出しと配下タスクカードへ専用インデントを適用
-  - `file.ext` は `file.extension` からのフォールバックに対応し、`file.folder` は `file.path` から導出、その他 `file.*` は必要時 `getComputedProperty()` で遅延解決
+    - 既存 `tasknotesTaskList` を複製ベースにした別ビューとして登録し、既存Task Listとは独立して挙動を保持
+    - Grouping options
+        - `subGroup`（property）で2段階グルーピングを有効化
+            - `tasknotesTaskListCustom` では `note.*` / `task.*` / `formula.*` に加えて `file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` を候補として許可
+        - `unnestMultiValueGroup`（toggle, default: true）で list 値のサブグループ展開を切替
+    - 検索ボックス ON/OFF option（`enableSearch`）は追加せず、ネイティブ検索と重複しない構成に固定
+    - `extractGroupKeys()` を利用した unnest grouping を採用し、list値を複数グループへ展開可能
+    - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、タスクタイトル右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ
+        - 通常描画では該当カードへ `scrollIntoView`、仮想描画では `VirtualScroller.scrollToIndex` で移動
+    - 2段階グルーピング時に、2段目見出しと配下タスクカードへ専用インデントを適用
+    - `file.ext` は `file.extension` からのフォールバックに対応し、`file.folder` は `file.path` から導出、その他 `file.*` は必要時 `getComputedProperty()` で遅延解決
 - Custom Table View (`tasknotesCustomTable`)
-  - Base フィルタ結果の全エントリを 1行=1ファイルで表示
-  - `config.getOrder()` に従った列順
-  - grouped / ungrouped 両対応
-  - Grouping options
-    - `subGroup`（property）で2段階グルーピングを有効化
-      - CustomTableでは `note.*` / `task.*` / `formula.*` に加えて `file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` を候補として許可
-    - `unnestMultiValueGroup`（toggle, default: true）で list 値のグループ展開を切替
-    - `customTableShowGroupingPropertyName`（plugin setting, default: false）で group見出しを `property: value` 表示に切替
-  - `file.name` 列のリンク描画
-    - 通常クリックでノートを開く（`Ctrl/Cmd+クリック` は新規ペイン）
-    - 中クリック（`auxclick`）で新規ペインを開く
-    - 右クリック（`contextmenu`）で `file-menu` を表示（空時は `Open` / `Open in new tab` をフォールバック表示）
-    - `internal-link` / `data-href` を付与して Obsidian 内部リンク互換を維持
-    - `customTableShowIconicIconInNameColumn`（plugin setting, default: true）で Iconic の file icon を先頭に表示
-    - Iconic 解決順は `ruleManager.checkRuling("file", path)` → `getFileItem(path[, false])` → `settings.fileIcons[path]`
-    - `icon` が空で `color` のみの場合はアイコンを表示しない
-    - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、リンク右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ（末尾到達で先頭へ戻る）
-    - 重複行ジャンプ後は対象行を一時ハイライトし、1フレーム経過後に別行へホバーすると解除
-  - `Value.renderTo(...)` 優先 + `toString()` フォールバック
-  - 列ヘッダー表示
-    - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）
-    - `metadataTypeManager.properties` の `icon/type/widget` を優先し、未取得時は `propertyId` 規則でフォールバック
-  - 行高設定（`veryShort` / `short` / `medium` / `tall` / `extraTall`）
-    - 固定行高として適用（`veryShort=22px`, `short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
-  - タイポグラフィ
-    - 本文セルは `var(--font-ui-smaller)`、ヘッダー/グループ見出しは `var(--font-ui-small)` を基準にしてネイティブ寄せ
-    - 2段階グルーピング見出しは、1段目=`var(--font-ui-small)`、2段目=`var(--font-ui-smaller)` で微差を付与
-  - 列幅設定（`columnSize` 互換形式）
-    - ヘッダー境界ドラッグで対象列のみ幅変更
-    - 変更時のみ `columnSize: Record<propertyId, px>` を保存
-  - 列ごとの summary 設定（右クリック）
-  - `tableSummaries` の config 永続化
-  - 再描画タイミング最適化
-    - 初回データ更新と view 設定変更（sort/order/group/options）は即時描画
-    - 通常データ更新のみ短デバウンス（120ms）
-  - 仮想スクロール（自動閾値切替）
-    - ungrouped: `entries.length >= 200` で仮想描画
-    - grouped: flatten後 `items.length >= 300` で仮想描画
-    - overscan: `6`
-    - 閾値未満は従来描画を維持
-  - grouped 仮想化の内部モデル
-    - 1段階: `group-header -> group-summary -> row`
-    - 2段階: `primary-header -> secondary-header -> group-summary -> row`
+    - Base フィルタ結果の全エントリを 1行=1ファイルで表示
+    - `config.getOrder()` に従った列順
+    - grouped / ungrouped 両対応
+    - Grouping options
+        - `subGroup`（property）で2段階グルーピングを有効化
+            - CustomTableでは `note.*` / `task.*` / `formula.*` に加えて `file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags` を候補として許可
+        - `unnestMultiValueGroup`（toggle, default: true）で list 値のグループ展開を切替
+        - `customTableShowGroupingPropertyName`（plugin setting, default: false）で group見出しを `property: value` 表示に切替
+    - `file.name` 列のリンク描画
+        - 通常クリックでノートを開く（`Ctrl/Cmd+クリック` は新規ペイン）
+        - 中クリック（`auxclick`）で新規ペインを開く
+        - 右クリック（`contextmenu`）で `file-menu` を表示（空時は `Open` / `Open in new tab` をフォールバック表示）
+        - `internal-link` / `data-href` を付与して Obsidian 内部リンク互換を維持
+        - `customTableShowIconicIconInNameColumn`（plugin setting, default: true）で Iconic の file icon を先頭に表示
+        - Iconic 解決順は `ruleManager.checkRuling("file", path)` → `getFileItem(path[, false])` → `settings.fileIcons[path]`
+        - `icon` が空で `color` のみの場合はアイコンを表示しない
+        - `unnestMultiValueGroup=true` かつ同一 `file.path` が複数行に出る場合、リンク右の `git-branch` ボタンで次の同一ファイル行へ循環ジャンプ（末尾到達で先頭へ戻る）
+        - 重複行ジャンプ後は対象行を一時ハイライトし、1フレーム経過後に別行へホバーすると解除
+    - `Value.renderTo(...)` 優先 + `toString()` フォールバック
+    - 列ヘッダー表示
+        - ヘッダー先頭にプロパティアイコンを表示（通常/仮想テーブル共通）
+        - `metadataTypeManager.properties` の `icon/type/widget` を優先し、未取得時は `propertyId` 規則でフォールバック
+    - 行高設定（`veryShort` / `short` / `medium` / `tall` / `extraTall`）
+        - 固定行高として適用（`veryShort=22px`, `short=32px`, `medium=40px`, `tall=56px`, `extraTall=72px`）
+    - タイポグラフィ
+        - 本文セルは `var(--font-ui-smaller)`、ヘッダー/グループ見出しは `var(--font-ui-small)` を基準にしてネイティブ寄せ
+        - 2段階グルーピング見出しは、1段目=`var(--font-ui-small)`、2段目=`var(--font-ui-smaller)` で微差を付与
+    - 列幅設定（`columnSize` 互換形式）
+        - ヘッダー境界ドラッグで対象列のみ幅変更
+        - 変更時のみ `columnSize: Record<propertyId, px>` を保存
+    - 列ごとの summary 設定（右クリック）
+    - `tableSummaries` の config 永続化
+    - 再描画タイミング最適化
+        - 初回データ更新と view 設定変更（sort/order/group/options）は即時描画
+        - 通常データ更新のみ短デバウンス（120ms）
+    - 仮想スクロール（自動閾値切替）
+        - ungrouped: `entries.length >= 200` で仮想描画
+        - grouped: flatten後 `items.length >= 300` で仮想描画
+        - overscan: `6`
+        - 閾値未満は従来描画を維持
+    - grouped 仮想化の内部モデル
+        - 1段階: `group-header -> group-summary -> row`
+        - 2段階: `primary-header -> secondary-header -> group-summary -> row`
 - 組み込み summary
-  - 共通: `empty`, `filled`, `unique`
-  - 数値: `sum`, `avg`, `min`, `max`
-  - 日付: `earliest`, `latest`, `range`
-  - 真偽: `checked`, `unchecked`
+    - 共通: `empty`, `filled`, `unique`
+    - 数値: `sum`, `avg`, `min`, `max`
+    - 日付: `earliest`, `latest`, `range`
+    - 真偽: `checked`, `unchecked`
 
 # 3. ファイル構造
+
 - `src/bases/TaskListViewCustom.ts`
-  - `Task List view custom` 本体（unnest、重複行ジャンプ、2段階目インデント、file系subGroup対応）
+    - `Task List view custom` 本体（unnest、重複行ジャンプ、2段階目インデント、file系subGroup対応）
 - `src/bases/CustomTableView.ts`
-  - Custom Table View 本体
+    - Custom Table View 本体
 - `src/bases/customTableVirtualization.ts`
-  - 仮想化判定と grouped フラット化ロジック
+    - 仮想化判定と grouped フラット化ロジック
 - `src/bases/customTableGrouping.ts`
-  - group key 正規化、list値の unnest、entry のグルーピング純粋関数
+    - group key 正規化、list値の unnest、entry のグルーピング純粋関数
 - `src/bases/customTableDisplayUtils.ts`
-  - Custom Table の表示補助（group見出しラベル整形）の純粋関数
+    - Custom Table の表示補助（group見出しラベル整形）の純粋関数
 - `src/bases/customTableDuplicateNavigation.ts`
-  - Custom Table の重複行ナビゲーション（`file.path -> rowOrder[]`、次行循環計算）の純粋関数
+    - Custom Table の重複行ナビゲーション（`file.path -> rowOrder[]`、次行循環計算）の純粋関数
 - `src/integrations/iconic/iconicFileIconResolver.ts`
-  - Iconic plugin 連携（plugin取得、rule/fileItem/settings の順で icon解決）の純粋関数
+    - Iconic plugin 連携（plugin取得、rule/fileItem/settings の順で icon解決）の純粋関数
 - `src/integrations/iconic/types.ts`
-  - Iconic plugin 非公開API連携に使う最小型定義
+    - Iconic plugin 非公開API連携に使う最小型定義
 - `src/bases/tableColumnSizing.ts`
-  - 列幅正規化・テンプレート生成・合計幅計算の純粋関数
+    - 列幅正規化・テンプレート生成・合計幅計算の純粋関数
 - `src/bases/tableSummary.ts`
-  - summary 判定・集計の純粋関数
+    - summary 判定・集計の純粋関数
 - `src/bases/registration.ts`
-  - Bases view の登録/解除
+    - Bases view の登録/解除
 - `src/bases/BasesViewListSidebarService.ts`
-  - `.base` 表示時のview一覧サイドバー管理（DOM注入・切替・cleanup・設定反映）
+    - `.base` 表示時のview一覧サイドバー管理（DOM注入・切替・cleanup・設定反映）
 - `src/integrations/bases/nativeViewSettingsBridge.ts`
-  - view一覧の3点ボタンからネイティブview設定UIを開くためのDOMブリッジ
+    - view一覧の3点ボタンからネイティブview設定UIを開くためのDOMブリッジ
 - `src/integrations/bases/types.ts`
-  - Basesネイティブ設定ブリッジの入力/結果型定義
+    - Basesネイティブ設定ブリッジの入力/結果型定義
 - `src/bases/BaseViewListYamlStore.ts`
-  - `.base` YAML の `formulas`（`bvViewList*` + `viewListSize`）/ `views[].description` 読み書き補助
+    - `.base` YAML の `formulas`（`bvViewList*` + `viewListSize`）/ `views[].description` 読み書き補助
 - `src/bases/api.ts`
-  - Bases API ラッパー型
+    - Bases API ラッパー型
 - `styles/bases-views.css`
-  - Bases 系 view のスタイル（view一覧サイドバー関連スタイルを含む）
+    - Bases 系 view のスタイル（view一覧サイドバー関連スタイルを含む）
 - `src/settings/BaseViewsSettingTab.ts`
-  - Bases view一覧サイドバーの設定UI（トグル/表示モード/配置/フォントサイズ/プロパティ/アイコン/top overflow/狭幅挙動）
+    - Bases view一覧サイドバーの設定UI（トグル/表示モード/配置/フォントサイズ/プロパティ/アイコン/top overflow/狭幅挙動）
 - `src/settings/defaults.ts`
-  - view一覧サイドバー設定のデフォルト値
+    - view一覧サイドバー設定のデフォルト値
 - `src/types/settings.ts`
-  - view一覧サイドバー設定の型定義
+    - view一覧サイドバー設定の型定義
 - `tests/unit/bases/tableSummary.test.ts`
-  - summary ロジックのユニットテスト
+    - summary ロジックのユニットテスト
 - `tests/unit/bases/customTableVirtualization.test.ts`
-  - 仮想化閾値判定ロジックのユニットテスト
+    - 仮想化閾値判定ロジックのユニットテスト
 - `tests/unit/bases/customTableGrouping.test.ts`
-  - group key抽出・unnest・grouping純粋関数のユニットテスト
+    - group key抽出・unnest・grouping純粋関数のユニットテスト
 - `tests/unit/bases/customTableDisplayUtils.test.ts`
-  - group見出しラベル整形のユニットテスト
+    - group見出しラベル整形のユニットテスト
 - `tests/unit/bases/customTableDuplicateNavigation.test.ts`
-  - 重複行ナビゲーション（インデックス構築、重複判定、次行循環）のユニットテスト
+    - 重複行ナビゲーション（インデックス構築、重複判定、次行循環）のユニットテスト
 - `tests/unit/integrations/iconic/iconicFileIconResolver.test.ts`
-  - Iconic icon解決（rule優先、fallback、例外時継続、color-only非表示）のユニットテスト
+    - Iconic icon解決（rule優先、fallback、例外時継続、color-only非表示）のユニットテスト
 - `tests/unit/bases/customTableGroupedFlatten.test.ts`
-  - grouped フラット化順序のユニットテスト
+    - grouped フラット化順序のユニットテスト
 - `tests/unit/bases/tableColumnSizing.test.ts`
-  - 列幅ロジックのユニットテスト
+    - 列幅ロジックのユニットテスト
 - `tests/unit/bases/BasesViewListSidebarService.test.ts`
-  - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
+    - view一覧取得/切替フォールバック/設定反映/cleanup のユニットテスト
 - `tests/unit/bases/registration.customTableOptions.test.ts`
-  - `tasknotesCustomTable` の `rowHeight` option に `veryShort` が含まれることを検証
+    - `tasknotesCustomTable` の `rowHeight` option に `veryShort` が含まれることを検証
 - `tests/unit/bases/registration.taskListCustomOptions.test.ts`
-  - `tasknotesTaskListCustom` の option 構成（`enableSearch` なし、`unnestMultiValueGroup` あり、file7種filter）を検証
+    - `tasknotesTaskListCustom` の option 構成（`enableSearch` なし、`unnestMultiValueGroup` あり、file7種filter）を検証
 - `tests/unit/bases/taskListCustomGrouping.test.ts`
-  - `TaskListViewCustom` の unnest ON/OFF と `file.ext` フォールバック解決を検証
+    - `TaskListViewCustom` の unnest ON/OFF と `file.ext` フォールバック解決を検証
 - `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
-  - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
+    - ネイティブview設定ブリッジ（成功/部分成功/失敗・hidden class復元）のユニットテスト
 - `tests/unit/bases/BaseViewListYamlStore.test.ts`
-  - `bvViewList*` / `viewListSize` / `description` YAML更新のユニットテスト
+    - `bvViewList*` / `viewListSize` / `description` YAML更新のユニットテスト
 
 # 4. データ構造
+
 - `tableSummaries: Record<propertyId, summaryKey>`
-  - Custom Table View の列ごとの summary 設定
-  - `BasesViewConfig.set/get("tableSummaries")` で保存
+    - Custom Table View の列ごとの summary 設定
+    - `BasesViewConfig.set/get("tableSummaries")` で保存
 - `rowHeight: "veryShort" | "short" | "medium" | "tall" | "extraTall"`
-  - View option から取得する行高設定
+    - View option から取得する行高設定
 - `columnSize: Record<propertyId, number>`
-  - 列幅の永続化設定（変更列のみ）
+    - 列幅の永続化設定（変更列のみ）
 - `subGroupPropertyId: string | null`
-  - Task List custom / Custom Table の2段目グルーピング対象プロパティ
+    - Task List custom / Custom Table の2段目グルーピング対象プロパティ
 - `unnestMultiValueGroup: boolean`
-  - list値の group key を個別展開するかの設定（デフォルトON、Task List custom / Custom Table で使用）
+    - list値の group key を個別展開するかの設定（デフォルトON、Task List custom / Custom Table で使用）
 - `duplicateNavigationIndex: DuplicateNavigationIndex`
-  - Task List custom の `file.path -> rowOrder[]` 循環ジャンプインデックス
+    - Task List custom の `file.path -> rowOrder[]` 循環ジャンプインデックス
 - `rowOrderToVirtualIndex: Map<number, number>`
-  - Task List custom の `rowOrder` から仮想リストindexへの逆引きマップ
+    - Task List custom の `rowOrder` から仮想リストindexへの逆引きマップ
 - `customTableShowIconicIconInNameColumn: boolean`
-  - `file.name` 列で Iconic の file icon を表示するかの設定（デフォルトON）
+    - `file.name` 列で Iconic の file icon を表示するかの設定（デフォルトON）
 - `customTableShowGroupingPropertyName: boolean`
-  - group見出しを `property: value` で表示するかの設定（デフォルトOFF）
+    - group見出しを `property: value` で表示するかの設定（デフォルトOFF）
 - `VirtualGroupedItem`
-  - grouped 仮想描画で使用する内部表現
-  - `group-header` / `group-summary` / `row` の3種を保持
+    - grouped 仮想描画で使用する内部表現
+    - `group-header` / `group-summary` / `row` の3種を保持
 - `enableBasesViewListSidebar: boolean`
-  - `.base` 表示時の view一覧サイドバー機能の有効/無効
+    - `.base` 表示時の view一覧サイドバー機能の有効/無効
 - `basesViewListDropdownMode: "list-only" | "combined"`
-  - view一覧とネイティブdropdownの併用可否
+    - view一覧とネイティブdropdownの併用可否
 - `basesViewListCollapsed: boolean`
-  - 互換目的の旧設定（挙動決定には不使用）
+    - 互換目的の旧設定（挙動決定には不使用）
 - `basesViewListPlacement: "left" | "top" | "none"`
-  - 通常ペインにおける view一覧配置の既定値
+    - 通常ペインにおける view一覧配置の既定値
 - `basesViewListSidePanePlacement: "left" | "top" | "none"`
-  - サイドペインにおける view一覧配置の既定値
+    - サイドペインにおける view一覧配置の既定値
 - `basesViewListFontSize: "m" | "s" | "xs"`
-  - view一覧の文字サイズ
+    - view一覧の文字サイズ
 - `basesViewListShowNativeToolbar: boolean`
-  - 一覧表示中にネイティブBasesツールバーを表示するか
+    - 一覧表示中にネイティブBasesツールバーを表示するか
 - `basesViewListShowProperty: boolean`
-  - 各viewの2行目 `description` 表示ON/OFFの既定値
+    - 各viewの2行目 `description` 表示ON/OFFの既定値
 - `basesViewListShowIcons: boolean`
-  - view一覧のアイコン表示ON/OFF
+    - view一覧のアイコン表示ON/OFF
 - `basesViewListTopOverflowMode: "wrap" | "scroll"`
-  - top配置時の並び方の既定値（折返し/1行横スクロール）
+    - top配置時の並び方の既定値（折返し/1行横スクロール）
 - `basesViewListNarrowBehavior: "none" | "top" | "hide"`
-  - 狭幅時の挙動
+    - 狭幅時の挙動
 - `basesViewListNarrowThresholdPx: number`
-  - 狭幅判定閾値px
+    - 狭幅判定閾値px
 - `.base formulas`（base単位override）
-  - `bvViewListPosition`: 通常ペイン配置 (`left` / `top` / `none`)
-  - `bvViewListSidePanePosition`: サイドペイン配置 (`left` / `top` / `none`)
-  - `bvViewListShowProperty`: `description` 表示ON/OFF（YAML string: `"true"` / `"false"`）
-  - `bvViewListTopOverflowMode`: top overflow (`wrap` / `scroll`)
-  - `viewListSize`: view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、文字列として保存）
+    - `bvViewListPosition`: 通常ペイン配置 (`left` / `top` / `none`)
+    - `bvViewListSidePanePosition`: サイドペイン配置 (`left` / `top` / `none`)
+    - `bvViewListShowProperty`: `description` 表示ON/OFF（YAML string: `"true"` / `"false"`）
+    - `bvViewListTopOverflowMode`: top overflow (`wrap` / `scroll`)
+    - `viewListSize`: view一覧幅のファイル別比率（`WIDTH_DEFAULT` 基準、文字列として保存）
 
 # 5. 挙動の詳細や注意点
+
 - `tasknotesTaskListCustom` は `enableSearch` optionを持たず、検索UIは常時無効（`enableSearch=false` 固定）。
 - `tasknotesTaskListCustom` の `subGroup` は `note.*` / `task.*` / `formula.*` + file系7種を許可する。
 - `tasknotesTaskListCustom` で `unnestMultiValueGroup=true` のとき、subGroup値がlistなら同一タスクを複数サブグループに展開する。
@@ -289,8 +300,8 @@
 - `icon` が空で `color` のみの結果は表示しない（色のみ設定時の既定アイコン補完は行わない）。
 - ungrouped 時はテーブル下部（tfoot）に summary 行を表示。
 - 仮想描画時も summary を維持する。
-  - ungrouped: 仮想リスト下部に全体 summary 行
-  - grouped: 各グループ header 直下に group summary 行
+    - ungrouped: 仮想リスト下部に全体 summary 行
+    - grouped: 各グループ header 直下に group summary 行
 - 仮想行は `display: grid` をインラインでも指定し、テーマやCSS競合時の列崩れを抑制している。
 - スクロール責務は `tn-bases-table-scroll` が主担当（縦・横）で、`tn-bases-table-wrapper` はレイアウト枠として機能する。
 - 仮想描画時は `tn-bases-table-wrapper.tn-bases-table-virtual` の `overflow-y` を `visible` にして、`virtual-scroller__spacer` の全高が外側スクロール領域へ反映されるようにしている。
@@ -341,9 +352,11 @@
 - view一覧サイドバーの詳細実装・切り出し境界は `AIdocs/IMPLEMENTATION-base_view_list.md` を参照。
 
 # 6. SPEC との差分、ずれ
+
 - `AIdocs/SPEC.md` が本リポジトリに存在しないため、差分評価は未実施。
 
 # 7. 未実装な点
+
 - セル直接編集（text/number/checkbox）
 - 複数セル選択
 - コピー/貼り付け
@@ -351,6 +364,7 @@
 - カスタム summary 式
 
 # 8. 既知の制限
+
 - 仮想スクロールは導入済みだが、セル編集・複数セル選択・コピー/貼り付けは未対応。
 - grouped 仮想化ではグループ見出しの「固定表示（sticky）」は未対応。
 - 検証コマンド（`npm run typecheck`, `npm run build`）は、実行環境に `node`/`npm` がないため未実行。
@@ -358,115 +372,121 @@
 - 本セッションでは Obsidian CLI も `UtilBindVsockAnyPort` エラーで起動不可のため、CLIによるDOM確認は未実施。
 
 # 9. AI向けの注意点
+
 - Bases 実装の参照優先:
-  - `src/bases/BasesViewBase.ts`
-  - `src/bases/registration.ts`
-  - `src/bases/api.ts`
+    - `src/bases/BasesViewBase.ts`
+    - `src/bases/registration.ts`
+    - `src/bases/api.ts`
 - Task List custom 変更時は以下を同時確認:
-  - 本体: `src/bases/TaskListViewCustom.ts`
-  - 登録: `src/bases/registration.ts`
-  - 再利用ロジック: `src/bases/customTableGrouping.ts`, `src/bases/customTableDuplicateNavigation.ts`
-  - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/registration.taskListCustomOptions.test.ts`, `tests/unit/bases/taskListCustomGrouping.test.ts`
+    - 本体: `src/bases/TaskListViewCustom.ts`
+    - 登録: `src/bases/registration.ts`
+    - 再利用ロジック: `src/bases/customTableGrouping.ts`, `src/bases/customTableDuplicateNavigation.ts`
+    - スタイル: `styles/bases-views.css`
+    - テスト: `tests/unit/bases/registration.taskListCustomOptions.test.ts`, `tests/unit/bases/taskListCustomGrouping.test.ts`
 - Custom Table View 変更時は以下を同時確認:
-  - 表示ロジック: `src/bases/CustomTableView.ts`
-  - グルーピングロジック: `src/bases/customTableGrouping.ts`
-  - 表示補助ロジック: `src/bases/customTableDisplayUtils.ts`（group見出し）
-  - Iconic連携ロジック: `src/integrations/iconic/iconicFileIconResolver.ts`, `src/integrations/iconic/types.ts`
-  - 仮想化ロジック: `src/bases/customTableVirtualization.ts`
-  - 列幅ロジック: `src/bases/tableColumnSizing.ts`
-  - 集計ロジック: `src/bases/tableSummary.ts`
-  - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/customTableGrouping.test.ts`, `tests/unit/bases/customTableDisplayUtils.test.ts`, `tests/unit/integrations/iconic/iconicFileIconResolver.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
+    - 表示ロジック: `src/bases/CustomTableView.ts`
+    - グルーピングロジック: `src/bases/customTableGrouping.ts`
+    - 表示補助ロジック: `src/bases/customTableDisplayUtils.ts`（group見出し）
+    - Iconic連携ロジック: `src/integrations/iconic/iconicFileIconResolver.ts`, `src/integrations/iconic/types.ts`
+    - 仮想化ロジック: `src/bases/customTableVirtualization.ts`
+    - 列幅ロジック: `src/bases/tableColumnSizing.ts`
+    - 集計ロジック: `src/bases/tableSummary.ts`
+    - スタイル: `styles/bases-views.css`
+    - テスト: `tests/unit/bases/tableSummary.test.ts`, `tests/unit/bases/customTableVirtualization.test.ts`, `tests/unit/bases/customTableGroupedFlatten.test.ts`, `tests/unit/bases/customTableGrouping.test.ts`, `tests/unit/bases/customTableDisplayUtils.test.ts`, `tests/unit/integrations/iconic/iconicFileIconResolver.test.ts`, `tests/unit/bases/tableColumnSizing.test.ts`
 - Bases view一覧サイドバー変更時は以下を同時確認:
-  - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
-  - サービス: `src/bases/BasesViewListSidebarService.ts`
-  - ネイティブ設定ブリッジ: `src/integrations/bases/nativeViewSettingsBridge.ts`, `src/integrations/bases/types.ts`
-  - 設定UI: `src/settings/BaseViewsSettingTab.ts`
-  - 設定型/初期値: `src/types/settings.ts`, `src/settings/defaults.ts`
-  - スタイル: `styles/bases-views.css`
-  - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`, `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
+    - 詳細仕様: `AIdocs/IMPLEMENTATION-base_view_list.md`
+    - サービス: `src/bases/BasesViewListSidebarService.ts`
+    - ネイティブ設定ブリッジ: `src/integrations/bases/nativeViewSettingsBridge.ts`, `src/integrations/bases/types.ts`
+    - 設定UI: `src/settings/BaseViewsSettingTab.ts`
+    - 設定型/初期値: `src/types/settings.ts`, `src/settings/defaults.ts`
+    - スタイル: `styles/bases-views.css`
+    - テスト: `tests/unit/bases/BasesViewListSidebarService.test.ts`, `tests/unit/integrations/bases/nativeViewSettingsBridge.test.ts`
 - `AIdocs/obsidian.d.ts` は必要箇所のみ参照し、通読しない。
 
 # 10. 2026-02-19 ファイル棚卸し（Task List / Custom View / view一覧）
 
 ## 10.1 Task List View の登録・表示に関わるファイル
+
 - `src/main.ts`
-  - plugin起動時に `registerBasesTaskList()` を呼び、終了時に `unregisterBasesViews()` を呼ぶ。
+    - plugin起動時に `registerBasesTaskList()` を呼び、終了時に `unregisterBasesViews()` を呼ぶ。
 - `src/bases/registration.ts`
-  - `tasknotesTaskList` と `tasknotesTaskListCustom` のview登録（view ID / name / icon / options）を定義する。
+    - `tasknotesTaskList` と `tasknotesTaskListCustom` のview登録（view ID / name / icon / options）を定義する。
 - `src/bases/api.ts`
-  - Bases APIへの登録/解除ラッパーを提供する。
+    - Bases APIへの登録/解除ラッパーを提供する。
 - `src/bases/TaskListView.ts`
-  - Task List描画本体（TaskNotes抽出、group描画、仮想スクロール、クリック処理）を担当する。
+    - Task List描画本体（TaskNotes抽出、group描画、仮想スクロール、クリック処理）を担当する。
 - `src/bases/TaskListViewCustom.ts`
-  - Task List custom描画本体（unnestサブグルーピング、重複行ジャンプ、2段階目インデント、file系subGroup解決）を担当する。
+    - Task List custom描画本体（unnestサブグルーピング、重複行ジャンプ、2段階目インデント、file系subGroup解決）を担当する。
 - `src/bases/TaskSearchFilter.ts`
-  - Task List検索ボックスの全文検索フィルタを担当する。
+    - Task List検索ボックスの全文検索フィルタを担当する。
 - `src/bases/groupTitleRenderer.ts`
-  - grouped時の見出しリンク描画を担当する。
+    - grouped時の見出しリンク描画を担当する。
 - `tests/unit/bases/registration.taskListCustomOptions.test.ts`
-  - Task List customの登録option構成を検証する。
+    - Task List customの登録option構成を検証する。
 - `tests/unit/bases/taskListCustomGrouping.test.ts`
-  - Task List customのunnest挙動と `file.ext` フォールバック解決を検証する。
+    - Task List customのunnest挙動と `file.ext` フォールバック解決を検証する。
 
 ## 10.2 Custom View（`tasknotesCustomTable`）の登録・表示に関わるファイル
+
 - `src/main.ts`
-  - Task Listと同じ登録導線で `tasknotesCustomTable` を有効化する。
+    - Task Listと同じ登録導線で `tasknotesCustomTable` を有効化する。
 - `src/bases/registration.ts`
-  - `tasknotesCustomTable` のview登録と `subGroup` / `unnestMultiValueGroup` / `rowHeight` option を定義する。
+    - `tasknotesCustomTable` のview登録と `subGroup` / `unnestMultiValueGroup` / `rowHeight` option を定義する。
 - `src/bases/CustomTableView.ts`
-  - Custom Table描画本体（通常/仮想描画、grouping、summary、列幅、重複行ジャンプ）を担当する。
+    - Custom Table描画本体（通常/仮想描画、grouping、summary、列幅、重複行ジャンプ）を担当する。
 - `src/bases/customTableGrouping.ts`
-  - グルーピングキー抽出、unnest、ソートを担当する。
+    - グルーピングキー抽出、unnest、ソートを担当する。
 - `src/bases/customTableVirtualization.ts`
-  - 仮想化閾値判定とgrouped平坦化を担当する。
+    - 仮想化閾値判定とgrouped平坦化を担当する。
 - `src/bases/customTableDisplayUtils.ts`
-  - group見出し表示文字列を整形する。
+    - group見出し表示文字列を整形する。
 - `src/bases/customTableDuplicateNavigation.ts`
-  - 同一 `file.path` の重複行ジャンプインデックス計算を担当する。
+    - 同一 `file.path` の重複行ジャンプインデックス計算を担当する。
 - `src/bases/tableColumnSizing.ts`
-  - 列幅の正規化・保存値更新・テンプレート生成を担当する。
+    - 列幅の正規化・保存値更新・テンプレート生成を担当する。
 - `src/bases/tableSummary.ts`
-  - summary候補判定と集計値計算を担当する。
+    - summary候補判定と集計値計算を担当する。
 
 ## 10.3 Bases view一覧に関わるファイル
+
 - `src/main.ts`
-  - `BasesViewListSidebarService` を生成して `start()/stop()` を制御する。
+    - `BasesViewListSidebarService` を生成して `start()/stop()` を制御する。
 - `src/bases/BasesViewListSidebarService.ts`
-  - view一覧DOM注入、配置解決、切替、右クリックメニュー、リサイズ、再描画を担当する。
+    - view一覧DOM注入、配置解決、切替、右クリックメニュー、リサイズ、再描画を担当する。
 - `src/bases/BaseViewListYamlStore.ts`
-  - `.base` YAML（`formulas` と `views[].description`）の読み書きを担当する。
+    - `.base` YAML（`formulas` と `views[].description`）の読み書きを担当する。
 - `src/integrations/bases/nativeViewSettingsBridge.ts`
-  - view行3点メニューからネイティブview設定UIを開くDOMブリッジを担当する。
+    - view行3点メニューからネイティブview設定UIを開くDOMブリッジを担当する。
 - `src/integrations/bases/types.ts`
-  - ネイティブ設定起動ブリッジの入力/結果型を定義する。
+    - ネイティブ設定起動ブリッジの入力/結果型を定義する。
 - `src/settings/BaseViewsSettingTab.ts`
-  - view一覧関連設定UI（enable/placement/font/property/icons など）を提供する。
+    - view一覧関連設定UI（enable/placement/font/property/icons など）を提供する。
 - `src/settings/defaults.ts`
-  - view一覧関連設定のデフォルト値を定義する。
+    - view一覧関連設定のデフォルト値を定義する。
 - `src/types/settings.ts`
-  - view一覧関連設定の型を定義する。
+    - view一覧関連設定の型を定義する。
 - `styles/bases-views.css`
-  - view一覧サイドバーのレイアウト/見た目を定義する。
+    - view一覧サイドバーのレイアウト/見た目を定義する。
 
 ## 10.4 上記3機能に直接関わらないファイル（削除候補の大分類）
+
 - `src/bases/CalendarView.ts`, `src/bases/KanbanView.ts`, `src/bases/MiniCalendarView.ts`, `src/bases/calendar-core.ts`
-  - Bases関連だが、今回対象の3機能（Task List / Custom Table / view一覧）には直接関与しない別ビュー実装。
+    - Bases関連だが、今回対象の3機能（Task List / Custom Table / view一覧）には直接関与しない別ビュー実装。
 - `src/api/*`
-  - HTTP API（Tasks/Calendars/Pomodoro/Webhook）公開機能。
+    - HTTP API（Tasks/Calendars/Pomodoro/Webhook）公開機能。
 - `src/views/*`
-  - Pomodoro/Stats/ReleaseNotes の独自ビュー機能。
+    - Pomodoro/Stats/ReleaseNotes の独自ビュー機能。
 - `src/services/*` のうち外部連携系
-  - `GoogleCalendarService` / `MicrosoftCalendarService` / `OAuthService` / `ICS*` / `PomodoroService` など、カレンダー同期やタイマー機能。
+    - `GoogleCalendarService` / `MicrosoftCalendarService` / `OAuthService` / `ICS*` / `PomodoroService` など、カレンダー同期やタイマー機能。
 - `src/editor/*`
-  - エディタ拡張（タスクリンク装飾、補完、ウィジェット）機能。
+    - エディタ拡張（タスクリンク装飾、補完、ウィジェット）機能。
 - `src/modals/*` のうち外部連携・時間管理系
-  - `DeviceCodeModal`, `Timeblock*`, `ICSEvent*` など、対象3機能外のモーダル。
+    - `DeviceCodeModal`, `Timeblock*`, `ICSEvent*` など、対象3機能外のモーダル。
 - `src/settings/tabs/*`（`generalTab.ts` 以外）
-  - 見た目、機能一般、連携、タスクプロパティ等の汎用設定UI。
+    - 見た目、機能一般、連携、タスクプロパティ等の汎用設定UI。
 
 ## 10.5 備考（切り出し時の依存注意）
+
 - `TaskListView` は `src/ui/TaskCard.ts` と日付/優先度/再発メニュー系コンポーネントに依存するため、Task List modified版だけを残す場合でも関連UIは連動して残す必要がある。
 - `CustomTableView` は `src/integrations/iconic/iconicFileIconResolver.ts` を参照するため、Iconic連携を残すか無効化するかを先に決める必要がある。
 - 3機能のみへ絞る場合でも、`src/main.ts` は大きいため、初期化処理を分割して `bases` 専用エントリへ再構成するのが安全。
@@ -475,86 +495,97 @@
 # 11. 2026-02-21 3機能切り出しの実施結果
 
 ## 11.1 現在有効な機能（runtime）
+
 - `view一覧`（`BasesViewListSidebarService`）
 - `Task List View (Custom)`（view id: `tasknotesTaskListCustom`）
 - `Table View (Custom)`（view id: `tasknotesCustomTable`）
 
 ## 11.2 登録/初期化の現状
+
 - `src/main.ts` は3機能向けの軽量エントリへ再構成済み。
 - `src/bases/registration.ts` は `tasknotesTaskListCustom` / `tasknotesCustomTable` のみ登録する。
 - `tasknotesTaskList` / `tasknotesKanban` / `tasknotesCalendar` / `tasknotesMiniCalendar` は登録対象から削除済み（unregister cleanupのみ残す）。
 
 ## 11.3 TaskNotes 協調方針
+
 - `src/integrations/tasknotes/TaskNotesRuntimeBridge.ts` を追加し、外部 TaskNotes runtime 連携を境界化した。
 - `Task List View (Custom)` は runtime 有無で動作分岐する。
-  - runtime あり: 既存の TaskCard 表示/操作経路を利用。
-  - runtime なし: read-only 表示（ノートを開く操作のみ）へフォールバック。
+    - runtime あり: 既存の TaskCard 表示/操作経路を利用。
+    - runtime なし: read-only 表示（ノートを開く操作のみ）へフォールバック。
 - `BasesViewBase#createFileForView` は runtime の `openTaskCreationModal` を優先し、重複ロジックを避ける。
 
 ## 11.4 ファイル削減の結果
+
 - `src/main.ts` 起点の到達判定で未到達だった `src` 実装を削除した（API/editor/views/旧settings tabs/対象外services 等）。
 - 削除後、到達判定は `unreachable_count=0`。
 
 ## 11.5 注意点
+
 - `src/settings/defaults.ts` / `src/types/settings.ts` は後方互換と既存参照維持のため、未使用設定項目を含んだまま。
 - 本環境では `node` が見つからないため、`npm run build` / `npm test` は未実行。
 
 ## 11.6 2026-02-21 i18n復旧
+
 - `src/settings/BaseViewsSettingTab.ts` は i18n 経由で文言を表示し、UI言語切替を提供する（2026-02-22 時点では英語/日本語のみ）。
 - `src/main.ts` の `saveSettings()` で `uiLanguage` を `i18n.setLocale()` に同期し、設定変更を反映する。
 - `Task List View (Custom)` の read-only ヒント/Notice は i18n キー参照に変更。
 - `tasknotesTaskListCustom` の view アイコンは `list-todo` を使用する。
 
 ## 11.7 2026-02-21 テスト実行対象の絞り込み
+
 - `jest.config.js` は以下のみ実行対象。
-  - `tests/unit/bases/**/*.test.ts`
-  - `tests/unit/integrations/**/*.test.ts`
-  - `tests/unit/SearchBox.test.ts`
-  - `tests/unit/TaskSearchFilter.test.ts`
-  - `tests/unit/services/i18nService.test.ts`
+    - `tests/unit/bases/**/*.test.ts`
+    - `tests/unit/integrations/**/*.test.ts`
+    - `tests/unit/SearchBox.test.ts`
+    - `tests/unit/TaskSearchFilter.test.ts`
+    - `tests/unit/services/i18nService.test.ts`
 - 2026-02-21 後続作業で、旧TaskNotes本体機能のテスト過剰分は物理削除済み。
-  - `*.test.ts` は 259件中17件を残して242件を削除
-  - `tests/components`, `tests/helpers`, `tests/integration`, `tests/manual`, `tests/services`, `tests/types`, `tests/utils` などの旧補助ディレクトリも削除
+    - `*.test.ts` は 259件中17件を残して242件を削除
+    - `tests/components`, `tests/helpers`, `tests/integration`, `tests/manual`, `tests/services`, `tests/types`, `tests/utils` などの旧補助ディレクトリも削除
 - `jest.integration.config.js` は削除済みで、テスト実行系は `jest.config.js` に一本化されている。
 
 ## 11.8 2026-02-21 設定先頭3トグルの再編
+
 - `src/settings/BaseViewsSettingTab.ts` の先頭に、以下3機能のON/OFFトグルを集約。
-  - `view一覧`（`enableBasesViewListSidebar`）
-  - `Table View (Custom)`（`enableBasesCustomTableView`）
-  - `Task List View (Custom)`（`enableBasesTaskListCustomView`）
+    - `view一覧`（`enableBasesViewListSidebar`）
+    - `Table View (Custom)`（`enableBasesCustomTableView`）
+    - `Task List View (Custom)`（`enableBasesTaskListCustomView`）
 - `src/main.ts` は3トグルに連動して、カスタムビュー登録とview一覧サービスを起動/停止する。
 - `src/bases/registration.ts` は Table/Task List(Custom) を個別トグルで登録制御する。
 - 旧 `enableBases` は互換目的で保持し、保存時は3トグルの集約値として同期する。
 
 ## 11.9 2026-02-21 不要資産の削除（TaskNotes由来の開発資産整理）
+
 - 削除済み:
-  - `.clump/`, `docs/`, `media/`, `e2e/`, `issue-analysis/`, `tasknotes-e2e-vault/`
-  - `e2e-launch.sh`, `e2e-setup.sh`, `playwright.config.ts`, `mkdocs.yml`
-  - `copy-files.mjs`, `generate-release-notes-import.mjs`, `apply-translations.js`
-  - `i18n-state.config.json`, `i18n.manifest.json`, `i18n.state.json`
-  - `I18N_GUIDE.md`, `Tasknotes-Development-Guidelines.md`, `NLP_*`, `PROOF_OF_CONCEPT_*`, `test-overdue-setting.md`, `test-webhook.js`
-  - `scripts/` 内の i18n 補助スクリプト（`scripts/sync-manifest-version.js` のみ残置）
-  - `src/releaseNotes.ts`
+    - `.clump/`, `docs/`, `media/`, `e2e/`, `issue-analysis/`, `tasknotes-e2e-vault/`
+    - `e2e-launch.sh`, `e2e-setup.sh`, `playwright.config.ts`, `mkdocs.yml`
+    - `copy-files.mjs`, `generate-release-notes-import.mjs`, `apply-translations.js`
+    - `i18n-state.config.json`, `i18n.manifest.json`, `i18n.state.json`
+    - `I18N_GUIDE.md`, `Tasknotes-Development-Guidelines.md`, `NLP_*`, `PROOF_OF_CONCEPT_*`, `test-overdue-setting.md`, `test-webhook.js`
+    - `scripts/` 内の i18n 補助スクリプト（`scripts/sync-manifest-version.js` のみ残置）
+    - `src/releaseNotes.ts`
 - `package.json` は削除後構成に合わせて整理済み。
-  - `e2e*` / `i18n:*` / `build:test` / `copy-files` / `test:integration` / `test:performance` / `test:build` を削除
-  - `@playwright/test` / `@electron/asar` / `i18n-state-manager` を削除
+    - `e2e*` / `i18n:*` / `build:test` / `copy-files` / `test:integration` / `test:performance` / `test:build` を削除
+    - `@playwright/test` / `@electron/asar` / `i18n-state-manager` を削除
 - `README.md` は Base Views 向け最小構成へ更新済み。
 - 注意:
-  - 実行環境に `node` / `npm` がないため、`package-lock.json` 再生成（`npm install`）は未実施。
+    - 実行環境に `node` / `npm` がないため、`package-lock.json` 再生成（`npm install`）は未実施。
 
 ## 11.10 2026-02-22 UI翻訳の英語/日本語限定化
+
 - `src/i18n/index.ts` の `translationResources` は `en` / `ja` のみを登録。
 - `src/i18n/resources` は `en.ts` / `ja.ts` のみ保持し、他言語ファイルは削除済み。
 - UI言語の設定方針:
-  - `src/settings/defaults.ts` の既定値は `uiLanguage: "en"`。
-  - `src/main.ts` で `uiLanguage` を `en/ja` のみ許容するよう正規化し、非対応値は `en` に寄せる。
-  - `src/settings/BaseViewsSettingTab.ts` の言語ドロップダウンは英語/日本語のみ（`system` は選択不可）。
+    - `src/settings/defaults.ts` の既定値は `uiLanguage: "en"`。
+    - `src/main.ts` で `uiLanguage` を `en/ja` のみ許容するよう正規化し、非対応値は `en` に寄せる。
+    - `src/settings/BaseViewsSettingTab.ts` の言語ドロップダウンは英語/日本語のみ（`system` は選択不可）。
 - テスト:
-  - `tests/unit/services/i18nService.test.ts` は `en/ja` 前提へ更新済み（非対応ロケール選択時は `en` 解決を検証）。
+    - `tests/unit/services/i18nService.test.ts` は `en/ja` 前提へ更新済み（非対応ロケール選択時は `en` 解決を検証）。
 - 注意:
-  - 実行環境に `node` / `npm` がないため、テスト実行は未実施。
+    - 実行環境に `node` / `npm` がないため、テスト実行は未実施。
 
 ## 11.11 2026-02-23 NLPロケール残存の英語/日本語限定化
+
 - `src/locales` は `en.ts` / `ja.ts` / `index.ts` / `types.ts` のみ保持。
 - `src/locales/index.ts` の `languageRegistry` は `en` / `ja` のみを登録。
 - `src/i18n/I18nService.ts` の `getNativeLanguageName()` は `en` / `ja` のみ定義。
@@ -562,13 +593,24 @@
 - `src/services/NaturalLanguageParser.ts` の非ASCII境界判定は `ja` のみに簡素化。
 
 ## 11.12 2026-02-23 view一覧のdescription固定化とbvキー移行
+
 - view一覧2行目は任意プロパティではなく `description` 固定で描画。
 - `basesViewListShowProperty` は「description表示ON/OFF」として継続。
 - `basesViewListPropertyKey` は settings 型/初期値/設定UI から削除。
 - 右クリックメニューから「表示プロパティ変更」を削除（ON/OFFのみ維持）。
 - `.base formulas` の保存キーは `tn*` から `bv*` へ変更。
-  - `bvViewListPosition`
-  - `bvViewListSidePanePosition`
-  - `bvViewListShowProperty`
-  - `bvViewListTopOverflowMode`
+    - `bvViewListPosition`
+    - `bvViewListSidePanePosition`
+    - `bvViewListShowProperty`
+    - `bvViewListTopOverflowMode`
 - 旧 `tn*` との互換処理は実装しない（読み書きしない）。
+
+## 11.13 2026-02-23 `src/types.ts` の低副作用整理
+
+- `src/types.ts` から未使用の旧view定数・未使用イベント定数（`EVENT_TASK_UPDATED` 以外）・未使用独立型（`ColorizeMode` / `CalendarDisplayMode`）を削除。
+- `src/services/*` は参照継続中のため、今回変更しない。
+  - `src/services/CalendarExportService.ts`
+  - `src/services/FieldMapper.ts`
+  - `src/services/NaturalLanguageParser.ts`
+  - `src/services/TriggerConfigService.ts`
+- 本整理は「副作用最小」を前提とし、`view一覧` / `Table View (Custom)` / `Task List View (Custom)` の挙動変更は伴わない。
