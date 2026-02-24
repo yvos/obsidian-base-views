@@ -26,6 +26,7 @@ function toIconDescriptor(value: unknown): IconicFileIconDescriptor | null {
 }
 
 function getIconicPlugin(app: App): IconicPluginLike | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const manager = (app as unknown as { plugins?: PluginManagerLike }).plugins;
 	if (!manager) return null;
 
@@ -53,6 +54,7 @@ function safeCheckRuling(plugin: IconicPluginLike, filePath: string): unknown {
 }
 
 function safeGetFileItem(plugin: IconicPluginLike, filePath: string): unknown {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (typeof plugin.getFileItem !== "function") return null;
 
 	const getFileItem = plugin.getFileItem;

@@ -14,6 +14,7 @@ export interface BatchContextMenuOptions {
 /**
  * Context menu for batch operations on multiple selected tasks.
  */
+// BatchContextMenuの中核ロジックをまとめるクラス。
 export class BatchContextMenu {
 	private menu: ContextMenu;
 	private options: BatchContextMenuOptions;
@@ -29,6 +30,7 @@ export class BatchContextMenu {
 	}
 
 	private buildMenu(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { plugin, selectedPaths } = this.options;
 		const count = selectedPaths.length;
 
@@ -123,6 +125,7 @@ export class BatchContextMenu {
 	}
 
 	private addStatusOptions(submenu: Menu): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const statusConfigs = this.options.plugin.settings.customStatuses;
 		const sortedStatuses = [...statusConfigs].sort((a, b) => a.order - b.order);
 
@@ -152,6 +155,7 @@ export class BatchContextMenu {
 	}
 
 	private addPriorityOptions(submenu: Menu): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const priorityOptions = this.options.plugin.priorityManager.getPrioritiesByWeight();
 
 		for (const priority of priorityOptions) {
@@ -189,6 +193,7 @@ export class BatchContextMenu {
 	}
 
 	private addDateOptions(submenu: Menu, dateType: "due" | "scheduled"): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const dateContextMenu = new DateContextMenu({
 			currentValue: undefined,
 			onSelect: () => {},
@@ -222,6 +227,7 @@ export class BatchContextMenu {
 	}
 
 	private async batchUpdateProperty(property: keyof TaskInfo, value: any): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const { plugin, selectedPaths, onUpdate } = this.options;
 		const count = selectedPaths.length;
 
@@ -264,6 +270,7 @@ export class BatchContextMenu {
 	}
 
 	private async batchArchive(archive: boolean): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const { plugin, selectedPaths, onUpdate } = this.options;
 		const count = selectedPaths.length;
 
@@ -309,6 +316,7 @@ export class BatchContextMenu {
 	}
 
 	private async batchDelete(): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const { plugin, selectedPaths, onUpdate } = this.options;
 		const count = selectedPaths.length;
 

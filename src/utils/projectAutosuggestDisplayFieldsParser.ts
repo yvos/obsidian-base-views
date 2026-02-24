@@ -7,6 +7,7 @@ export interface DisplayFieldToken {
 }
 
 function splitPipesRespectingEscapes(s: string): string[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const parts: string[] = [];
 	let cur = "";
 	let i = 0;

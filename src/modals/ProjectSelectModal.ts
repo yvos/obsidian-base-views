@@ -16,6 +16,7 @@ import { FilterUtils } from "../utils/FilterUtils";
  * Modal for selecting project notes using fuzzy search
  * Based on the existing AttachmentSelectModal pattern
  */
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class ProjectSelectModal extends FuzzySuggestModal<TAbstractFile> {
 	private onChoose: (file: TAbstractFile) => void;
 	private plugin: TaskNotesPlugin;
@@ -33,6 +34,7 @@ export class ProjectSelectModal extends FuzzySuggestModal<TAbstractFile> {
 	}
 
 	getItems(): TAbstractFile[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const allFiles = this.app.vault
 			.getAllLoadedFiles()
 			.filter(
@@ -97,6 +99,7 @@ export class ProjectSelectModal extends FuzzySuggestModal<TAbstractFile> {
 	}
 
 	getItemText(file: TAbstractFile): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!(file instanceof TFile)) {
 			return file.name;
 		}

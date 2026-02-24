@@ -28,6 +28,7 @@ import type { FrontmatterPropertyName, TaskCardPropertyId } from "../types";
  * - "timeEntries" → "totalTrackedTime" (show total instead of raw array)
  * - "blockedBy" → "blocked" (show status pill instead of array)
  */
+// 関連ドメインの処理を集約し、利用側へ一貫したAPIを提供する。
 export class PropertyMappingService {
 	constructor(
 		private plugin: TaskNotesPlugin,
@@ -52,6 +53,7 @@ export class PropertyMappingService {
 	 */
 	basesToTaskCardProperty(basesPropertyId: string): TaskCardPropertyId {
 		// Step 1: Try custom field mapping on full ID first (edge case: user configured "note.state")
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.fieldMapper) {
 			if (this.fieldMapper.isRecognizedProperty(basesPropertyId)) {
 				// Property is recognized, keep the original property name

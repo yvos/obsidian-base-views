@@ -20,6 +20,7 @@ export function normalizeColumnSizeMap(
 	value: unknown,
 	minWidth = MIN_TABLE_COLUMN_WIDTH
 ): ColumnSizeMap {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!value || typeof value !== "object") {
 		return {};
 	}

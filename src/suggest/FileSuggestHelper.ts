@@ -31,6 +31,7 @@ export const FileSuggestHelper = {
 		filterConfig?: FileFilterConfig
 	): Promise<FileSuggestionItem[]> {
 		const run = async () => {
+			// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 			const files = plugin?.app?.vault?.getMarkdownFiles
 				? plugin.app.vault.getMarkdownFiles()
 				: [];

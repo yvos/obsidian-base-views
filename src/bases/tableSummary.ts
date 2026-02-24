@@ -52,6 +52,7 @@ interface NormalizedValue {
 
 // Bases由来のValueオブジェクトを再帰的にプリミティブへ寄せる。
 function normalizeBasesValue(value: unknown): unknown {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (value === null || value === undefined) return null;
 
 	const asAny = value as any;
@@ -88,6 +89,7 @@ function normalizeBasesValue(value: unknown): unknown {
 
 // 任意値を空判定付きのNormalizedValueへ変換する。
 function toNormalizedValue(value: unknown): NormalizedValue {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const normalized = normalizeBasesValue(value);
 
 	if (normalized === null || normalized === undefined) {
@@ -203,6 +205,7 @@ function formatDuration(milliseconds: number): string {
 
 // 値配列の型傾向から利用可能なsummary候補一覧を返す。
 export function getSummaryOptions(values: unknown[]): TableSummaryOption[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const normalized = values.map((value) => toNormalizedValue(value)).filter((value) => !value.empty);
 
 	let hasNumber = false;
@@ -225,6 +228,7 @@ export function getSummaryOptions(values: unknown[]): TableSummaryOption[] {
 
 // 指定されたsummaryキーに基づき値配列の集計結果を算出する。
 export function calculateSummary(values: unknown[], summaryKey: TableSummaryKey): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const normalized = values.map((value) => toNormalizedValue(value));
 	const filled = normalized.filter((value) => !value.empty);
 

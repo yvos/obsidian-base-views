@@ -90,6 +90,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 * Config changes are rendered immediately; regular data churn is debounced.
 	 */
 	onDataUpdated(): void {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		if (!this.rootElement?.isConnected) {
 			return;
 		}
@@ -116,6 +117,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private buildViewConfigSignature(): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const order = JSON.stringify(this.config?.getOrder?.() ?? []);
 			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
@@ -136,6 +138,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 */
 	private readViewOptions(): void {
 		// Guard: config may not be set yet if called too early
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.config || typeof this.config.get !== 'function') {
 			console.debug('[TaskListViewCustom] Config not available yet in readViewOptions');
 			return;
@@ -179,6 +182,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	protected setupContainer(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		super.setupContainer();
 
 		// Make rootElement fill its container and establish flex context
@@ -203,6 +207,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	async render(): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		if (!this.itemsContainer || !this.rootElement) return;
 
 		// Always refresh options so config changes reflect without view switching.
@@ -279,6 +284,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 */
 	private async computeFormulas(dataItems: BasesDataItem[]): Promise<void> {
 		// Access formulas through the data context
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const ctxFormulas = (this.data as any)?.ctx?.formulas;
 		if (!ctxFormulas || typeof ctxFormulas !== "object" || dataItems.length === 0) {
 			return;
@@ -324,6 +330,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private async renderFlat(taskNotes: TaskInfo[]): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		const visibleProperties = this.getVisibleProperties();
 
 		// Apply search filter
@@ -372,6 +379,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		visibleProperties: string[] | undefined,
 		cardOptions: any
 	): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		if (!this.itemsContainer) return;
 
 		if (!this.virtualScroller) {
@@ -411,6 +419,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		visibleProperties: string[] | undefined,
 		cardOptions: any
 	): Promise<void> {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (!this.itemsContainer) return;
 
 		const seenPaths = new Set<string>();
@@ -529,6 +538,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private getPrimaryGroupByPropertyId(allowControllerFallback = true): string | null {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const configGroupBy = this.readPrimaryGroupByFromConfig();
 		if (configGroupBy.propertyId) return configGroupBy.propertyId;
 		if (!allowControllerFallback) return null;
@@ -554,6 +564,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private getPrimaryGroupByDirection(allowControllerFallback = true): GroupSortDirection {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const configGroupBy = this.readPrimaryGroupByFromConfig();
 		if (configGroupBy.direction) return configGroupBy.direction;
 		if (!allowControllerFallback) return "ASC";
@@ -671,6 +682,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		const pathToBasesEntry = this.subGroupPropertyId ? this.buildPathToBasesEntryMap() : new Map();
 
 		for (const group of primaryGroups) {
+			// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 			const primaryKey = group.key;
 			const groupTasks = group.tasks;
 
@@ -748,6 +760,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 * This treats the sub-group property as primary grouping.
 	 */
 	private async renderGroupedBySubProperty(taskNotes: TaskInfo[]): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const visibleProperties = this.getVisibleProperties();
 
 		// Apply search filter
@@ -842,6 +855,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private async renderGrouped(taskNotes: TaskInfo[]): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		const visibleProperties = this.getVisibleProperties();
 
 		// Apply search filter
@@ -904,6 +918,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		visibleProperties: string[] | undefined,
 		cardOptions: any
 	): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		if (!this.virtualScroller) {
 			this.virtualScroller = new VirtualScroller<any>({
 				container: this.itemsContainer!,
@@ -949,6 +964,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		visibleProperties: string[] | undefined,
 		cardOptions: any
 	): Promise<void> {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		for (const item of items) {
 			if (item.type === 'primary-header' || item.type === 'sub-header') {
 				const headerEl = this.createGroupHeader(item);
@@ -1006,6 +1022,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private jumpToNextDuplicateRow(filePath: string, currentRowOrder: number): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const nextRowOrder = getNextDuplicateRowOrder(
 			this.duplicateNavigationIndex,
 			filePath,
@@ -1051,6 +1068,7 @@ export class TaskListViewCustom extends BasesViewBase {
 
 	private createGroupHeader(headerItem: any): HTMLElement {
 		// Use correct document for pop-out window support
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 
 		const groupHeader = doc.createElement("div");
@@ -1110,6 +1128,7 @@ export class TaskListViewCustom extends BasesViewBase {
 
 	protected async handleTaskUpdate(task: TaskInfo): Promise<void> {
 		// Update cache
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		this.taskInfoCache.set(task.path, task);
 		this.lastTaskSignatures.set(task.path, this.buildTaskSignature(task));
 
@@ -1191,6 +1210,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	onunload(): void {
 		// Component.register() calls will be automatically cleaned up (including search cleanup)
 		// We just need to clean up view-specific state
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.unregisterContainerListeners();
 		this.destroyVirtualScroller();
 
@@ -1227,6 +1247,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 * Restores scroll position, collapsed groups, and collapsed sub-groups.
 	 */
 	setEphemeralState(state: any): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!state) return;
 
 		// Restore collapsed groups immediately
@@ -1284,6 +1305,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private syncReadOnlyStateHint(runtimePlugin: any | null): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (!this.rootElement) return;
 		const hintClass = "tn-task-list-custom-runtime-hint";
 		const existing = this.rootElement.querySelector<HTMLElement>(`.${hintClass}`);
@@ -1339,6 +1361,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private createReadOnlyTaskCard(task: TaskInfo): HTMLElement {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const card = doc.createElement("article");
 		card.className = "task-card task-card--readonly tn-task-list-custom-readonly-card";
@@ -1422,6 +1445,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private handleItemClick = async (event: MouseEvent) => {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		const target = event.target as HTMLElement;
 
 		// ONLY handle group header clicks - task cards handle their own clicks
@@ -1449,6 +1473,7 @@ export class TaskListViewCustom extends BasesViewBase {
 
 	private async handleGroupToggle(groupKey: string): Promise<void> {
 		// Detect if this is a sub-group toggle (compound key contains colon)
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		const isSubGroup = groupKey.includes(':');
 
 		if (isSubGroup) {
@@ -1500,6 +1525,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private handleItemContextMenu = async (event: MouseEvent) => {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		const context = this.getTaskContextFromEvent(event);
 		if (!context) return;
 		event.preventDefault();
@@ -1520,6 +1546,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	};
 
 	private handleItemPointerOver = (event: PointerEvent) => {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		if ("pointerType" in event && event.pointerType !== "mouse") {
 			return;
 		}
@@ -1551,6 +1578,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		target: HTMLElement,
 		event: MouseEvent
 	): Promise<void> {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		switch (action) {
 			case "toggle-status":
 				await this.handleToggleStatus(task, event);
@@ -1585,6 +1613,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private async handleToggleStatus(task: TaskInfo, event: MouseEvent): Promise<void> {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		try {
 			if (task.recurrence) {
 				const actionDate = this.getTaskActionDate(task);
@@ -1616,6 +1645,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private showPriorityMenu(task: TaskInfo, event: MouseEvent): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const menu = new PriorityContextMenu({
 			currentValue: task.priority,
 			onSelect: async (newPriority) => {
@@ -1632,6 +1662,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private showRecurrenceMenu(task: TaskInfo, event: MouseEvent): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const menu = new RecurrenceContextMenu({
 			currentValue: typeof task.recurrence === "string" ? task.recurrence : undefined,
 			currentAnchor: task.recurrence_anchor || 'scheduled',
@@ -1661,6 +1692,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private showReminderModal(task: TaskInfo): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const modal = new ReminderModal(this.plugin.app, this.plugin, task, async (reminders) => {
 			try {
 				await this.plugin.updateTaskProperty(
@@ -1681,6 +1713,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		dateType: "due" | "scheduled" | undefined,
 		event: MouseEvent
 	): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!dateType) return;
 		const currentValue = dateType === "due" ? task.due : task.scheduled;
 		const menu = new DateContextMenu({
@@ -1715,6 +1748,7 @@ export class TaskListViewCustom extends BasesViewBase {
 
 	private async handleCardClick(task: TaskInfo, event: MouseEvent): Promise<void> {
 		// Check if this is a selection click (shift/ctrl/cmd or in selection mode)
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		if (this.handleSelectionClick(event, task.path)) {
 			return;
 		}
@@ -1741,6 +1775,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private async executeSingleClickAction(task: TaskInfo, event: MouseEvent): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (event.ctrlKey || event.metaKey) {
 			this.openTaskNote(task, true);
 			return;
@@ -1797,6 +1832,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	}
 
 	private async toggleSubtasks(task: TaskInfo, target: HTMLElement): Promise<void> {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		try {
 			if (!this.plugin.expandedProjectsService) {
 				console.error("[TaskNotes][TaskListViewCustom] ExpandedProjectsService not initialized");
@@ -1866,6 +1902,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 * Includes both regular properties and formula results.
 	 */
 	private buildPathToPropsMap(): Map<string, Record<string, any>> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const map = new Map<string, Record<string, any>>();
 		if (!this.data?.data) return map;
 
@@ -1911,6 +1948,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		propertyId: string,
 		basesEntry?: any
 	): any {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!propertyId) return null;
 
 		// Prefer exact match first (e.g., file.path, file.tags, formula.xxx)
@@ -1972,6 +2010,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		pathToProps: Map<string, Record<string, any>>,
 		pathToBasesEntry: Map<string, any>
 	): Map<string, TaskInfo[]> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const subGroups = new Map<string, TaskInfo[]>();
 
 		for (const task of tasks) {

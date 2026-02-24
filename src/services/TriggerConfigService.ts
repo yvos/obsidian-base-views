@@ -3,6 +3,7 @@ import { PropertyTriggerConfig, NLPTriggersConfig, UserMappedField } from "../ty
 /**
  * Service for managing and querying NLP trigger configurations
  */
+// 関連ドメインの処理を集約し、利用側へ一貫したAPIを提供する。
 export class TriggerConfigService {
 	private config: NLPTriggersConfig;
 	private userFields: UserMappedField[];
@@ -132,6 +133,7 @@ export class TriggerConfigService {
 		propertyId: string
 	): "list" | "file" | "status" | "priority" | "native-tag" | "boolean" | "none" {
 		// Built-in property types
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (propertyId === "tags") {
 			return this.usesNativeTagSuggester() ? "native-tag" : "list";
 		}

@@ -25,6 +25,7 @@ export interface DateContextMenuOptions {
 	app?: App;
 }
 
+// DateContextMenuの中核ロジックをまとめるクラス。
 export class DateContextMenu {
 	private menu: ContextMenu;
 	private options: DateContextMenuOptions;
@@ -40,6 +41,7 @@ export class DateContextMenu {
 	}
 
 	private buildMenu(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (this.options.title) {
 			this.menu.addItem((item) => {
 				item.setTitle(this.options.title || "");
@@ -129,6 +131,7 @@ export class DateContextMenu {
 
 	public getDateOptions(): DateOption[] {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const today = (window as any).moment();
 		const options: DateOption[] = [];
 
@@ -240,6 +243,7 @@ export class DateContextMenu {
 
 	private showDateTimePicker(): void {
 		// Use app from options or plugin
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const app = this.options.app || this.options.plugin?.app;
 		if (!app) {
 			console.error("DateContextMenu: No app instance available for modal");

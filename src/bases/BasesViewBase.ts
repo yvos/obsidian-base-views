@@ -14,6 +14,7 @@ import { BatchContextMenu } from "../components/BatchContextMenu";
  * Properly extends Component to leverage lifecycle, and implements BasesView interface.
  * Note: Bases types (BasesView, BasesViewConfig) are available from obsidian-api declarations.
  */
+// 画面描画と操作ハンドリングを統括するビュー実装。
 export abstract class BasesViewBase extends Component {
 	// BasesView properties (provided by Bases when factory returns this instance)
 	// These match the BasesView interface from Obsidian's internal Bases API
@@ -76,6 +77,7 @@ export abstract class BasesViewBase extends Component {
 	 */
 	onDataUpdated(): void {
 		// Skip if view is not visible
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		if (!this.rootElement?.isConnected) {
 			return;
 		}
@@ -217,6 +219,7 @@ export abstract class BasesViewBase extends Component {
 	 */
 	private injectNewTaskButton(): void {
 		// Find the Bases view container
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const basesViewEl = this.containerEl.closest(".bases-view");
 		if (!basesViewEl) {
 			console.debug("[TaskNotes][Bases] No .bases-view found");
@@ -290,6 +293,7 @@ export abstract class BasesViewBase extends Component {
 	 * Uses Component.register() for automatic cleanup on unload.
 	 */
 	protected setupTaskUpdateListener(): void {
+		// 必要なイベントやコマンドを一括登録し、初期化の前提を整える。
 		if (this.taskUpdateListener) return;
 
 		this.taskUpdateListener = this.plugin.emitter.on(EVENT_TASK_UPDATED, async (eventData: any) => {

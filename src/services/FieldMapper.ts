@@ -10,6 +10,7 @@ import { validateCompleteInstances } from "../utils/dateUtils";
 /**
  * Service for mapping between internal field names and user-configured property names
  */
+// フィールド間マッピング規則を集約して管理する。
 export class FieldMapper {
 	constructor(private mapping: FieldMapping) {}
 
@@ -42,6 +43,7 @@ export class FieldMapper {
 		filePath: string,
 		storeTitleInFilename?: boolean
 	): Partial<TaskInfo> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!frontmatter) return {};
 
 		const mapped: Partial<TaskInfo> = {
@@ -194,6 +196,7 @@ export class FieldMapper {
 		taskTag?: string,
 		storeTitleInFilename?: boolean
 	): any {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const frontmatter: any = {};
 
 		// Map each field if it exists in task data

@@ -25,6 +25,7 @@ export interface TaskContextMenuOptions {
 	onUpdate?: () => void;
 }
 
+// TaskContextMenuの中核ロジックをまとめるクラス。
 export class TaskContextMenu {
 	private menu: ContextMenu;
 	private options: TaskContextMenuOptions;
@@ -41,6 +42,7 @@ export class TaskContextMenu {
 	}
 
 	private buildMenu(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { task, plugin } = this.options;
 
 		// Status submenu
@@ -243,6 +245,7 @@ export class TaskContextMenu {
 
 			// Clear reminders (if any exist)
 			if (task.reminders && task.reminders.length > 0) {
+				// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 				submenu.addItem((subItem: any) => {
 					subItem.setTitle(this.t("contextMenus.task.clearReminders"));
 					subItem.setIcon("trash");
@@ -660,6 +663,7 @@ export class TaskContextMenu {
 	}
 
 	private addDependencyMenuItems(menu: Menu, task: TaskInfo, plugin: TaskNotesPlugin): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		menu.addItem((subItem: any) => {
 			subItem.setTitle(this.t("contextMenus.task.dependencies.addBlockedBy"));
 			subItem.setIcon("link-2");
@@ -760,6 +764,7 @@ export class TaskContextMenu {
 	}
 
 	private dedupeDependencyEntries(entries: Array<TaskDependency | string>): TaskDependency[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const seen = new Map<string, TaskDependency>();
 		for (const entry of entries) {
 			const normalized = normalizeDependencyEntry(entry);
@@ -810,6 +815,7 @@ export class TaskContextMenu {
 		filter: (candidate: TaskInfo) => boolean,
 		onSelect: (selected: TaskInfo) => Promise<void>
 	): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const cacheManager: any = plugin.cacheManager;
 			const allTasks: TaskInfo[] = (await cacheManager?.getAllTasks?.()) ?? [];
@@ -837,6 +843,7 @@ export class TaskContextMenu {
 		plugin: TaskNotesPlugin,
 		selectedTask: TaskInfo
 	): Promise<void> {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		if (selectedTask.path === task.path) {
 			return;
 		}
@@ -870,6 +877,7 @@ export class TaskContextMenu {
 		plugin: TaskNotesPlugin,
 		selectedTask: TaskInfo
 	): Promise<void> {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		const blockedPath = selectedTask.path;
 		if (blockedPath === task.path) {
 			return;
@@ -946,6 +954,7 @@ export class TaskContextMenu {
 	}
 
 	private async openSubtaskAssignmentSelector(task: TaskInfo, plugin: TaskNotesPlugin): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const cacheManager: any = plugin.cacheManager;
 			const allTasks: TaskInfo[] = (await cacheManager?.getAllTasks?.()) ?? [];
@@ -969,6 +978,7 @@ export class TaskContextMenu {
 	}
 
 	private async addTaskToProject(task: TaskInfo, plugin: TaskNotesPlugin, projectFile: any): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			if (!(projectFile instanceof TFile)) {
 				new Notice(this.t("contextMenus.task.organization.notices.projectSelectFailed"));
@@ -1003,6 +1013,7 @@ export class TaskContextMenu {
 	}
 
 	private async assignTaskAsSubtask(task: TaskInfo, plugin: TaskNotesPlugin, subtask: TaskInfo): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const currentTaskFile = plugin.app.vault.getAbstractFileByPath(task.path);
 			if (!(currentTaskFile instanceof TFile)) {
@@ -1043,6 +1054,7 @@ export class TaskContextMenu {
 	}
 
 	private updateMainMenuIconColors(task: TaskInfo, plugin: TaskNotesPlugin): void {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		const menuEl = this.targetDoc.querySelector(".menu");
 		if (!menuEl) return;
 
@@ -1082,6 +1094,7 @@ export class TaskContextMenu {
 	}
 
 	private addStatusOptions(submenu: any, task: TaskInfo, plugin: TaskNotesPlugin): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const statusOptions = this.getStatusOptions(task, plugin);
 
 		statusOptions.forEach((option, index) => {
@@ -1129,6 +1142,7 @@ export class TaskContextMenu {
 	}
 
 	private addPriorityOptions(submenu: any, task: TaskInfo, plugin: TaskNotesPlugin): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const priorityOptions = plugin.priorityManager.getPrioritiesByWeight();
 
 		priorityOptions.forEach((priority) => {
@@ -1181,6 +1195,7 @@ export class TaskContextMenu {
 		onSelect: (value: string | null) => Promise<void>,
 		onCustomDate: () => void
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const dateContextMenu = new DateContextMenu({
 			currentValue: currentValue,
 			onSelect: (value: string | null) => {
@@ -1264,6 +1279,7 @@ export class TaskContextMenu {
 		onSelect: (value: string | null) => Promise<void>,
 		plugin: TaskNotesPlugin
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const today = new Date();
 		const dayNames = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 		const monthNames = [
@@ -1386,6 +1402,7 @@ export class TaskContextMenu {
 	}
 
 	private getStatusOptions(task: TaskInfo, plugin: TaskNotesPlugin) {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const statusConfigs = plugin.settings.customStatuses;
 		const statusOptions: any[] = [];
 
@@ -1415,6 +1432,7 @@ export class TaskContextMenu {
 		anchor: "due" | "scheduled",
 		title: string
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const anchorDate = anchor === "due" ? task.due : task.scheduled;
 
 		if (!anchorDate) {
@@ -1461,6 +1479,7 @@ export class TaskContextMenu {
 		offset: string,
 		description: string
 	): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const reminder = {
 			id: `rem_${Date.now()}`,
 			type: "relative" as const,

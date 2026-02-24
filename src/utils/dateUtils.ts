@@ -25,6 +25,7 @@ import {
  * This function will be renamed to parseDateToLocal to make its behavior explicit.
  */
 export function parseDate(dateString: string): Date {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) {
 		const error = new Error("Date string cannot be empty");
 		console.error("Date parsing error:", { dateString, error: error.message });
@@ -222,6 +223,7 @@ export function parseDate(dateString: string): Date {
  * @returns A Date object representing the UTC anchor for that date
  */
 export function parseDateToUTC(dateString: string): Date {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) {
 		const error = new Error("Date string cannot be empty");
 		console.error("Date parsing error:", { dateString, error: error.message });
@@ -360,6 +362,7 @@ export function getTodayLocal(): Date {
  * creates a date at midnight local time to ensure consistent behavior.
  */
 export function parseDateAsLocal(dateString: string): Date {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) {
 		throw new Error("Date string cannot be empty");
 	}
@@ -392,6 +395,7 @@ export function parseDateAsLocal(dateString: string): Date {
  * Normalize a date string to YYYY-MM-DD format for storage/comparison
  */
 export function normalizeDateString(dateString: string): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) {
 		return dateString;
 	}
@@ -692,6 +696,7 @@ export function getCurrentDateString(): string {
  * Safe timestamp parsing for display and comparison
  */
 export function parseTimestamp(timestampString: string): Date {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		if (!timestampString) {
 			throw new Error("Timestamp string cannot be empty");
@@ -720,6 +725,7 @@ export function formatTimestampForDisplay(
 	formatString?: string,
 	timeFormat: "12" | "24" = "24"
 ): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!timestampString) {
 		return timestampString;
 	}
@@ -756,6 +762,7 @@ export function hasTimeComponent(dateString: string): boolean {
  * Extract just the date part from a date or datetime string
  */
 export function getDatePart(dateString: string): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) return "";
 
 	try {
@@ -874,6 +881,7 @@ export function createTimeFormatHelper(userTimeFormat: "12" | "24") {
  * Combine a date and time into a datetime string
  */
 export function combineDateAndTime(dateString: string, timeString: string): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) return "";
 	if (!timeString) return dateString;
 
@@ -924,6 +932,7 @@ export function formatDateTimeForDisplay(
 		userTimeFormat?: "12" | "24"; // User's time format preference
 	} = {}
 ): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) return "";
 
 	const {
@@ -966,6 +975,7 @@ export function formatDateTimeForDisplay(
  * Uses UTC anchoring for all date-only strings to ensure timezone-independent comparisons
  */
 export function isBeforeDateTimeAware(date1: string, date2: string): boolean {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Step 1: Parse all dates to UTC anchors for consistency
 		const d1UTC = parseDateToUTC(date1);
@@ -1023,6 +1033,7 @@ export function isOverdueTimeAware(
 	isCompleted?: boolean,
 	hideCompletedFromOverdue?: boolean
 ): boolean {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!dateString) return false;
 
 	// If the setting is enabled and task is completed, don't consider it overdue
@@ -1072,6 +1083,7 @@ export function isTodayTimeAware(dateString: string): boolean {
  * Validate datetime input (supports both date-only and date+time)
  */
 export function validateDateTimeInput(dateValue: string, timeValue?: string): boolean {
+	// 入力を段階的に検証し、エラー条件を早期に切り分ける。
 	if (!dateValue || dateValue.trim() === "") {
 		return true; // Empty is valid (optional field)
 	}
@@ -1105,6 +1117,7 @@ export function validateDateTimeInput(dateValue: string, timeValue?: string): bo
  * This prevents issues with invalid time-only entries like "T00:00"
  */
 export function validateCompleteInstances(instances: any[]): string[] {
+	// 入力を段階的に検証し、エラー条件を早期に切り分ける。
 	if (!Array.isArray(instances)) {
 		return [];
 	}
@@ -1158,6 +1171,7 @@ export function getCurrentDateTimeString(): string {
  * Add days to a date/datetime string, preserving time if present
  */
 export function addDaysToDateTime(dateString: string, days: number): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		const parsed = parseDate(dateString);
 		const result = addDaysFns(parsed, days);
@@ -1179,6 +1193,7 @@ export function addDaysToDateTime(dateString: string, days: number): string {
  * This ensures that the day of the week is preserved correctly for recurrence calculations
  */
 export function createUTCDateForRRule(dateString: string): Date {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Extract just the date part directly from the string
 		// Don't use getDatePart as it can cause timezone shifts
@@ -1246,6 +1261,7 @@ export function createUTCDateFromLocalCalendarDate(localDate: Date): Date {
  * @returns true if the date represents today's calendar date for the user
  */
 export function isTodayUTC(date: Date): boolean {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Get today's calendar date in the user's local timezone
 		const todayLocal = getTodayLocal();
@@ -1322,6 +1338,7 @@ export function formatDateAsUTCString(date: Date): string {
  * @returns YYYY-MM-DD string representing the UTC calendar date
  */
 export function formatDateForStorage(date: Date): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Validate input
 		if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
@@ -1447,6 +1464,7 @@ export function isNaturalLanguageDate(value: string): boolean {
  * Check if a date input string is valid (either natural language or ISO date)
  */
 export function isValidDateInput(value: string): boolean {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (typeof value !== "string") {
 		return false;
 	}
@@ -1475,6 +1493,7 @@ export function isValidDateInput(value: string): boolean {
  * Returns the original string if it's not a recognized natural language pattern
  */
 export function resolveNaturalLanguageDate(value: string): string {
+	// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 	if (!value || typeof value !== "string") {
 		return value;
 	}

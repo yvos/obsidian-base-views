@@ -47,6 +47,7 @@ export function appendInternalLink(
 		onPrimaryNavigate?: LinkNavigateHandler;
 	} = {}
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const {
 		cssClass = "internal-link",
 		hoverSource = "tasknotes-property-link",
@@ -155,6 +156,7 @@ export function renderTextWithLinks(
 	deps: LinkServices,
 	options?: RenderLinksOptions
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	let lastIndex = 0;
 	let match: RegExpExecArray | null;
 
@@ -261,6 +263,7 @@ export function renderValueWithLinks(
 	value: unknown,
 	deps: LinkServices
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	if (typeof value === "string") {
 		renderTextWithLinks(container, value, deps);
 		return;
@@ -321,6 +324,7 @@ function resolveProjectDisplayText(
 	displayText: string,
 	deps: LinkServices
 ): string {
+	// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 	const sourcePath = deps.sourcePath ?? "";
 	const normalizedPath = parseLinkToPath(filePath);
 	const file =
@@ -358,6 +362,7 @@ export function renderProjectLinks(
 	deps: LinkServices,
 	options: { onPrimaryNavigate?: LinkNavigateHandler } = {}
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	container.innerHTML = "";
 
 	// Flatten nested arrays and filter out null/undefined values
@@ -435,6 +440,7 @@ export function renderArrayWithLinks(
 		cssClass?: string;
 	} = {}
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const { separator = ", ", prefix = "", cssClass = "internal-link" } = options;
 
 	const validItems = items

@@ -204,6 +204,7 @@ export class CustomTableView extends BasesViewBase {
 	 * - Regular data churn: short debounce to avoid excessive rerenders.
 	 */
 	onDataUpdated(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.rootElement?.isConnected) {
 			return;
 		}
@@ -233,6 +234,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private buildViewConfigSignature(): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const order = JSON.stringify(this.config?.getOrder?.() ?? []);
 			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
@@ -270,6 +272,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private readViewOptions(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.config || typeof this.config.get !== "function") return;
 
 		try {
@@ -346,6 +349,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	async render(): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		if (!this.tableScrollEl) return;
 
 		if (!this.configLoaded && this.config) {
@@ -429,6 +433,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private getAllEntries(groupedData: any[]): EntryLike[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const directEntries = (this.data?.data || []) as EntryLike[];
 		if (directEntries.length > 0) {
 			return directEntries;
@@ -531,6 +536,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private applyJumpTargetHighlight(rowOrder: number): void {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		this.clearJumpTargetHighlight();
 		this.stopJumpHighlightTimers();
 
@@ -583,6 +589,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private stopJumpHighlightTimers(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const win = this.containerEl.ownerDocument.defaultView || window;
 		if (this.jumpHighlightFindRAF !== null) {
 			win.cancelAnimationFrame(this.jumpHighlightFindRAF);
@@ -660,6 +667,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private getPrimaryGroupByPropertyId(allowControllerFallback = true): string | null {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const configGroupBy = this.readPrimaryGroupByFromConfig();
 		if (configGroupBy.propertyId) return configGroupBy.propertyId;
 		if (!allowControllerFallback) return null;
@@ -685,6 +693,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private getPrimaryGroupByDirection(allowControllerFallback = true): GroupSortDirection {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const configGroupBy = this.readPrimaryGroupByFromConfig();
 		if (configGroupBy.direction) return configGroupBy.direction;
 		if (!allowControllerFallback) return "ASC";
@@ -714,6 +723,7 @@ export class CustomTableView extends BasesViewBase {
 		primaryGroupByPropertyId: string | null,
 		primaryGroupSortDirection: GroupSortDirection
 	): RenderableNestedGroup[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const hasPrimaryGroupBy = typeof primaryGroupByPropertyId === "string" && primaryGroupByPropertyId.length > 0;
 		const canUnnestPrimary =
 			this.unnestMultiValueGroup &&
@@ -813,6 +823,7 @@ export class CustomTableView extends BasesViewBase {
 		nestedGroups: RenderableNestedGroup[],
 		columns: string[]
 	): VirtualNestedGroupedItem[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const hasSummary = hasAnyTableSummary(columns, this.tableSummaries);
 		const items: VirtualNestedGroupedItem[] = [];
 		let rowOrder = 0;
@@ -883,6 +894,7 @@ export class CustomTableView extends BasesViewBase {
 		nestedGroups: RenderableNestedGroup[],
 		columns: string[]
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		this.destroyVirtualScroller();
 		this.virtualRowOrderToIndex.clear();
 		this.normalRowOrderCursor = 0;
@@ -946,6 +958,7 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[],
 		menuEntries: EntryLike[]
 	): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		this.ensureVirtualLayout("grouped", columns, menuEntries, false);
 		if (!this.virtualItemsHostEl) return;
 		this.virtualRowOrderToIndex.clear();
@@ -986,6 +999,7 @@ export class CustomTableView extends BasesViewBase {
 		direction: GroupSortDirection,
 		propertyId: string | null
 	): RenderableGroup[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const rawGroups: { key: string; entries: EntryLike[] }[] = [];
 
 		for (const group of groups) {
@@ -1078,6 +1092,7 @@ export class CustomTableView extends BasesViewBase {
 		entries: EntryLike[],
 		columns: string[]
 	): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		this.ensureVirtualLayout("ungrouped", columns, entries, true);
 		if (!this.virtualItemsHostEl) return;
 		this.virtualRowOrderToIndex.clear();
@@ -1106,6 +1121,7 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[],
 		menuEntries: EntryLike[]
 	): Promise<void> {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		this.ensureVirtualLayout("grouped", columns, menuEntries, false);
 		if (!this.virtualItemsHostEl) return;
 		this.virtualRowOrderToIndex.clear();
@@ -1138,6 +1154,7 @@ export class CustomTableView extends BasesViewBase {
 		menuEntries: EntryLike[],
 		includeFooter: boolean
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (!this.tableScrollEl) return;
 
 		const columnsKey = columns.join("|");
@@ -1203,6 +1220,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private updateVirtualFooterSummary(entries: EntryLike[], columns: string[]): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (!this.virtualFooterRowEl) return;
 
 		const hasSummary = hasAnyTableSummary(columns, this.tableSummaries);
@@ -1233,6 +1251,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private createVirtualHeaderRow(columns: string[]): HTMLElement {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const row = doc.createElement("div");
 		row.className = "tn-bases-table-header-row tn-bases-table-header-row--virtual";
@@ -1262,6 +1281,7 @@ export class CustomTableView extends BasesViewBase {
 		nested = false,
 		rowOrder: number | null = null
 	): HTMLElement {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const row = doc.createElement("div");
 		row.className = "tn-bases-table-row tn-bases-table-row--virtual";
@@ -1306,6 +1326,7 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[],
 		nested = false
 	): HTMLElement {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const row = this.containerEl.ownerDocument.createElement("div");
 		row.className = "tn-bases-table-summary-row tn-bases-table-summary-row--group tn-bases-table-summary-row--virtual";
 		if (nested) {
@@ -1366,6 +1387,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private syncNormalTableWidths(columns: string[]): void {
+		// 関連状態の差分を吸収し、整合性を保った状態へ同期する。
 		const widths = resolveColumnWidths(
 			columns,
 			this.columnSize,
@@ -1430,6 +1452,7 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[],
 		propertyId: string
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -1510,6 +1533,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private renderGroupSection(groupTitle: string, entries: EntryLike[], columns: string[]): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (!this.tableScrollEl) return;
 		const doc = this.containerEl.ownerDocument;
 
@@ -1533,6 +1557,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private createTable(entries: EntryLike[], columns: string[], groupedSection: boolean): HTMLTableElement {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const tableEl = doc.createElement("table");
 		tableEl.className = "tn-bases-custom-table";
@@ -1642,6 +1667,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private resolvePropertyHeaderIcon(propertyId: string): string {
+		// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 		const metadataIcon = this.resolvePropertyIconFromMetadata(propertyId);
 		if (metadataIcon) return metadataIcon;
 
@@ -1672,6 +1698,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private resolvePropertyIconFromMetadata(propertyId: string): string | null {
+		// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 		const [scope, rawName] = propertyId.split(".", 2);
 		const candidates = new Set<string>();
 		candidates.add(propertyId.toLowerCase());
@@ -1726,6 +1753,7 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[],
 		groupedSection: boolean
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const hasSummary = hasAnyTableSummary(columns, this.tableSummaries);
 		if (!hasSummary) return;
 
@@ -1750,6 +1778,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private showSummaryMenu(event: MouseEvent, propertyId: string, entries: EntryLike[]): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		event.preventDefault();
 
 		const menu = new Menu();
@@ -1777,6 +1806,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private setSummaryForColumn(propertyId: string, summaryKey: TableSummaryKey | null): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const next = { ...this.tableSummaries };
 			if (!summaryKey) {
@@ -1828,6 +1858,7 @@ export class CustomTableView extends BasesViewBase {
 		entry: EntryLike,
 		rowOrder: number | null = null
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const filePath = entry.file?.path;
 		const fileName = entry.file?.name || filePath;
 		if (!filePath || !fileName) {
@@ -1928,6 +1959,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private scrollToRowOrder(rowOrder: number): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			if (this.useVirtualScrolling && this.virtualScroller) {
 				const targetVirtualIndex =
@@ -1980,6 +2012,7 @@ export class CustomTableView extends BasesViewBase {
 		targetTop: number,
 		durationMs: number
 	): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.stopDuplicateJumpAnimation();
 		const doc = this.containerEl.ownerDocument;
 		const win = doc.defaultView || window;
@@ -2017,6 +2050,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private showFileLinkContextMenu(event: MouseEvent, filePath: string): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const app = this.app || this.plugin.app;
 		const file = app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile)) return;
@@ -2081,6 +2115,7 @@ export class CustomTableView extends BasesViewBase {
 	}
 
 	private renderValue(cellEl: HTMLElement, value: any): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (value == null || (typeof value.isEmpty === "function" && value.isEmpty())) {
 			cellEl.classList.add("tn-bases-table-cell--empty");
 			cellEl.setText("");

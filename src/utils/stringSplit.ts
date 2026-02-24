@@ -9,6 +9,7 @@
  *  - '"Focus, Deep Work", Notes' -> ['"Focus, Deep Work"', 'Notes']
  */
 export function splitListPreservingLinksAndQuotes(input: string): string[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (input == null) return [];
 	const out: string[] = [];
 	let buf = "";

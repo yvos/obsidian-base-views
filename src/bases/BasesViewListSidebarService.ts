@@ -236,6 +236,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private bindEvents(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.workspaceRefs.push(
 			this.plugin.app.workspace.on("active-leaf-change", () => {
 				this.scheduleRefresh(50);
@@ -288,6 +289,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private unbindEvents(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const workspace = this.plugin.app.workspace as unknown as {
 			offref?: (ref: EventRef) => void;
 		};
@@ -346,6 +348,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private onBaseFileRenamed(file: unknown, oldPath: string): void {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		const nextPath = this.getBasePathFromFileLike(file);
 		const previousPath = this.normalizeBasePath(oldPath);
 
@@ -387,6 +390,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private queueBaseFileRefresh(path: string): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.running) return;
 		const normalized = this.normalizeBasePath(path);
 		if (!normalized) return;
@@ -420,6 +424,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async refreshAll(): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.running) return;
 
 		if (!this.isFeatureEnabled()) {
@@ -462,6 +467,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async refreshLeaf(leaf: WorkspaceLeaf): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.running) return;
 
 		if (!this.isTargetBaseLeaf(leaf)) {
@@ -725,6 +731,7 @@ export class BasesViewListSidebarService {
 		leaf: WorkspaceLeaf,
 		requestedPlacement: LayoutPlacement
 	): EffectiveLayoutResolution {
+		// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 		if (requestedPlacement === "none") {
 			return {
 				placement: "left",
@@ -832,6 +839,7 @@ export class BasesViewListSidebarService {
 		leaf: WorkspaceLeaf,
 		basesViewEl: HTMLElement
 	): ManagedLeafState | null {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const containerEl = this.getLeafView(leaf)?.containerEl;
 		if (containerEl) {
 			this.removeAllTopLayouts(containerEl);
@@ -934,6 +942,7 @@ export class BasesViewListSidebarService {
 		leaf: WorkspaceLeaf,
 		basesViewEl: HTMLElement
 	): ManagedLeafState | null {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const containerEl = this.getLeafView(leaf)?.containerEl;
 		if (!containerEl) return null;
 
@@ -1145,6 +1154,7 @@ export class BasesViewListSidebarService {
 		state: ManagedLeafState,
 		evt: PointerEvent
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (state.placement !== "left") return;
 		if (this.isLeafNarrow(leaf)) return;
 		if (!this.running) return;
@@ -1194,6 +1204,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private ensureResizeObserverForLeaf(leaf: WorkspaceLeaf): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.resizeObservers.has(leaf)) return;
 		if (typeof ResizeObserver === "undefined") return;
 
@@ -1286,6 +1297,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private applyFontSizeClasses(listEl: HTMLElement): void {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		listEl.classList.remove(CSS_FONT_M, CSS_FONT_S, CSS_FONT_XS);
 		switch (this.getFontSize()) {
 			case "s":
@@ -1385,6 +1397,7 @@ export class BasesViewListSidebarService {
 		entry: ViewEntry,
 		anchorEl: HTMLElement
 	): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const leafContainerEl = this.getLeafView(leaf)?.containerEl;
 		const basesViewEl = this.findBasesViewEl(leaf);
 		const rootEl =
@@ -1431,6 +1444,7 @@ export class BasesViewListSidebarService {
 		prefs: ResolvedViewListPrefs,
 		forceTopScroll: boolean
 	): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const file = this.getLeafFile(leaf);
 		if (!file) return;
 
@@ -1486,6 +1500,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private addFontSizeMenuItems(menu: Menu, current: FontSizeOption): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		menu.addItem((item) => {
 			item.setTitle(
 				current === "m"
@@ -1556,6 +1571,7 @@ export class BasesViewListSidebarService {
 		currentPlacement: RenderPlacement,
 		prefs: ResolvedViewListPrefs
 	): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const formulaPlacement = this.getFormulaPositionForContext(prefs.formulaPrefs, prefs.paneContext);
 		const scopeText = this.getContextMenuPersistentScopeText(prefs.paneContext);
 		const togglePlacementLabel =
@@ -1656,6 +1672,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private cleanupLeaf(leaf: WorkspaceLeaf): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const state = this.managedLeaves.get(leaf);
 		if (!state) return;
 
@@ -2028,6 +2045,7 @@ export class BasesViewListSidebarService {
 		targetViewName: string,
 		position: ReorderDropPosition
 	): string[] | null {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const normalizedOrder = currentOrder
 			.map((name) => name.trim())
 			.filter((name) => name.length > 0);
@@ -2067,6 +2085,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async duplicateViewEntry(leaf: WorkspaceLeaf, entry: ViewEntry): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const file = this.getLeafFile(leaf);
 		if (!file) return;
 		try {
@@ -2117,6 +2136,7 @@ export class BasesViewListSidebarService {
 		currentViewName: string | null,
 		showProperty: boolean
 	): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { listEl } = state;
 		listEl.innerHTML = "";
 
@@ -2410,6 +2430,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private estimateVisualTextWidth(text: string, isProperty: boolean): number {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const fontSize = this.getFontSize();
 		const baseAscii = fontSize === "xs" ? 5.4 : fontSize === "s" ? 6.2 : 7.2;
 		const baseWide = fontSize === "xs" ? 8.8 : fontSize === "s" ? 9.9 : 11.2;
@@ -2429,6 +2450,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async switchView(leaf: WorkspaceLeaf, viewName: string): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.running) return;
 
 		const controller = this.getController(leaf);
@@ -2479,6 +2501,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async getViewEntries(leaf: WorkspaceLeaf, showProperty: boolean): Promise<ViewEntry[]> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const controller = this.getController(leaf);
 		const fromController = this.getViewEntriesFromController(controller);
 		if (fromController.length > 0) {
@@ -2584,6 +2607,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private getViewEntriesFromController(controller: BasesControllerLike | null): ViewEntry[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!controller) return [];
 
 		if (Array.isArray(controller.query?.views)) {
@@ -2623,6 +2647,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private normalizeViewEntries(entries: PartialViewEntry[]): ViewEntry[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const seen = new Set<string>();
 		const normalized: ViewEntry[] = [];
 
@@ -2674,6 +2699,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private normalizePropertyValue(value: unknown): string | null {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (value == null) return null;
 
 		if (Array.isArray(value)) {
@@ -2760,6 +2786,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private getBasesRegistrations(): BasesRegistrationMap | null {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const appWithInternal = this.plugin.app as unknown as {
 				internalPlugins?: {
@@ -2804,6 +2831,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async redrawViewList(leaf: WorkspaceLeaf): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.running) return;
 		const leafView = this.getLeafView(leaf) as unknown as { refresh?: () => void } | null;
 		if (typeof leafView?.refresh === "function") {
@@ -2845,6 +2873,7 @@ export class BasesViewListSidebarService {
 	}
 
 	private async waitForNativeToolbarLayoutReady(rootEl: HTMLElement): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const wait = (ms: number) =>
 			new Promise<void>((resolve) => {
 				window.setTimeout(resolve, ms);

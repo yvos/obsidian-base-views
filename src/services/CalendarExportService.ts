@@ -15,6 +15,7 @@ export interface ICSExportOptions {
 
 type TranslateFn = (key: TranslationKey, variables?: Record<string, any>) => string;
 
+// 関連ドメインの処理を集約し、利用側へ一貫したAPIを提供する。
 export class CalendarExportService {
 	/**
 	 * Generate a calendar URL for adding a task as an event
@@ -58,6 +59,7 @@ export class CalendarExportService {
 	 * Format: https://calendar.google.com/calendar/render?action=TEMPLATE&text=...
 	 */
 	private static generateGoogleCalendarURL(task: TaskInfo, useScheduledAsDue: boolean): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const baseURL = "https://calendar.google.com/calendar/render";
 		const params = new URLSearchParams();
 
@@ -89,6 +91,7 @@ export class CalendarExportService {
 	 * Format: https://outlook.live.com/calendar/0/deeplink/compose?...
 	 */
 	private static generateOutlookCalendarURL(task: TaskInfo, useScheduledAsDue: boolean): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const baseURL = "https://outlook.live.com/calendar/0/deeplink/compose";
 		const params = new URLSearchParams();
 
@@ -125,6 +128,7 @@ export class CalendarExportService {
 	 * Format: https://calendar.yahoo.com/?v=60&title=...
 	 */
 	private static generateYahooCalendarURL(task: TaskInfo, useScheduledAsDue: boolean): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const baseURL = "https://calendar.yahoo.com/";
 		const params = new URLSearchParams();
 
@@ -167,6 +171,7 @@ export class CalendarExportService {
 	 * Generate ICS file content
 	 */
 	static generateICSContent(task: TaskInfo, options?: ICSExportOptions): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const uid = `${task.path.replace(/[^a-zA-Z0-9]/g, "-")}-${Date.now()}@tasknotes`;
 		const now = new Date()
 			.toISOString()
@@ -247,6 +252,7 @@ export class CalendarExportService {
 	 * Build description text from task
 	 */
 	private static buildDescription(task: TaskInfo): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const parts: string[] = [];
 
 		// Add metadata
@@ -448,6 +454,7 @@ export class CalendarExportService {
 	 * Fold ICS lines to comply with RFC 5545 (max 75 octets per line)
 	 */
 	private static foldICSLines(content: string): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const lines = content.split("\r\n");
 		const foldedLines: string[] = [];
 
@@ -474,6 +481,7 @@ export class CalendarExportService {
 	 * Generate ICS content for multiple tasks
 	 */
 	static generateMultipleTasksICSContent(tasks: TaskInfo[], options?: ICSExportOptions): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const now = new Date()
 			.toISOString()
 			.replace(/[-:]/g, "")
@@ -581,6 +589,7 @@ export class CalendarExportService {
 	 * Download ICS file for all tasks
 	 */
 	static downloadAllTasksICSFile(tasks: TaskInfo[], translate?: TranslateFn, options?: ICSExportOptions): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		try {
 			if (!tasks || tasks.length === 0) {
 				new Notice(
@@ -629,6 +638,7 @@ export class CalendarExportService {
 	 * Download ICS file for a task
 	 */
 	static downloadICSFile(task: TaskInfo, translate?: TranslateFn, options?: ICSExportOptions): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		try {
 			const icsContent = this.generateICSContent(task, options);
 			const blob = new Blob([icsContent], { type: "text/calendar" });

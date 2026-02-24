@@ -21,6 +21,7 @@ export function extractDependencyUid(entry: TaskDependency | string): string {
 }
 
 export function normalizeDependencyEntry(value: unknown): TaskDependency | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (typeof value === "string") {
 		const trimmed = value.trim();
 		if (!trimmed) return null;
@@ -46,6 +47,7 @@ export function normalizeDependencyEntry(value: unknown): TaskDependency | null 
 }
 
 export function normalizeDependencyList(value: unknown): TaskDependency[] | undefined {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (value === null || value === undefined) {
 		return undefined;
 	}
@@ -81,6 +83,7 @@ export interface DependencyResolution {
 }
 
 export function parseDependencyInput(value: string): string[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!value) {
 		return [];
 	}
@@ -119,6 +122,7 @@ export function resolveDependencyEntry(
 	sourcePath: string,
 	entry: TaskDependency | string
 ): DependencyResolution | null {
+	// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 	const rawUid = extractDependencyUid(entry);
 	if (!rawUid) {
 		return null;

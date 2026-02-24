@@ -8,6 +8,7 @@ export interface PriorityContextMenuOptions {
 	plugin: TaskNotesPlugin;
 }
 
+// PriorityContextMenuの中核ロジックをまとめるクラス。
 export class PriorityContextMenu {
 	private menu: ContextMenu;
 	private options: PriorityContextMenuOptions;
@@ -21,6 +22,7 @@ export class PriorityContextMenu {
 	}
 
 	private buildMenu(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const priorities = this.options.plugin.settings.customPriorities;
 
 		// Sort by weight (higher weight = more important)
@@ -76,6 +78,7 @@ export class PriorityContextMenu {
 	}
 
 	private applyColorStyling(): void {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		const menuEl = this.targetDoc.querySelector(".menu");
 
 		if (!menuEl) return;

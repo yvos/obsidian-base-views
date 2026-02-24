@@ -178,6 +178,7 @@ async function waitForNextFrame(): Promise<void> {
 
 // 開いたviewsメニューから対象ビュー行を曖昧一致で特定する。
 function resolveViewRow(menuEl: HTMLElement, viewName: string): HTMLElement | null {
+	// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 	const targetName = normalizeText(viewName);
 	if (!targetName) return null;
 
@@ -218,6 +219,7 @@ async function openViewsMenu(
 	anchorPoint: Point,
 	beforeMenusCount: number
 ): Promise<HTMLElement | null> {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const doc = triggerEl.ownerDocument;
 	const waitForOpenedMenu = () =>
 		waitFor(() => {
@@ -292,6 +294,7 @@ async function tryOpenSettingsFromRow(
 	anchorPoint: Point,
 	openedMenu: HTMLElement
 ): Promise<"opened-settings" | "opened-view-list-only"> {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const doc = rowEl.ownerDocument;
 
 	const beforeClickMenusCount = getVisibleMenus(doc).length;
@@ -324,6 +327,7 @@ async function tryOpenSettingsFromRow(
 export async function openNativeViewSettingsAtAnchor(
 	params: OpenNativeViewSettingsAtAnchorParams
 ): Promise<NativeViewSettingsOpenResult> {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const rootEl = params.rootEl;
 	const anchorEl = params.anchorEl;
 	const viewName = params.viewName?.trim();

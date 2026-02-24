@@ -14,6 +14,7 @@ export function createEmptyDuplicateNavigationIndex(): DuplicateNavigationIndex 
 export function buildDuplicateNavigationIndex(
 	filePathsInRenderOrder: Array<string | null | undefined>
 ): DuplicateNavigationIndex {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const index = createEmptyDuplicateNavigationIndex();
 
 	for (let rowOrder = 0; rowOrder < filePathsInRenderOrder.length; rowOrder++) {

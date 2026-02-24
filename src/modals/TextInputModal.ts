@@ -12,6 +12,7 @@ export interface TextInputModalOptions {
 /**
  * Generic text input modal
  */
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class TextInputModal extends Modal {
 	private options: TextInputModalOptions;
 	private resolve: (value: string | null) => void;
@@ -35,6 +36,7 @@ export class TextInputModal extends Modal {
 	}
 
 	onOpen() {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 		contentEl.empty();
 

@@ -26,6 +26,7 @@ function isSubGroupProperty(prop: string): boolean {
 
 // Register Base Views custom views only.
 export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<void> {
+	// 必要なイベントやコマンドを一括登録し、初期化の前提を整える。
 	const legacyEnabled = plugin.settings.enableBases !== false;
 	const enableTaskListCustom =
 		plugin.settings.enableBasesTaskListCustomView ?? legacyEnabled;

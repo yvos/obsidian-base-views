@@ -17,6 +17,7 @@ export interface ClickHandlerOptions {
  * Ctrl/Cmd + Click: Opens source note immediately
  */
 export function createTaskClickHandler(options: ClickHandlerOptions) {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const { task, plugin, excludeSelector, onSingleClick, onDoubleClick, contextMenuHandler } =
 		options;
 
@@ -38,6 +39,7 @@ export function createTaskClickHandler(options: ClickHandlerOptions) {
 	};
 
 	const handleSingleClick = async (e: MouseEvent) => {
+		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
 		if (onSingleClick) {
 			await onSingleClick(e);
 			return;
@@ -71,6 +73,7 @@ export function createTaskClickHandler(options: ClickHandlerOptions) {
 	};
 
 	const clickHandler = async (e: MouseEvent) => {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (excludeSelector) {
 			const target = e.target as HTMLElement;
 			if (target.closest(excludeSelector)) {
@@ -126,6 +129,7 @@ export function createTaskClickHandler(options: ClickHandlerOptions) {
 	};
 
 	const contextmenuHandler = async (e: MouseEvent) => {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		e.preventDefault();
 		e.stopPropagation(); // Prevent event from bubbling to parent cards
 

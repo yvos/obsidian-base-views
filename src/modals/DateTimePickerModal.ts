@@ -10,6 +10,7 @@ export interface DateTimePickerOptions {
 /**
  * Simple modal for picking date and time using native Obsidian components
  */
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class DateTimePickerModal extends Modal {
 	private options: DateTimePickerOptions;
 	private dateInput: HTMLInputElement;
@@ -21,6 +22,7 @@ export class DateTimePickerModal extends Modal {
 	}
 
 	onOpen(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass("date-time-picker-modal");

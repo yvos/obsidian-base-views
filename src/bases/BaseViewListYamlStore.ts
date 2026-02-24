@@ -53,6 +53,7 @@ export class BaseViewListYamlStore {
 
 	// `.base formulas` からview一覧設定一式を読み出す。
 	async getViewListFormulaPrefs(file: TFile): Promise<BaseViewListFormulaPrefs> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const root = await this.readRoot(file);
 			const formulas = this.asRecord(root.formulas);
@@ -133,6 +134,7 @@ export class BaseViewListYamlStore {
 
 	// view一覧の保存幅比率（formulas.viewListSize）を更新する。
 	async setViewListSizeRatio(file: TFile, ratio: number | null): Promise<boolean> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const root = await this.readRoot(file);
 			const formulas = this.asRecord(root.formulas) ?? {};
@@ -171,6 +173,7 @@ export class BaseViewListYamlStore {
 
 	// `.base` 内 `views[]` を走査してビュー名・type一覧を返す。
 	async getViews(file: TFile): Promise<BaseViewRecord[]> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		try {
 			const root = await this.readRoot(file);
 			const views = Array.isArray(root.views) ? root.views : [];
@@ -197,6 +200,7 @@ export class BaseViewListYamlStore {
 		viewName: string,
 		description: string | null
 	): Promise<boolean> {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		const targetName = this.normalizeName(viewName);
 		if (!targetName) return false;
 
@@ -239,6 +243,7 @@ export class BaseViewListYamlStore {
 
 	// `.base views[]` を指定順で並び替えて保存する。
 	async reorderViews(file: TFile, orderedNames: string[]): Promise<boolean> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const normalizedOrder = Array.from(
 			new Set(
 				orderedNames
@@ -314,6 +319,7 @@ export class BaseViewListYamlStore {
 
 	// 指定ビューを複製し、nameのみ変更して直後へ挿入する。
 	async duplicateView(file: TFile, sourceViewName: string): Promise<string | null> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const sourceName = this.normalizeName(sourceViewName);
 		if (!sourceName) return null;
 
@@ -497,6 +503,7 @@ export class BaseViewListYamlStore {
 		equals: (current: unknown) => boolean,
 		warnMessage: string
 	): Promise<boolean> {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		try {
 			const root = await this.readRoot(file);
 			const formulas = this.asRecord(root.formulas) ?? {};

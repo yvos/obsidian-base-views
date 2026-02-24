@@ -49,6 +49,7 @@ interface BoundaryConfig {
 	isNonAscii: boolean;
 }
 
+// 入力テキストを解析して内部データへ変換する。
 export class NaturalLanguageParser {
 	private readonly statusPatterns: RegexPattern[];
 	private readonly priorityPatterns: RegexPattern[];
@@ -142,6 +143,7 @@ export class NaturalLanguageParser {
 	 * Each processor is self-contained and operates on the current state.
 	 */
 	private buildProcessingPipeline(): ParseProcessor[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		return [
 			{
 				name: "extractTags",
@@ -194,6 +196,7 @@ export class NaturalLanguageParser {
 	 * Each processing stage is self-contained and can be easily reordered, added, or removed.
 	 */
 	public parseInput(input: string): ParsedTaskData {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const result: ParsedTaskData = {
 			title: "",
 			tags: [],
@@ -278,6 +281,7 @@ export class NaturalLanguageParser {
 
 	/** Extracts projects and [[wikilinks]] from the text and adds them to the result object. */
 	private extractProjects(text: string, result: ParsedTaskData): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const trigger = this.triggerConfig.getProjectTrigger();
 		if (!trigger) return text; // Projects disabled
 
@@ -316,6 +320,7 @@ export class NaturalLanguageParser {
 	 * Supports quoted values for multi-word content: trigger "multi word value"
 	 */
 	private extractUserFields(text: string, result: ParsedTaskData): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		let workingText = text;
 
 		// Get all enabled user field triggers
@@ -337,6 +342,7 @@ export class NaturalLanguageParser {
 				// Match trigger followed by either:
 				// 1. Quoted string: "anything inside quotes"
 				// 2. Single/double word: word or word-with-dash (Unicode-aware)
+				// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 				const pattern = new RegExp(`${escapedTrigger}(?:"([^"]+)"|([\\p{L}\\p{N}\\p{M}_/-]+))`, "gu");
 				const values: string[] = [];
 				let match;
@@ -358,6 +364,7 @@ export class NaturalLanguageParser {
 				// Match trigger followed by either:
 				// 1. Quoted string: "anything inside quotes"
 				// 2. Single word: word or word-with-dash (Unicode-aware)
+				// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 				const pattern = new RegExp(`${escapedTrigger}(?:"([^"]+)"|([\\p{L}\\p{N}\\p{M}_/-]+))`, "u");
 				const match = workingText.match(pattern);
 
@@ -403,6 +410,7 @@ export class NaturalLanguageParser {
 	 * @returns Array of compiled regex patterns with their corresponding priority values
 	 */
 	private buildPriorityPatterns(configs: PriorityConfig[]): RegexPattern[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (configs.length > 0) {
 			return configs.flatMap((config) => [
 				{
@@ -456,6 +464,7 @@ export class NaturalLanguageParser {
 
 	/** Extracts priority using string-based matching for custom priorities and regex for fallbacks. */
 	private extractPriority(text: string, result: ParsedTaskData): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.priorityConfigs.length > 0) {
 			const sortedConfigs = [...this.priorityConfigs].sort(
 				(a, b) => b.label.length - a.label.length
@@ -524,6 +533,7 @@ export class NaturalLanguageParser {
 	 */
 	private buildFallbackStatusPatterns(): RegexPattern[] {
 		// Only build fallback patterns if no user status configs are provided
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.statusConfigs.length > 0) {
 			return [];
 		}
@@ -575,6 +585,7 @@ export class NaturalLanguageParser {
 	/** Extracts status using string-based matching for custom statuses and regex for fallbacks. */
 	private extractStatus(text: string, result: ParsedTaskData): string {
 		// If user has defined custom status configs, only use those
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.statusConfigs.length > 0) {
 			// Sort by length (longest first) to prevent partial matches
 			const sortedConfigs = [...this.statusConfigs].sort(
@@ -691,6 +702,7 @@ export class NaturalLanguageParser {
 	 * @returns Text with date/time patterns removed
 	 */
 	private parseUnifiedDatesAndTimes(text: string, result: ParsedTaskData): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		let workingText = text;
 
 		try {
@@ -918,6 +930,7 @@ export class NaturalLanguageParser {
 		endBoundary: string,
 		escapeAndJoin: (patterns: string[]) => string
 	) {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const everyKeywords = escapeAndJoin(lang.every);
 		const ordinalPatterns = escapeAndJoin([
 			...lang.ordinals.first,
@@ -1046,6 +1059,7 @@ export class NaturalLanguageParser {
 		endBoundary: string,
 		escapeAndJoin: (patterns: string[]) => string
 	) {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const everyKeywords = escapeAndJoin(lang.every);
 		const weekdayPatterns = escapeAndJoin([
 			...lang.weekdays.monday,
@@ -1100,6 +1114,7 @@ export class NaturalLanguageParser {
 		endBoundary: string,
 		escapeAndJoin: (patterns: string[]) => string
 	) {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		return [
 			{
 				regex: new RegExp(
@@ -1160,6 +1175,7 @@ export class NaturalLanguageParser {
 	 * Helper to get RRule weekday code from plural weekday text.
 	 */
 	private getPluralWeekdayRRuleCode(dayText: string, lang: any): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (lang.pluralWeekdays.tuesday.some((d: string) => d.toLowerCase() === dayText))
 			return "TU";
 		if (lang.pluralWeekdays.wednesday.some((d: string) => d.toLowerCase() === dayText))
@@ -1200,6 +1216,7 @@ export class NaturalLanguageParser {
 	 */
 	private isValidRRuleString(rruleString: string): boolean {
 		// Check for empty or undefined BYDAY values
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (
 			rruleString.includes("BYDAY=undefined") ||
 			rruleString.includes("BYDAY=;") ||
@@ -1236,6 +1253,7 @@ export class NaturalLanguageParser {
 	 * @returns Text with time estimate patterns removed
 	 */
 	private extractTimeEstimate(text: string, result: ParsedTaskData): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const langConfig = this.languageConfig.timeEstimate;
 
 		// Use pre-configured boundary matching
@@ -1291,6 +1309,7 @@ export class NaturalLanguageParser {
 	 */
 	private validateAndCleanupResult(result: ParsedTaskData): ParsedTaskData {
 		// If title becomes empty after parsing, use a default
+		// 入力を段階的に検証し、エラー条件を早期に切り分ける。
 		if (!result.title.trim()) {
 			result.title = "Untitled Task";
 		}

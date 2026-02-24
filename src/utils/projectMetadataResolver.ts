@@ -12,6 +12,7 @@ export interface ResolverDeps {
 	getFrontmatter: (entry: ProjectEntry) => Record<string, any> | undefined;
 }
 
+// ProjectMetadataResolverの中核ロジックをまとめるクラス。
 export class ProjectMetadataResolver {
 	constructor(private deps: ResolverDeps) {}
 
@@ -70,6 +71,7 @@ export class ProjectMetadataResolver {
 	}
 
 	private stringifyFmValue(value: any): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (value == null) return "";
 		if (Array.isArray(value)) {
 			const parts = value.map((v) => this.stringifyFmValue(v)).filter(Boolean);
@@ -116,6 +118,7 @@ export class ProjectMetadataResolver {
 	}
 
 	resolve(property: string, entry: ProjectEntry): string {
+		// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 		if (!property) return "";
 
 		// File-scoped properties must be explicitly prefixed

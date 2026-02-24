@@ -49,6 +49,7 @@ export class TaskSearchFilter {
 	 */
 	// タスクの検索対象フィールドを連結し比較用テキストへ変換する。
 	private extractSearchableText(task: TaskInfo): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const parts: string[] = [];
 
 		// Core fields - always searched

@@ -4,6 +4,7 @@ import { BasesDataItem } from "./helpers";
  * Adapter for accessing Bases data using public API (1.10.0+).
  * Eliminates all internal API dependencies.
  */
+// 外部データ形式と内部表現の差分を吸収するアダプタ。
 export class BasesDataAdapter {
 	constructor(private basesView: any) {}
 
@@ -104,6 +105,7 @@ export class BasesDataAdapter {
 	 * Handles: PrimitiveValue, ListValue, DateValue, FileValue, NullValue, etc.
 	 */
 	private convertValueToNative(value: any): any {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (value == null || value.constructor?.name === "NullValue") {
 			return null;
 		}
@@ -151,6 +153,7 @@ export class BasesDataAdapter {
 	 */
 	convertGroupKeyToString(key: any): string {
 		// Check if key exists and is valid
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (key == null || (key.hasKey && !key.hasKey())) {
 			return "Unknown";
 		}
@@ -211,6 +214,7 @@ export class BasesDataAdapter {
 		// Extract all properties from the entry's frontmatter
 		// We don't filter by visible properties here - that happens during rendering
 		// This ensures all properties are available for TaskInfo creation
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const frontmatter = (entry as any).frontmatter || (entry as any).properties || {};
 
 		// Start with frontmatter properties

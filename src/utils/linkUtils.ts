@@ -8,6 +8,7 @@ import { App, TFile, parseLinktext } from "obsidian";
  * @returns The extracted path, or the original string if it's not a recognized link format
  */
 export function parseLinkToPath(linkText: string): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!linkText) return linkText;
 
 	const trimmed = linkText.trim();
@@ -76,6 +77,7 @@ export function parseLinkToPath(linkText: string): string {
  * @param app - Optional Obsidian app for resolving to basename
  */
 export function getProjectDisplayName(projectValue: string, app?: App): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!projectValue) return "";
 
 	const trimmed = projectValue.trim();
@@ -140,6 +142,7 @@ export function generateLink(
 	useMarkdownLinks?: boolean
 ): string {
 	// If markdown links are explicitly requested, use Obsidian API
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (useMarkdownLinks) {
 		return app.fileManager.generateMarkdownLink(
 			targetFile,

@@ -6,6 +6,7 @@ import { setIcon } from 'obsidian';
  * Renders a search input with debouncing, clear button, and keyboard support.
  * Follows Single Responsibility Principle - only handles UI rendering and user interaction.
  */
+// SearchBoxの中核ロジックをまとめるクラス。
 export class SearchBox {
 	private container: HTMLElement;
 	private onSearch: (term: string) => void;
@@ -56,6 +57,7 @@ export class SearchBox {
 	 */
 	render(): HTMLElement {
 		// Use container's document for pop-out window support
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.container.ownerDocument;
 
 		// Create main container
@@ -205,6 +207,7 @@ export class SearchBox {
 	 */
 	destroy(): void {
 		// Mark as destroyed to prevent debounced callbacks from executing
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.destroyed = true;
 
 		// Remove event listeners

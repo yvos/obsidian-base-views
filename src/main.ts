@@ -14,6 +14,7 @@ import { BaseViewsSettingTab } from "./settings/BaseViewsSettingTab";
 
 // NOTE:
 // Keep the historical class name for compatibility with existing imports.
+// TaskNotesPluginの中核ロジックをまとめるクラス。
 export default class TaskNotesPlugin extends Plugin {
 	// Allow legacy modules (TaskCard, Base views) to access runtime-delegated members.
 	[key: string]: any;
@@ -66,6 +67,7 @@ export default class TaskNotesPlugin extends Plugin {
 	}
 
 	async loadSettings() {
+		// 保存データを読み込み、既定値補完を含めて利用可能な状態へ整える。
 		const loadedData = (await this.loadData()) as Partial<TaskNotesSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData || {});
 
@@ -122,6 +124,7 @@ export default class TaskNotesPlugin extends Plugin {
 	}
 
 	private async syncBasesFeatureBindings(): Promise<void> {
+		// 関連状態の差分を吸収し、整合性を保った状態へ同期する。
 		const customViewConfigKey = this.getCustomViewFeatureConfigKey();
 		const shouldRegisterCustomViews =
 			this.settings.enableBasesCustomTableView || this.settings.enableBasesTaskListCustomView;
@@ -279,6 +282,7 @@ export default class TaskNotesPlugin extends Plugin {
 	}
 
 	formatTime(...args: unknown[]): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const runtime = this.taskNotesRuntime ?? this.getTaskNotesRuntime();
 		if (runtime && typeof runtime.formatTime === "function") {
 			return runtime.formatTime(...args);

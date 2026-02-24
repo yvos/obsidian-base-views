@@ -65,6 +65,7 @@ interface BadgeIndicatorConfig {
  * Returns the element, or null if visible is false.
  */
 function createBadgeIndicator(config: BadgeIndicatorConfig): HTMLElement | null {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const { container, className, icon, tooltip, ariaLabel, onClick, visible = true } = config;
 
 	if (!visible) return null;
@@ -96,6 +97,7 @@ function updateBadgeIndicator(
 	selector: string,
 	config: Omit<BadgeIndicatorConfig, "container"> & { shouldExist: boolean }
 ): HTMLElement | null {
+	// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 	const existing = container.querySelector(selector) as HTMLElement | null;
 
 	if (!config.shouldExist) {
@@ -192,6 +194,7 @@ function updateCardCompletionState(
 	isCompleted: boolean,
 	effectiveStatus: string
 ): void {
+	// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 	const cardClasses = ["task-card"];
 	if (isCompleted) cardClasses.push("task-card--completed");
 	if (task.archived) cardClasses.push("task-card--archived");
@@ -355,6 +358,7 @@ function attachDateClickHandler(
 	plugin: TaskNotesPlugin,
 	dateType: "due" | "scheduled"
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	span.addEventListener("click", (e) => {
 		e.stopPropagation(); // Don't trigger card click
 		const currentValue = dateType === "due" ? task.due : task.scheduled;
@@ -445,6 +449,7 @@ const PROPERTY_EXTRACTORS: Record<string, (task: TaskInfo) => any> = {
  * so we need to restore them to ensure proper rendering.
  */
 function extractBasesValue(value: unknown): unknown {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (value && typeof value === "object" && "icon" in value) {
 		const v = value as Record<string, unknown>;
 
@@ -500,6 +505,7 @@ function extractBasesValue(value: unknown): unknown {
  * @returns The property value, or undefined if not found
  */
 function getPropertyValue(task: TaskInfo, propertyId: string, plugin: TaskNotesPlugin): unknown {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Check if this is a user-configured name for a mapped field
 		const mappingKey = plugin.fieldMapper.lookupMappingKey(propertyId);
@@ -887,6 +893,7 @@ function renderPropertyMetadata(
 	task: TaskInfo,
 	plugin: TaskNotesPlugin
 ): HTMLElement | null {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const value = getPropertyValue(task, propertyId, plugin);
 
 	if (!hasValidValue(value)) {
@@ -949,6 +956,7 @@ function renderUserProperty(
 	value: unknown,
 	plugin: TaskNotesPlugin
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const fieldId = propertyId.slice(5);
 	const userField = plugin.settings.userFields?.find((f) => f.id === fieldId);
 
@@ -1041,6 +1049,7 @@ function renderGenericProperty(
 	plugin?: TaskNotesPlugin
 ): void {
 	// Handle formula properties - show just the formula name, not "formula.TESTST"
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	let displayName: string;
 	if (propertyId.startsWith("formula.")) {
 		displayName = propertyId.substring(8); // Remove "formula." prefix
@@ -1077,6 +1086,7 @@ function renderPropertyValue(
 	value: unknown,
 	plugin?: TaskNotesPlugin
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	if (typeof value === "string" && plugin) {
 		// Check if string contains links and render appropriately
 		const linkServices: LinkServices = {
@@ -1159,6 +1169,7 @@ function renderPropertyValue(
  * Format user property value based on field type with improved type safety
  */
 function formatUserPropertyValue(value: unknown, userField: UserField): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (value === null || value === undefined) return "";
 
 	try {
@@ -1197,6 +1208,7 @@ function renderDueDateProperty(
 	task: TaskInfo,
 	plugin: TaskNotesPlugin
 ): void {
+	// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 	const isDueToday = isTodayTimeAware(due);
 	const isCompleted = plugin.statusManager.isCompletedStatus(task.status);
 	const hideCompletedFromOverdue = plugin.settings?.hideCompletedFromOverdue ?? true;
@@ -1247,6 +1259,7 @@ function renderScheduledDateProperty(
 	task: TaskInfo,
 	plugin: TaskNotesPlugin
 ): void {
+	// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 	const isScheduledToday = isTodayTimeAware(scheduled);
 	const isCompleted = plugin.statusManager.isCompletedStatus(task.status);
 	const hideCompletedFromOverdue = plugin.settings?.hideCompletedFromOverdue ?? true;
@@ -1326,6 +1339,7 @@ export function createTaskCard(
 	visibleProperties?: string[],
 	options: Partial<TaskCardOptions> = {}
 ): HTMLElement {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const opts = { ...DEFAULT_TASK_CARD_OPTIONS, ...options };
 	// Use fresh UTC-anchored "today" if no targetDate provided
 	// This ensures recurring tasks show correct completion status for the current day
@@ -1700,6 +1714,7 @@ export async function showTaskContextMenu(
 	plugin: TaskNotesPlugin,
 	targetDate: Date
 ) {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const file = plugin.app.vault.getAbstractFileByPath(taskPath);
 	const showFileMenuFallback = () => {
 		if (file instanceof TFile) {
@@ -1738,6 +1753,7 @@ export async function showTaskContextMenu(
 }
 
 function showFileContextMenu(event: MouseEvent, file: TFile, plugin: TaskNotesPlugin) {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const menu = new Menu();
 
 	let populated = false;
@@ -1778,6 +1794,7 @@ export function updateTaskCard(
 	visibleProperties?: string[],
 	options: Partial<TaskCardOptions> = {}
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const opts = { ...DEFAULT_TASK_CARD_OPTIONS, ...options };
 	// Use fresh UTC-anchored "today" if no targetDate provided
 	// This ensures recurring tasks show correct completion status for the current day
@@ -2249,6 +2266,7 @@ export function updateTaskCard(
 /**
  * Confirmation modal for task deletion
  */
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 class DeleteTaskConfirmationModal extends Modal {
 	private task: TaskInfo;
 	private onConfirm: () => Promise<void>;
@@ -2260,6 +2278,7 @@ class DeleteTaskConfirmationModal extends Modal {
 	}
 
 	onOpen() {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 		contentEl.empty();
 
@@ -2364,6 +2383,7 @@ export async function toggleSubtasks(
 	plugin: TaskNotesPlugin,
 	expanded: boolean
 ): Promise<void> {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	try {
 		let subtasksContainer = card.querySelector(".task-card__subtasks") as HTMLElement;
 
@@ -2500,6 +2520,7 @@ export async function toggleBlockingTasks(
 	plugin: TaskNotesPlugin,
 	shouldExpand: boolean
 ): Promise<void> {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	let container = card.querySelector(".task-card__blocking") as HTMLElement | null;
 
 	if (!shouldExpand) {
@@ -2562,6 +2583,7 @@ export async function refreshParentTaskSubtasks(
 	container: HTMLElement
 ): Promise<void> {
 	// Only process if the updated task has projects (i.e., is a subtask)
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!updatedTask || !updatedTask.projects || updatedTask.projects.length === 0) {
 		return;
 	}

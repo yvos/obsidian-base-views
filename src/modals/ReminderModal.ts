@@ -3,6 +3,7 @@ import TaskNotesPlugin from "../main";
 import { TaskInfo, Reminder } from "../types";
 import { formatDateForDisplay } from "../utils/dateUtils";
 
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class ReminderModal extends Modal {
 	private plugin: TaskNotesPlugin;
 	private task: TaskInfo;
@@ -36,6 +37,7 @@ export class ReminderModal extends Modal {
 	}
 
 	onOpen() {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass("tasknotes-plugin");
@@ -59,6 +61,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private async initializeWithFreshData(): Promise<void> {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 
 		// Fetch fresh task data to avoid working with stale data
@@ -156,6 +159,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private setupKeyboardHandlers(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const handleKeydown = async (e: KeyboardEvent) => {
 			if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !this.saveBtn.disabled) {
 				e.preventDefault();
@@ -183,6 +187,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private renderExistingReminders(container: HTMLElement): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const section = container.createDiv({ cls: "reminder-modal__section" });
 
 		const sectionHeader = section.createDiv({ cls: "reminder-modal__section-header" });
@@ -247,6 +252,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private formatReminderDisplayText(reminder: Reminder): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (reminder.type === "absolute") {
 			// For absolute reminders, show the full date and time
 			if (reminder.absoluteTime) {
@@ -268,6 +274,7 @@ export class ReminderModal extends Modal {
 
 	private renderQuickActions(section: HTMLElement): void {
 		// Only show quick actions if task has due/scheduled dates
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const hasDates = this.task.due || this.task.scheduled;
 		if (!hasDates) return;
 
@@ -324,6 +331,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private renderAddReminderForm(container: HTMLElement): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const section = container.createDiv({ cls: "reminder-modal__section" });
 
 		const sectionHeader = section.createDiv({ cls: "reminder-modal__section-header" });
@@ -474,6 +482,7 @@ export class ReminderModal extends Modal {
 		});
 		addBtn.onclick = async () => {
 			// Add loading state
+			// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 			addBtn.disabled = true;
 			addBtn.classList.add("reminder-add-btn--loading");
 
@@ -543,6 +552,7 @@ export class ReminderModal extends Modal {
 		time: string,
 		description: string
 	): Reminder | null {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const id = `rem_${Date.now()}`;
 
 		if (type === "relative") {
@@ -630,6 +640,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private formatOffset(offset: string): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const isNegative = offset.startsWith("-");
 		const cleanOffset = isNegative ? offset.substring(1) : offset;
 
@@ -688,6 +699,7 @@ export class ReminderModal extends Modal {
 
 	private refreshRemindersListOnly(): void {
 		// Only refresh the existing reminders section, not the entire modal
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const contentContainer = this.contentEl.querySelector(".reminder-modal__content");
 		if (contentContainer) {
 			// Find and remove existing reminders section
@@ -712,6 +724,7 @@ export class ReminderModal extends Modal {
 
 	private resetFormInputs(form: HTMLElement): void {
 		// Update text inputs to match instance variables
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const timeInput = form.querySelector('input[placeholder="15"]') as HTMLInputElement;
 		if (timeInput) timeInput.value = String(this.relativeOffset);
 
@@ -744,6 +757,7 @@ export class ReminderModal extends Modal {
 	}
 
 	private async save(): Promise<void> {
+		// 変更を永続化し、失敗時の扱いまで含めて保存処理を統一する。
 		this.saveBtn.disabled = true;
 		this.saveBtn.textContent = "Saving...";
 

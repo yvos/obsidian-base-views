@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import TaskNotesPlugin from "../main";
 
 // Settings tab focused on Base Views-only features.
+// BaseViewsSettingTabの中核ロジックをまとめるクラス。
 export class BaseViewsSettingTab extends PluginSettingTab {
 	constructor(app: App, private plugin: TaskNotesPlugin) {
 		super(app, plugin);
@@ -29,6 +30,7 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { containerEl } = this;
 		containerEl.empty();
 		const supportedLocales = ["en", "ja"];

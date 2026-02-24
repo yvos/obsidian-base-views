@@ -118,6 +118,7 @@ export interface BasesAPI {
  * Safely retrieves the Bases plugin API
  */
 export function getBasesAPI(app: App): BasesAPI | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Try the correct path for Bases plugin (internal plugins)
 		const internalPlugins = (app as any).internalPlugins;
@@ -169,6 +170,7 @@ export function registerBasesView(
 	registration: BasesViewRegistration
 ): boolean {
 	// Use public API (Obsidian 1.10.0+)
+	// 必要なイベントやコマンドを一括登録し、初期化の前提を整える。
 	if (typeof (plugin as any).registerBasesView === "function") {
 		try {
 			const success = (plugin as any).registerBasesView(viewId, registration);
@@ -207,6 +209,7 @@ export function registerBasesView(
  * Note: Public API doesn't provide unregister method, so we use internal API
  */
 export function unregisterBasesView(plugin: Plugin, viewId: string): boolean {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const api = getBasesAPI(plugin.app);
 	if (!api) {
 		// If Bases is not available, consider unregistration successful

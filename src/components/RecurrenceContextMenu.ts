@@ -18,6 +18,7 @@ export interface RecurrenceContextMenuOptions {
 	plugin: TaskNotesPlugin;
 }
 
+// RecurrenceContextMenuの中核ロジックをまとめるクラス。
 export class RecurrenceContextMenu {
 	private menu: ContextMenu;
 	private options: RecurrenceContextMenuOptions;
@@ -31,6 +32,7 @@ export class RecurrenceContextMenu {
 	}
 
 	private buildMenu(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const recurrenceOptions = this.getRecurrenceOptions();
 
 		// Add quick recurrence options
@@ -87,6 +89,7 @@ export class RecurrenceContextMenu {
 	}
 
 	private getRecurrenceOptions(): RecurrenceOption[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const options: RecurrenceOption[] = [];
 		const today = new Date();
 
@@ -255,6 +258,7 @@ export class RecurrenceContextMenu {
 	}
 }
 
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 class CustomRecurrenceModal extends Modal {
 	private currentValue: string;
 	private onSubmit: (result: string | null, anchor?: 'scheduled' | 'completion') => void;
@@ -280,6 +284,7 @@ class CustomRecurrenceModal extends Modal {
 	}
 
 	private parseCurrentValue(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!this.currentValue) {
 			// Set default DTSTART to today
 			this.dtstart = this.formatTodayForInput();
@@ -380,6 +385,7 @@ class CustomRecurrenceModal extends Modal {
 	}
 
 	onOpen() {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 		contentEl.empty();
 
@@ -827,6 +833,7 @@ class CustomRecurrenceModal extends Modal {
 	}
 
 	private buildRRule(monthlyType?: string, yearlyType?: string): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		let parts = [];
 
 		// Add DTSTART first (convert YYYY-MM-DD to YYYYMMDD or YYYYMMDDTHHMMSSZ format)

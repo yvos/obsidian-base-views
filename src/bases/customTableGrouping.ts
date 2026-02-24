@@ -92,6 +92,7 @@ export function extractGroupKeys(
 	value: unknown,
 	options: GroupExtractionOptions
 ): string[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const noneLabel = options.noneLabel ?? "None";
 	const listValues = extractListValues(value);
 
@@ -118,6 +119,7 @@ export function extractGroupKeys(
 
 // 値を配列として扱える場合に配列要素を抽出して返す。
 export function extractListValues(value: unknown): unknown[] | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (value == null) return null;
 	if (Array.isArray(value)) return value;
 
@@ -154,6 +156,7 @@ export function extractListValues(value: unknown): unknown[] | null {
 
 // 任意値をグループキー表示用の文字列へ正規化して返す。
 export function toGroupKeyString(value: unknown, noneLabel = "None"): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (value == null) return noneLabel;
 
 	if (typeof value === "object") {

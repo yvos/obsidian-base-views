@@ -16,6 +16,7 @@ export interface ConfirmationModalOptions {
 /**
  * Generic confirmation modal for user confirmations
  */
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class ConfirmationModal extends Modal {
 	private options: ConfirmationModalOptions;
 	private resolve: (confirmed: boolean) => void;
@@ -38,6 +39,7 @@ export class ConfirmationModal extends Modal {
 	}
 
 	onOpen() {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const { contentEl } = this;
 		contentEl.empty();
 

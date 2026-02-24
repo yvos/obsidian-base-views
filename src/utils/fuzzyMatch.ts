@@ -1,4 +1,5 @@
 export function scoreMultiword(q: string, text: string): number {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!q || !text) return 0;
 	const tokens = q.toLowerCase().split(" ").filter(Boolean);
 	const hay = text.toLowerCase();

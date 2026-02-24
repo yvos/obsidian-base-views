@@ -20,6 +20,7 @@ import {
  * Extracts frontmatter from a markdown file content using Obsidian's native parser
  */
 function extractFrontmatter(content: string): any {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!content.startsWith("---")) {
 		return {};
 	}
@@ -42,6 +43,7 @@ function extractFrontmatter(content: string): any {
  * Ensures a folder and its parent folders exist
  */
 export async function ensureFolderExists(vault: Vault, folderPath: string): Promise<void> {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		const normalizedFolderPath = normalizePath(folderPath);
 		const folders = normalizedFolderPath.split("/").filter((folder) => folder.length > 0);
@@ -77,6 +79,7 @@ export async function ensureFolderExists(vault: Vault, folderPath: string): Prom
  * Calculate duration in minutes between two ISO timestamp strings
  */
 export function calculateDuration(startTime: string, endTime: string): number {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		const start = new Date(startTime);
 		const end = new Date(endTime);
@@ -154,6 +157,7 @@ export function formatTime(minutes: number): string {
  * Parses a time string in the format HH:MM and returns hours and minutes
  */
 export function parseTime(timeStr: string): TimeInfo | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Simple fallback parser
 		const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
@@ -177,6 +181,7 @@ export function parseTime(timeStr: string): TimeInfo | null {
 export function calculateDefaultDate(
 	defaultOption: "none" | "today" | "tomorrow" | "next-week"
 ): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (defaultOption === "none") {
 		return "";
 	}
@@ -228,6 +233,7 @@ export function extractTaskInfo(
 	storeTitleInFilename?: boolean
 ): TaskInfo | null {
 	// Try to extract task info from frontmatter using native metadata cache
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const metadata = app.metadataCache.getFileCache(file);
 	const yaml = metadata?.frontmatter;
 
@@ -324,6 +330,7 @@ export function splitFrontmatterAndBody(content: string): {
  */
 export function isDueByRRule(task: TaskInfo, date: Date): boolean {
 	// If no recurrence, non-recurring task is always shown
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!task.recurrence) {
 		return true;
 	}
@@ -446,6 +453,7 @@ export function shouldUseRecurringTaskUI(task: TaskInfo): boolean {
  */
 export function generateRecurringInstances(task: TaskInfo, startDate: Date, endDate: Date): Date[] {
 	// If no recurrence, return empty array
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!task.recurrence) {
 		return [];
 	}
@@ -574,6 +582,7 @@ export function getNextUncompletedOccurrence(task: TaskInfo): Date | null {
  * Gets next occurrence for scheduled-based (fixed) recurrence
  */
 function getNextScheduledBasedOccurrence(task: TaskInfo): Date | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!task.recurrence) {
 		return null;
 	}
@@ -649,6 +658,7 @@ function getNextScheduledBasedOccurrence(task: TaskInfo): Date | null {
  * to the completion date, so we simply get the next occurrence from the current DTSTART
  */
 function getNextCompletionBasedOccurrence(task: TaskInfo): Date | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!task.recurrence || typeof task.recurrence !== 'string') {
 		return null;
 	}
@@ -782,6 +792,7 @@ export function updateToNextScheduledOccurrence(
  * Converts rrule string to human-readable text
  */
 export function getRecurrenceDisplayText(recurrence: string): string {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!recurrence) {
 		return "";
 	}
@@ -895,6 +906,7 @@ export function extractNoteInfo(
  * Validates a timeblock object against the expected schema
  */
 export function validateTimeBlock(timeblock: any): timeblock is TimeBlock {
+	// 入力を段階的に検証し、エラー条件を早期に切り分ける。
 	if (!timeblock || typeof timeblock !== "object") {
 		return false;
 	}
@@ -965,6 +977,7 @@ export function validateTimeBlock(timeblock: any): timeblock is TimeBlock {
  * Extracts and validates timeblocks from daily note frontmatter
  */
 export function extractTimeblocksFromNote(content: string, path: string): TimeBlock[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		const frontmatter = extractFrontmatter(content) as DailyNoteFrontmatter;
 
@@ -996,6 +1009,7 @@ export function extractTimeblocksFromNote(content: string, path: string): TimeBl
 export function timeblockToCalendarEvent(timeblock: TimeBlock, date: string): any {
 	// Create datetime strings that FullCalendar interprets consistently
 	// Using date-only format ensures the timeblock appears on the correct day
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const startDateTime = `${date}T${timeblock.startTime}:00`;
 	const endDateTime = `${date}T${timeblock.endTime}:00`;
 
@@ -1038,6 +1052,7 @@ export async function updateTimeblockInDailyNote(
 	newStartTime: string,
 	newEndTime: string
 ): Promise<void> {
+	// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 	const { getDailyNote, getAllDailyNotes, appHasDailyNotesPluginLoaded } = await import(
 		"obsidian-daily-notes-interface"
 	);
@@ -1096,6 +1111,7 @@ async function updateTimeblockTimes(
 	newStartTime: string,
 	newEndTime: string
 ): Promise<void> {
+	// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 	const content = await app.vault.read(dailyNote);
 	const frontmatter = extractFrontmatter(content) || {};
 
@@ -1146,6 +1162,7 @@ async function addTimeblockToDailyNote(
 	date: string,
 	timeblock: TimeBlock
 ): Promise<void> {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const { createDailyNote, getDailyNote, getAllDailyNotes } = await import(
 		"obsidian-daily-notes-interface"
 	);
@@ -1220,6 +1237,7 @@ async function updateDailyNoteFrontmatter(
  * This prevents empty projects from rendering as '+ ' in the UI
  */
 export function filterEmptyProjects(projects: string[]): string[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!projects || !Array.isArray(projects)) {
 		return [];
 	}
@@ -1251,6 +1269,7 @@ export function filterEmptyProjects(projects: string[]): string[] {
  * Follows the UTC Anchor principle for consistent date handling
  */
 export function addDTSTARTToRecurrenceRule(task: TaskInfo): string | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!task.recurrence || typeof task.recurrence !== "string") {
 		return null;
 	}
@@ -1313,6 +1332,7 @@ export function updateDTSTARTInRecurrenceRule(
 	recurrence: string,
 	dateStr: string
 ): string | null {
+	// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 	if (!recurrence || typeof recurrence !== "string") {
 		return null;
 	}
@@ -1364,6 +1384,7 @@ export function addDTSTARTToRecurrenceRuleWithDraggedTime(
 	draggedStart: Date,
 	allDay: boolean
 ): string | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!task.recurrence || typeof task.recurrence !== "string") {
 		return null;
 	}

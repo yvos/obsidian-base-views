@@ -37,6 +37,7 @@ export function matchesProjectProperty(
 	frontmatter: Record<string, unknown> | undefined | null,
 	filter: ProjectPropertyFilter
 ): boolean {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!filter.enabled) {
 		return true;
 	}

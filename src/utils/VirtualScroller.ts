@@ -35,6 +35,7 @@ export interface VirtualScrollState {
 	offsetY: number;
 }
 
+// VirtualScrollerの中核ロジックをまとめるクラス。
 export class VirtualScroller<T> {
 	private container: HTMLElement;
 	private scrollContainer: HTMLElement;
@@ -89,6 +90,7 @@ export class VirtualScroller<T> {
 
 	private setupDOM(): void {
 		// Clear existing content
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.container.empty();
 
 		// Container should just be relative, parent handles overflow
@@ -124,6 +126,7 @@ export class VirtualScroller<T> {
 	 * Renders up to 5 items, measures them, and calculates average
 	 */
 	private calculateEstimatedHeight(): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const sampleSize = Math.min(5, this.items.length);
 		const sampleHeights: number[] = [];
 
@@ -188,6 +191,7 @@ export class VirtualScroller<T> {
 	 * Binary search to find the index of the first item at or after the given scroll position
 	 */
 	private binarySearchPosition(scrollTop: number): number {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.positionCache.length === 0) return 0;
 
 		let left = 0;
@@ -240,6 +244,7 @@ export class VirtualScroller<T> {
 	 * Setup ResizeObserver to detect height changes in rendered items
 	 */
 	private setupResizeObserver(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.resizeObserver = new ResizeObserver((entries) => {
 			// Collect indices that need remeasurement
 			for (const entry of entries) {
@@ -265,6 +270,7 @@ export class VirtualScroller<T> {
 	 * Measure items and update position cache if heights changed
 	 */
 	private processPendingMeasurements(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.pendingMeasurements.size === 0) return;
 
 		let heightsChanged = false;
@@ -298,6 +304,7 @@ export class VirtualScroller<T> {
 	 * Measure all currently rendered items
 	 */
 	private measureRenderedItems(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const elements = this.contentContainer.querySelectorAll('[data-virtual-index]');
 		let heightsChanged = false;
 
@@ -336,6 +343,7 @@ export class VirtualScroller<T> {
 	};
 
 	private updateVisibleRange(): void {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		const scrollTop = this.scrollContainer.scrollTop;
 		let containerHeight = this.scrollContainer.clientHeight;
 
@@ -387,6 +395,7 @@ export class VirtualScroller<T> {
 	}
 
 	private renderVisibleItems(): void {
+		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		const { startIndex, endIndex, offsetY } = this.state;
 
 		// Track which items are currently visible
@@ -468,6 +477,7 @@ export class VirtualScroller<T> {
 	 * Update the items list and re-render
 	 */
 	updateItems(items: T[]): void {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		this.cancelScrollToAnimation();
 
 		// Save current scroll position
@@ -533,6 +543,7 @@ export class VirtualScroller<T> {
 	}
 
 	private animateScrollTo(targetTop: number, durationMs: number): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.cancelScrollToAnimation();
 
 		const maxScrollTop = Math.max(
@@ -629,6 +640,7 @@ export class VirtualScroller<T> {
 	 * Clean up event listeners
 	 */
 	destroy(): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (this.scrollRAF !== null) {
 			cancelAnimationFrame(this.scrollRAF);
 		}

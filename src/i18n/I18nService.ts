@@ -33,6 +33,7 @@ function normalizeLocale(locale: string): string {
 	return locale.toLowerCase().split("-")[0];
 }
 
+// 関連ドメインの処理を集約し、利用側へ一貫したAPIを提供する。
 export class I18nService extends Events {
 	private readonly resources: TranslationResources;
 	private readonly defaultLocale: string;
@@ -136,6 +137,7 @@ export class I18nService extends Events {
 	}
 
 	private resolveLocale(locale: string): string {
+		// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 		const normalized = normalizeLocale(locale);
 		if (this.resources[normalized]) {
 			return normalized;
@@ -154,6 +156,7 @@ export class I18nService extends Events {
 	}
 
 	private getPluralKey(baseKey: string, count: number): string {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		let suffix: string;
 		switch (count) {
 			case 0:

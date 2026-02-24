@@ -72,6 +72,7 @@ function createTaskInfoFromProperties(
 	basesItem: BasesDataItem,
 	plugin?: TaskNotesPlugin
 ): TaskInfo {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const knownProperties = new Set([
 		"title",
 		"status",
@@ -169,6 +170,7 @@ export function createTaskInfoFromBasesData(
 	basesItem: BasesDataItem,
 	plugin?: TaskNotesPlugin
 ): TaskInfo | null {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!basesItem?.path) return null;
 
 	const props = basesItem.properties || basesItem.frontmatter || {};
@@ -235,6 +237,7 @@ interface BasesSelectedProperty {
 }
 
 export function getBasesVisibleProperties(basesContainer: any): BasesSelectedProperty[] {
+	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		const controller = (basesContainer?.controller ?? basesContainer) as any;
 		const query = (basesContainer?.query ?? controller?.query) as any;
@@ -326,6 +329,7 @@ export async function renderTaskNotesInBasesView(
 	taskElementsMap?: Map<string, HTMLElement>,
 	precomputedVisibleProperties?: string[]
 ): Promise<void> {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	console.log("[TaskNotes][Bases] renderTaskNotesInBasesView ENTRY - tasks:", taskNotes.length, "basesContainer:", !!basesContainer, "precomputed props:", precomputedVisibleProperties?.length);
 	const { createTaskCard } = await import("../ui/TaskCard");
 
@@ -430,6 +434,7 @@ export async function renderGroupedTasksInBasesView(
 	pathToProps: Map<string, Record<string, any>>,
 	taskElementsMap?: Map<string, HTMLElement>
 ): Promise<void> {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const { createTaskCard } = await import("../ui/TaskCard");
 
 	// Clear container and tracking map
@@ -668,6 +673,7 @@ export function renderBasesDataItem(
 	index: number
 ): void {
 	// Use container's document for pop-out window support
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const doc = container.ownerDocument;
 	const itemEl = doc.createElement("div");
 	itemEl.className = "tn-bases-data-item";

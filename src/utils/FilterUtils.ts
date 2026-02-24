@@ -10,6 +10,7 @@ import {
 /**
  * Error types for filter operations
  */
+// FilterValidationErrorの中核ロジックをまとめるクラス。
 export class FilterValidationError extends Error {
 	constructor(
 		message: string,
@@ -21,6 +22,7 @@ export class FilterValidationError extends Error {
 	}
 }
 
+// FilterEvaluationErrorの中核ロジックをまとめるクラス。
 export class FilterEvaluationError extends Error {
 	constructor(
 		message: string,
@@ -39,6 +41,7 @@ export type TaskPropertyValue = string | string[] | number | boolean | null | un
 /**
  * Utility class for filter operations
  */
+// FilterUtilsの中核ロジックをまとめるクラス。
 export class FilterUtils {
 	private static idCounter = 0;
 
@@ -61,6 +64,7 @@ export class FilterUtils {
 	 * Validate a filter node (group or condition)
 	 */
 	static validateFilterNode(node: FilterGroup | FilterCondition, strict = true): void {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!node || typeof node !== "object") {
 			throw new FilterValidationError("Filter node must be an object");
 		}
@@ -90,6 +94,7 @@ export class FilterUtils {
 	 * Validate a filter condition
 	 */
 	private static validateCondition(condition: FilterCondition, strict = true): void {
+		// 入力を段階的に検証し、エラー条件を早期に切り分ける。
 		if (typeof condition.property !== "string") {
 			throw new FilterValidationError(
 				"Condition must have a valid property",
@@ -151,6 +156,7 @@ export class FilterUtils {
 	 * Validate a filter group
 	 */
 	private static validateGroup(group: FilterGroup, strict = true): void {
+		// 入力を段階的に検証し、エラー条件を早期に切り分ける。
 		if (!group.conjunction || !["and", "or"].includes(group.conjunction)) {
 			throw new FilterValidationError(
 				"Group must have a valid conjunction (and/or)",
@@ -189,6 +195,7 @@ export class FilterUtils {
 	 */
 	private static getValidOperatorsForProperty(property: FilterProperty): FilterOperator[] {
 		// Dynamic user-mapped properties: allow full operator set; UI constrains per-field type
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (typeof property === "string" && property.startsWith("user:")) {
 			return [
 				"is",
@@ -331,6 +338,7 @@ export class FilterUtils {
 	 * Get the value of a specific property from a task with type safety
 	 */
 	static getTaskPropertyValue(task: TaskInfo, property: FilterProperty): TaskPropertyValue {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		switch (property) {
 			case "title":
 				return task.title;
@@ -388,6 +396,7 @@ export class FilterUtils {
 		nodeId?: string,
 		property?: FilterProperty
 	): boolean {
+		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		try {
 			switch (operator) {
 				case "is":
@@ -445,6 +454,7 @@ export class FilterUtils {
 		property?: FilterProperty
 	): boolean {
 		// Handle date properties with natural language date resolution
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (
 			property &&
 			this.isDateProperty(property) &&
@@ -485,6 +495,7 @@ export class FilterUtils {
 	 * @returns true if the tag matches according to hierarchical rules or substring matching
 	 */
 	static matchesHierarchicalTag(taskTag: string, conditionTag: string): boolean {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!taskTag || !conditionTag) return false;
 
 		const taskTagLower = taskTag.toLowerCase();
@@ -549,6 +560,7 @@ export class FilterUtils {
 	 * @returns true if task tags match the conditions (all inclusions met, no exclusions found)
 	 */
 	static matchesTagConditions(taskTags: string[], conditionTags: string[]): boolean {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!Array.isArray(taskTags) || !Array.isArray(conditionTags)) return false;
 		if (conditionTags.length === 0) return true; // No conditions means match
 
@@ -598,6 +610,7 @@ export class FilterUtils {
 		conditionValue: TaskPropertyValue,
 		property?: FilterProperty
 	): boolean {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (Array.isArray(taskValue)) {
 			// Array contains should be substring-based on each item when condition is string
 			if (Array.isArray(conditionValue)) {
@@ -705,6 +718,7 @@ export class FilterUtils {
 		taskValue: TaskPropertyValue,
 		conditionValue: TaskPropertyValue
 	): boolean {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!taskValue || !conditionValue) return false;
 		try {
 			const resolvedConditionValue = resolveNaturalLanguageDate(conditionValue as string);
@@ -727,6 +741,7 @@ export class FilterUtils {
 		taskValue: TaskPropertyValue,
 		conditionValue: TaskPropertyValue
 	): boolean {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		if (!taskValue || !conditionValue) return false;
 		try {
 			const resolvedConditionValue = resolveNaturalLanguageDate(conditionValue as string);

@@ -34,6 +34,7 @@ export interface TaskSelectorWithCreateOptions {
  * - Shift+Enter to create a new task from the current query
  * - Standard Enter to select highlighted existing task
  */
+// ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	private tasks: TaskInfo[];
 	private options: TaskSelectorWithCreateOptions;
@@ -124,6 +125,7 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	};
 
 	private updateCreateFooter(query: string): void {
+		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (!this.createFooterEl) return;
 
 		if (!query) {
@@ -269,6 +271,7 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	}
 
 	private async createNewTask(): Promise<void> {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const query = this.inputEl.value.trim();
 		if (!query) {
 			new Notice(this.translate("modals.taskSelectorWithCreate.notices.emptyQuery"));
@@ -306,6 +309,7 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	}
 
 	private buildTaskDataFromParsed(parsed: ParsedTaskData): TaskCreationData {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const now = getCurrentTimestamp();
 
 		const taskData: TaskCreationData = {
@@ -382,6 +386,7 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	}
 
 	private getFilteredTasks(query: string): TaskInfo[] {
+		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const lowerQuery = query.toLowerCase();
 
 		return this.tasks

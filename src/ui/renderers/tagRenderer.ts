@@ -7,6 +7,7 @@ export interface TagServices {
 
 /** Render a single tag string as an Obsidian-like tag element */
 export function renderTag(container: HTMLElement, tag: string, services?: TagServices): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	if (!tag || typeof tag !== "string") return;
 
 	const normalized = normalizeTag(tag);
@@ -46,6 +47,7 @@ export function renderTagsValue(
 	value: unknown,
 	services?: TagServices
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	if (typeof value === "string") {
 		renderTag(container, value, services);
 		return;
@@ -71,6 +73,7 @@ export function renderContextsValue(
 	value: unknown,
 	services?: TagServices
 ): void {
+	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	if (typeof value === "string") {
 		const normalized = normalizeContext(value);
 		if (normalized) {

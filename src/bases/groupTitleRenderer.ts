@@ -8,6 +8,7 @@ function resolveDisplayText(
 	displayText: string,
 	linkServices: LinkServices
 ): string {
+	// 候補集合から条件に合う値を解決し、未検出時の分岐を吸収する。
 	const sourcePath = linkServices.sourcePath ?? "";
 	const normalizedPath = parseLinkToPath(filePath);
 	const file =
@@ -48,6 +49,7 @@ export function renderGroupTitle(
 	linkServices: LinkServices
 ): void {
 	// Check if the title looks like a wiki-link
+	// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 	const wikiLinkMatch = title.match(/^\[\[([^\]]+)\]\]$/);
 	const markdownLinkMatch = title.match(/^\[([^\]]*)\]\(([^)]+)\)$/);
 
