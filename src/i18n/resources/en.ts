@@ -1649,6 +1649,7 @@ export const en: TranslationTree = {
 							showNativeToolbar: "Show native toolbar",
 							hideNativeToolbar: "Hide native toolbar",
 							editDescription: "Edit description",
+							duplicateView: "Duplicate view",
 							fontSizeDefault: "Font size: Default",
 							fontSizeSmall: "Font size: Small",
 							fontSizeVerySmall: "Font size: Very Small",
@@ -1691,6 +1692,8 @@ export const en: TranslationTree = {
 								"Could not open native view settings.",
 							nativeViewSettingsOpenPartial:
 								"Could not open this view's native settings. The native view list is open.",
+							reorderViewsFailed: "Failed to reorder views.",
+							duplicateViewFailed: "Failed to duplicate view.",
 						},
 						singleViewHidden: {
 							description:

@@ -237,6 +237,130 @@ export class BaseViewListYamlStore {
 		}
 	}
 
+	// `.base views[]` を指定順で並び替えて保存する。
+	async reorderViews(file: TFile, orderedNames: string[]): Promise<boolean> {
+		const normalizedOrder = Array.from(
+			new Set(
+				orderedNames
+					.map((name) => this.normalizeName(name))
+					.filter((name) => name.length > 0)
+			)
+		);
+		if (normalizedOrder.length === 0) return false;
+
+		try {
+			const root = await this.readRoot(file);
+			const views = Array.isArray(root.views) ? root.views : null;
+			if (!views || views.length <= 1) return false;
+
+			const namedViews = new Map<string, unknown[]>();
+			const namedOrder: string[] = [];
+			const unnamedViews: unknown[] = [];
+
+			for (const view of views) {
+				const record = this.asRecord(view);
+				if (!record) {
+					unnamedViews.push(view);
+					continue;
+				}
+				const name = this.normalizeName(record.name);
+				if (!name) {
+					unnamedViews.push(view);
+					continue;
+				}
+				const bucket = namedViews.get(name);
+				if (bucket) {
+					bucket.push(view);
+					continue;
+				}
+				namedViews.set(name, [view]);
+				namedOrder.push(name);
+			}
+
+			if (namedOrder.length <= 1) return false;
+
+			const nextViews: unknown[] = [];
+			const consumed = new Set<string>();
+
+			for (const name of normalizedOrder) {
+				const bucket = namedViews.get(name);
+				if (!bucket || bucket.length === 0) continue;
+				nextViews.push(...bucket);
+				consumed.add(name);
+			}
+
+			for (const name of namedOrder) {
+				if (consumed.has(name)) continue;
+				const bucket = namedViews.get(name);
+				if (!bucket || bucket.length === 0) continue;
+				nextViews.push(...bucket);
+			}
+
+			nextViews.push(...unnamedViews);
+
+			const unchanged =
+				nextViews.length === views.length &&
+				nextViews.every((view, index) => views[index] === view);
+			if (unchanged) return false;
+
+			root.views = nextViews;
+			await this.writeRoot(file, root);
+			return true;
+		} catch (error) {
+			console.warn("[TaskNotes][Bases] Failed to reorder views", error);
+			return false;
+		}
+	}
+
+	// 指定ビューを複製し、nameのみ変更して直後へ挿入する。
+	async duplicateView(file: TFile, sourceViewName: string): Promise<string | null> {
+		const sourceName = this.normalizeName(sourceViewName);
+		if (!sourceName) return null;
+
+		try {
+			const root = await this.readRoot(file);
+			const views = Array.isArray(root.views) ? root.views : null;
+			if (!views || views.length === 0) return null;
+
+			let sourceIndex = -1;
+			let sourceRecord: Record<string, unknown> | null = null;
+			const existingNames = new Set<string>();
+
+			for (let index = 0; index < views.length; index += 1) {
+				const record = this.asRecord(views[index]);
+				if (!record) continue;
+				const name = this.normalizeName(record.name);
+				if (!name) continue;
+				existingNames.add(name);
+				if (sourceIndex >= 0) continue;
+				if (name === sourceName) {
+					sourceIndex = index;
+					sourceRecord = record;
+				}
+			}
+
+			if (sourceIndex < 0 || !sourceRecord) return null;
+
+			let suffix = 2;
+			let nextName = `${sourceName}_${suffix}`;
+			while (existingNames.has(nextName)) {
+				suffix += 1;
+				nextName = `${sourceName}_${suffix}`;
+			}
+
+			const duplicated = this.cloneRecord(sourceRecord);
+			duplicated.name = nextName;
+
+			views.splice(sourceIndex + 1, 0, duplicated);
+			root.views = views;
+			await this.writeRoot(file, root);
+			return nextName;
+		} catch (error) {
+			console.warn("[TaskNotes][Bases] Failed to duplicate view", error);
+			return null;
+		}
+	}
+
 	// `.base` ファイルを読み込み、mtime連動キャッシュ経由でrootを返す。
 	private async readRoot(file: TFile): Promise<Record<string, unknown>> {
 		const mtime = Number(file.stat?.mtime ?? 0);

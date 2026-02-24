@@ -139,6 +139,43 @@ function getMenuItemByTitle(menu: any, expectedTitle: string): any {
 	});
 }
 
+function createMockDataTransfer(): {
+	effectAllowed: string;
+	dropEffect: string;
+	setData: (type: string, value: string) => void;
+	getData: (type: string) => string;
+} {
+	const map = new Map<string, string>();
+	return {
+		effectAllowed: "",
+		dropEffect: "",
+		setData: (type: string, value: string) => {
+			map.set(type, value);
+		},
+		getData: (type: string) => map.get(type) ?? "",
+	};
+}
+
+function createDragEvent(
+	type: string,
+	options: {
+		clientX?: number;
+		clientY?: number;
+		dataTransfer?: ReturnType<typeof createMockDataTransfer>;
+	} = {}
+): DragEvent {
+	const evt = new MouseEvent(type, {
+		bubbles: true,
+		cancelable: true,
+		clientX: options.clientX ?? 0,
+		clientY: options.clientY ?? 0,
+	}) as DragEvent;
+	Object.defineProperty(evt, "dataTransfer", {
+		value: options.dataTransfer ?? createMockDataTransfer(),
+	});
+	return evt;
+}
+
 describe("BasesViewListSidebarService", () => {
 	let workspace: MockWorkspace;
 	let emitter: MockEventBus;
@@ -221,10 +258,14 @@ describe("BasesViewListSidebarService", () => {
 							"Open view settings menu for {viewName}",
 						"settings.integrations.basesIntegration.viewListSidebar.itemMenuButton.tooltip":
 							"View settings: {viewName}",
-						"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenFailed":
-							"Could not open native view settings.",
-						"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenPartial":
-							"Could not open this view's native settings. The native view list is open.",
+							"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenFailed":
+								"Could not open native view settings.",
+							"settings.integrations.basesIntegration.viewListSidebar.notices.nativeViewSettingsOpenPartial":
+								"Could not open this view's native settings. The native view list is open.",
+							"settings.integrations.basesIntegration.viewListSidebar.notices.reorderViewsFailed":
+								"Failed to reorder views.",
+							"settings.integrations.basesIntegration.viewListSidebar.notices.duplicateViewFailed":
+								"Failed to duplicate view.",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showLeft":
 							"Show on left",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showTop":
@@ -235,12 +276,14 @@ describe("BasesViewListSidebarService", () => {
 							"Hide description",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showNativeToolbar":
 							"Show native toolbar",
-						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideNativeToolbar":
-							"Hide native toolbar",
-						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription":
-							"Edit description",
-						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeDefault":
-							"Font size: Default",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.hideNativeToolbar":
+								"Hide native toolbar",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.editDescription":
+								"Edit description",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.duplicateView":
+								"Duplicate view",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeDefault":
+								"Font size: Default",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeSmall":
 							"Font size: Small",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeVerySmall":
@@ -1435,6 +1478,148 @@ describe("BasesViewListSidebarService", () => {
 		expect(vaultModify).toHaveBeenCalled();
 		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
 		expect(modifiedText).toContain("description: Updated desc");
+	});
+
+	it("duplicates view from row context menu and redraws list", async () => {
+		vaultCachedRead.mockResolvedValue(
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"    description: Main",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", description: "Main" },
+						{ name: "Cards", type: "cards", description: "Cards desc" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item");
+		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuInstance = getLastMenuInstance();
+		const duplicateItem = getMenuItemByTitle(menuInstance, "Duplicate view");
+		const onClickHandler = duplicateItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(vaultModify).toHaveBeenCalled();
+		expect(setup.refresh).toHaveBeenCalledTimes(1);
+		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
+		const parsed = parseYaml(modifiedText) as any;
+		expect(parsed.views.map((view: any) => view.name)).toEqual(["Table", "Table_2", "Cards"]);
+		expect(parsed.views[1].description).toBe("Main");
+	});
+
+	it("reorders views by drag and redraws list", async () => {
+		vaultCachedRead.mockResolvedValue(
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+				"  - type: list",
+				"    name: List",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+						{ name: "List", type: "list" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const rowEls = setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-row");
+		expect(rowEls.length).toBe(3);
+		const sourceRow = rowEls[0];
+		const targetRow = rowEls[1];
+		const sourceButton = sourceRow.querySelector<HTMLButtonElement>(".tn-bases-view-list__item");
+		expect(sourceButton).not.toBeNull();
+
+		sourceButton?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
+		const dataTransfer = createMockDataTransfer();
+		sourceRow.dispatchEvent(createDragEvent("dragstart", { dataTransfer }));
+		targetRow.dispatchEvent(createDragEvent("dragover", { clientY: 999, dataTransfer }));
+		targetRow.dispatchEvent(createDragEvent("drop", { clientY: 999, dataTransfer }));
+		sourceRow.dispatchEvent(createDragEvent("dragend", { dataTransfer }));
+		await flushTimersAndPromises(3);
+
+		expect(vaultModify).toHaveBeenCalled();
+		expect(setup.refresh).toHaveBeenCalledTimes(1);
+		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
+		const parsed = parseYaml(modifiedText) as any;
+		expect(parsed.views.map((view: any) => view.name)).toEqual(["Cards", "Table", "List"]);
+	});
+
+	it("does not start drag reorder from the 3-dot menu button", async () => {
+		vaultCachedRead.mockResolvedValue(
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const rowEls = setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-row");
+		expect(rowEls.length).toBe(2);
+		const sourceRow = rowEls[0];
+		const targetRow = rowEls[1];
+		const menuButton = sourceRow.querySelector<HTMLButtonElement>(".tn-bases-view-list__item-menu");
+		expect(menuButton).not.toBeNull();
+
+		menuButton?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
+		const dataTransfer = createMockDataTransfer();
+		sourceRow.dispatchEvent(createDragEvent("dragstart", { dataTransfer }));
+		targetRow.dispatchEvent(createDragEvent("dragover", { clientY: 999, dataTransfer }));
+		targetRow.dispatchEvent(createDragEvent("drop", { clientY: 999, dataTransfer }));
+		sourceRow.dispatchEvent(createDragEvent("dragend", { dataTransfer }));
+		await flushTimersAndPromises(3);
+
+		expect(vaultModify).not.toHaveBeenCalled();
 	});
 
 	it("toggles property display from view-list context menu", async () => {

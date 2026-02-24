@@ -86,6 +86,88 @@ describe("BaseViewListYamlStore", () => {
 		expect(typeof parsed.views[0].description).toBe("undefined");
 	});
 
+	it("reorders views by provided names", async () => {
+		cachedRead.mockResolvedValue(
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+				"  - type: list",
+				"    name: List",
+			].join("\n")
+		);
+
+		const updated = await store.reorderViews(file, ["Cards", "Table", "List"]);
+		expect(updated).toBe(true);
+		expect(modify).toHaveBeenCalledTimes(1);
+		const parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
+		expect(parsed.views.map((view: any) => view.name)).toEqual(["Cards", "Table", "List"]);
+	});
+
+	it("appends unspecified views to the tail when reordering", async () => {
+		cachedRead.mockResolvedValue(
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+				"  - type: list",
+				"    name: List",
+			].join("\n")
+		);
+
+		const updated = await store.reorderViews(file, ["List", "Unknown", "Table"]);
+		expect(updated).toBe(true);
+		expect(modify).toHaveBeenCalledTimes(1);
+		const parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
+		expect(parsed.views.map((view: any) => view.name)).toEqual(["List", "Table", "Cards"]);
+	});
+
+	it("does not rewrite YAML when reorder result is unchanged", async () => {
+		cachedRead.mockResolvedValue(
+			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
+		);
+
+		const updated = await store.reorderViews(file, ["Table", "Cards"]);
+		expect(updated).toBe(false);
+		expect(modify).not.toHaveBeenCalled();
+	});
+
+	it("duplicates a view by copying every property except name", async () => {
+		cachedRead.mockResolvedValue(
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"    description: Main table",
+				"    filters:",
+				"      status: open",
+				"  - type: cards",
+				"    name: Cards",
+				"  - type: list",
+				"    name: Table_2",
+			].join("\n")
+		);
+
+		const duplicatedName = await store.duplicateView(file, "Table");
+		expect(duplicatedName).toBe("Table_3");
+		expect(modify).toHaveBeenCalledTimes(1);
+
+		const parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
+		expect(parsed.views.map((view: any) => view.name)).toEqual([
+			"Table",
+			"Table_3",
+			"Cards",
+			"Table_2",
+		]);
+		expect(parsed.views[1].type).toBe("table");
+		expect(parsed.views[1].description).toBe("Main table");
+		expect(parsed.views[1].filters).toEqual({ status: "open" });
+	});
+
 	it("reads view list formula preferences", async () => {
 		cachedRead.mockResolvedValue(
 			[

@@ -34,6 +34,7 @@
 - 2026-02-18 時点で view一覧サイドバーに `.base` ファイル監視の自動再描画（modify/rename/delete、600msデバウンス、該当leafのみ更新）を追加。
 - 2026-02-18 時点で view一覧設定保持を再設計し、`temporary(leaf) > base formulas > plugin default` で解決する方式へ移行（`none` 配置、side pane別デフォルト、base単位永続化）を実装。
 - 2026-02-18 時点で view一覧コンテキストメニューの `Redraw view list` から、view一覧再構築に加えて対象 `bases` leaf 本体の `refresh()` も呼ぶように更新。
+- 2026-02-24 時点で view一覧にドラッグ&ドロップ並び替え（3点ボタン起点のドラッグ無効化）と、view行右クリックメニューの `Duplicate view`（`name` 以外のプロパティを維持した複製）を追加。
 - 2026-02-18 時点で Custom Table の表示をネイティブ寄せに調整（本文/ヘッダー/グループのフォントサイズ見直し、`Row height = Very short (22px)` 追加）し、view一覧3点ボタンを「行内右端・枠線/背景なし」へ調整。
 - 2026-02-18 時点で Custom Table の2段階グルーピング見出しを微調整し、1段目/2段目でフォントサイズ差を付与、`veryShort` 時はグループ見出し行余白も連動して縮小。
 - 2026-02-18 時点で `tasknotesCustomTable` の2段階グルーピング候補に file系7種（`file.folder` / `file.ext` / `file.size` / `file.links` / `file.backlinks` / `file.embeds` / `file.tags`）を追加。
@@ -79,7 +80,9 @@
         - 一覧領域の右クリックメニューでネイティブツールバー表示ON/OFFを切替可能
         - 一覧領域の右クリックメニューでフォントサイズ（`Default/Small/Very Small`）を切替可能
         - 一覧領域の右クリックメニューで view一覧の再描画を実行可能
-        - view行右クリックで `description` 編集 + 配置切替メニューを表示
+        - view行右クリックで `description` 編集 + `Duplicate view` + 配置切替メニューを表示
+        - view行のドラッグ&ドロップで並び替えを実行し、`.base` の `views[]` 順序を保存する
+        - 3点ボタン上ではドラッグ開始を無効化し、ネイティブ設定導線との競合を回避する
         - 各view行右端の3点ボタンでネイティブview設定UI起動を試行（成功時はネイティブUI、失敗時はNoticeのみ）
         - 3点ボタンは view行の右端内側に絶対配置し、hover/focus時のみ表示（枠線/背景なし、アイコン色のみ変化）
         - 右端ドラッグで幅変更（`140..520px`、初期値 `220px`）
@@ -335,7 +338,9 @@
 - 一覧領域の右クリックメニューで base永続 `left/top/none` をトグル保存できる。
 - 一覧領域の右クリックメニューで `description` 表示ON/OFF・top overflowを base単位で保存できる（plugin設定は既定値として維持）。
 - 一覧領域の右クリックメニュー `Redraw view list` は、view一覧DOM再構築に加えて対象 `bases` leaf の `refresh()` も実行する。
-- view行右クリックでは `description` 編集項目を追加表示する。
+- view行右クリックでは `description` 編集と `Duplicate view` を表示し、複製時は `name` だけ変更して他プロパティを保持する。
+- view行ドラッグ&ドロップでは `views[]` の順序を書き換え、成功時は `redrawViewList()` 経由で `leaf.refresh()` を含む即時反映を行う。
+- 3点ボタン起点のドラッグは無効化し、ネイティブview設定起動を優先する。
 - view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
 - ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。
 - ネイティブviewsメニューは「可視化済みかつ行要素生成済み」であることを確認してから行選択へ進む（起動直後の空メニュー誤検出を回避）。

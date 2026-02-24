@@ -178,6 +178,68 @@ button.tn-bases-view-list__item {
 	position: relative;
 	display: block;
 	min-width: 0;
+	cursor: grab;
+}
+
+.tn-bases-view-list__item-row--dragging {
+	opacity: 0.4;
+}
+
+.tn-bases-view-list__item-row--dragging,
+.tn-bases-view-list__item-row--dragging .tn-bases-view-list__item {
+	cursor: grabbing;
+}
+
+/* Keep dragged active row from using accent red to improve drop-indicator visibility. */
+.tn-bases-view-list__item-row--dragging .tn-bases-view-list__item,
+.tn-bases-view-list__item-row--dragging .tn-bases-view-list__item.is-active {
+	background: transparent;
+	border-color: transparent;
+	color: var(--text-normal);
+}
+
+.tn-bases-view-list__item-row--dragging .tn-bases-view-list__item .tn-bases-view-list__item-property,
+.tn-bases-view-list__item-row--dragging .tn-bases-view-list__item.is-active .tn-bases-view-list__item-property {
+	color: var(--text-muted);
+	opacity: 0.95;
+}
+
+.tn-bases-view-list__item-row--drop-before::before,
+.tn-bases-view-list__item-row--drop-after::after {
+	content: "";
+	position: absolute;
+	left: var(--size-2-1);
+	right: var(--size-2-1);
+	height: 3px;
+	background: var(--interactive-accent);
+	pointer-events: none;
+	z-index: 2;
+}
+
+.tn-bases-view-list__item-row--drop-before::before {
+	top: -1px;
+}
+
+.tn-bases-view-list__item-row--drop-after::after {
+	bottom: -1px;
+}
+
+.tn-bases-view-list--top .tn-bases-view-list__item-row--drop-before::before,
+.tn-bases-view-list--top .tn-bases-view-list__item-row--drop-after::after {
+	top: var(--size-2-1);
+	bottom: var(--size-2-1);
+	width: 3px;
+	height: auto;
+	left: auto;
+	right: auto;
+}
+
+.tn-bases-view-list--top .tn-bases-view-list__item-row--drop-before::before {
+	left: -1px;
+}
+
+.tn-bases-view-list--top .tn-bases-view-list__item-row--drop-after::after {
+	right: -1px;
 }
 
 .tn-bases-view-list-layout .tn-bases-view-list__item-row {

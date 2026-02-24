@@ -1,36 +1,5 @@
-// View types (active views)
-export const MINI_CALENDAR_VIEW_TYPE = "tasknotes-mini-calendar-view";
-export const TASK_LIST_VIEW_TYPE = "tasknotes-task-list-view";
-export const AGENDA_VIEW_TYPE = "tasknotes-agenda-view";
-export const POMODORO_VIEW_TYPE = "tasknotes-pomodoro-view";
-export const POMODORO_STATS_VIEW_TYPE = "tasknotes-pomodoro-stats-view";
-export const STATS_VIEW_TYPE = "tasknotes-stats-view";
-export const KANBAN_VIEW_TYPE = "tasknotes-kanban-view";
-export const SUBTASK_WIDGET_VIEW_TYPE = "tasknotes-subtask-widget-view";
-
-// Bases view IDs (for Bases plugin integration)
-export const BASES_CALENDAR_VIEW_ID = "tasknotesCalendar";
-
 // Event types
-export const EVENT_DATE_SELECTED = "date-selected";
-export const EVENT_TAB_CHANGED = "tab-changed";
-export const EVENT_DATA_CHANGED = "data-changed";
 export const EVENT_TASK_UPDATED = "task-updated";
-export const EVENT_TASK_DELETED = "task-deleted";
-export const EVENT_POMODORO_START = "pomodoro-start";
-export const EVENT_POMODORO_COMPLETE = "pomodoro-complete";
-export const EVENT_POMODORO_INTERRUPT = "pomodoro-interrupt";
-export const EVENT_POMODORO_TICK = "pomodoro-tick";
-export const EVENT_TIMEBLOCKING_TOGGLED = "timeblocking-toggled";
-export const EVENT_TIMEBLOCK_UPDATED = "timeblock-updated";
-export const EVENT_TIMEBLOCK_DELETED = "timeblock-deleted";
-export const EVENT_DATE_CHANGED = "date-changed";
-
-// Calendar colorization modes
-export type ColorizeMode = "tasks" | "notes" | "daily";
-
-// Calendar display modes
-export type CalendarDisplayMode = "month" | "agenda";
 
 // Task sorting and grouping types
 export type TaskSortKey =

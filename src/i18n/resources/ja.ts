@@ -1613,6 +1613,7 @@ export const ja: TranslationTree = {
 							showNativeToolbar: "ネイティブツールバーを表示",
 							hideNativeToolbar: "ネイティブツールバーを非表示",
 							editDescription: "descriptionの編集",
+							duplicateView: "ビューを複製",
 							fontSizeDefault: "フォントサイズ: Default",
 							fontSizeSmall: "フォントサイズ: Small",
 							fontSizeVerySmall: "フォントサイズ: Very Small",
@@ -1655,6 +1656,8 @@ export const ja: TranslationTree = {
 								"ネイティブのビュー設定を開けませんでした。",
 							nativeViewSettingsOpenPartial:
 								"このビューのネイティブ設定を開けませんでした。ネイティブのビュー一覧は開いています。",
+							reorderViewsFailed: "ビューの並び替えに失敗しました。",
+							duplicateViewFailed: "ビューの複製に失敗しました。",
 						},
 						singleViewHidden: {
 							description:

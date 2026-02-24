@@ -126,6 +126,9 @@ interface PreferredWidthResult {
 	source: "file" | "default";
 }
 
+// ドラッグ並び替え時の挿入位置を表す。
+type ReorderDropPosition = "before" | "after";
+
 const CSS_LAYOUT = "tn-bases-view-list-layout";
 const CSS_LAYOUT_TOP = "tn-bases-view-list-top-layout";
 const CSS_LIST = "tn-bases-view-list";
@@ -137,6 +140,9 @@ const CSS_BODY = "tn-bases-view-list-body";
 const CSS_ITEM = "tn-bases-view-list__item";
 const CSS_ITEM_ROW = "tn-bases-view-list__item-row";
 const CSS_ITEM_ACTIVE = "is-active";
+const CSS_ITEM_DRAGGING = "tn-bases-view-list__item-row--dragging";
+const CSS_ITEM_DROP_BEFORE = "tn-bases-view-list__item-row--drop-before";
+const CSS_ITEM_DROP_AFTER = "tn-bases-view-list__item-row--drop-after";
 const CSS_ITEM_WITH_PROPERTY = "tn-bases-view-list__item--with-property";
 const CSS_ITEM_ICON = "tn-bases-view-list__item-icon";
 const CSS_ITEM_CONTENT = "tn-bases-view-list__item-content";
@@ -1363,6 +1369,12 @@ export class BasesViewListSidebarService {
 				void this.editViewDescription(leaf, entry);
 			});
 		});
+		menu.addItem((item) => {
+			item.setTitle(this.getContextMenuDuplicateViewLabel());
+			item.onClick(() => {
+				void this.duplicateViewEntry(leaf, entry);
+			});
+		});
 		menu.addSeparator();
 		this.addViewListContextMenuItems(menu, leaf, currentPlacement, prefs, forceTopScroll);
 		menu.showAtMouseEvent(event);
@@ -1760,6 +1772,13 @@ export class BasesViewListSidebarService {
 		);
 	}
 
+	private getContextMenuDuplicateViewLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.duplicateView",
+			"Duplicate view"
+		);
+	}
+
 	private getContextMenuShowPropertyLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.showProperty",
@@ -1896,6 +1915,20 @@ export class BasesViewListSidebarService {
 		);
 	}
 
+	private getReorderViewsFailedNotice(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.notices.reorderViewsFailed",
+			"Failed to reorder views."
+		);
+	}
+
+	private getDuplicateViewFailedNotice(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.notices.duplicateViewFailed",
+			"Failed to duplicate view."
+		);
+	}
+
 	private getOpenButtonAriaLabel(): string {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.openButton.ariaLabel",
@@ -1989,6 +2022,66 @@ export class BasesViewListSidebarService {
 		this.scheduleRefresh(0);
 	}
 
+	private buildReorderedViewNames(
+		currentOrder: string[],
+		sourceViewName: string,
+		targetViewName: string,
+		position: ReorderDropPosition
+	): string[] | null {
+		const normalizedOrder = currentOrder
+			.map((name) => name.trim())
+			.filter((name) => name.length > 0);
+		if (normalizedOrder.length <= 1) return null;
+		if (sourceViewName === targetViewName) return null;
+
+		const sourceIndex = normalizedOrder.indexOf(sourceViewName);
+		const targetIndex = normalizedOrder.indexOf(targetViewName);
+		if (sourceIndex < 0 || targetIndex < 0) return null;
+
+		const nextOrder = normalizedOrder.slice();
+		nextOrder.splice(sourceIndex, 1);
+		const targetIndexAfterRemoval = nextOrder.indexOf(targetViewName);
+		if (targetIndexAfterRemoval < 0) return null;
+		const insertIndex =
+			position === "after" ? targetIndexAfterRemoval + 1 : targetIndexAfterRemoval;
+		nextOrder.splice(insertIndex, 0, sourceViewName);
+
+		const unchanged = nextOrder.every((name, index) => normalizedOrder[index] === name);
+		if (unchanged) return null;
+		return nextOrder;
+	}
+
+	private async reorderViewsFromDrag(leaf: WorkspaceLeaf, orderedNames: string[]): Promise<void> {
+		if (orderedNames.length <= 1) return;
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+
+		try {
+			const updated = await this.yamlStore.reorderViews(file, orderedNames);
+			if (!updated) return;
+			await this.redrawViewList(leaf);
+		} catch (error) {
+			console.warn("[TaskNotes][Bases] Failed to reorder views from drag", error);
+			new Notice(this.getReorderViewsFailedNotice());
+		}
+	}
+
+	private async duplicateViewEntry(leaf: WorkspaceLeaf, entry: ViewEntry): Promise<void> {
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+		try {
+			const duplicatedName = await this.yamlStore.duplicateView(file, entry.name);
+			if (!duplicatedName) {
+				new Notice(this.getDuplicateViewFailedNotice());
+				return;
+			}
+			await this.redrawViewList(leaf);
+		} catch (error) {
+			console.warn("[TaskNotes][Bases] Failed to duplicate view from menu", error);
+			new Notice(this.getDuplicateViewFailedNotice());
+		}
+	}
+
 	private translateWithFallback(key: string, fallback: string): string {
 		const text = this.plugin.i18n.translate(key as any);
 		if (typeof text !== "string" || text === key) {
@@ -2062,10 +2155,50 @@ export class BasesViewListSidebarService {
 		const shouldShowProperty = showProperty;
 		const shouldShowIcons = this.shouldShowIcons();
 		const shouldForcePropertyLineInTop = state.placement === "top" && shouldShowProperty;
+		const isTopPlacement = state.placement === "top";
+		const rowElements: HTMLElement[] = [];
+		let armedDragViewName: string | null = null;
+		let draggingViewName: string | null = null;
+
+		const clearDropIndicators = (): void => {
+			for (const row of rowElements) {
+				row.classList.remove(CSS_ITEM_DROP_BEFORE, CSS_ITEM_DROP_AFTER);
+			}
+		};
+
+		const clearDragState = (): void => {
+			armedDragViewName = null;
+			draggingViewName = null;
+			clearDropIndicators();
+			for (const row of rowElements) {
+				row.classList.remove(CSS_ITEM_DRAGGING);
+			}
+		};
+
+		const setDropIndicator = (rowEl: HTMLElement, position: ReorderDropPosition): void => {
+			clearDropIndicators();
+			rowEl.classList.add(position === "before" ? CSS_ITEM_DROP_BEFORE : CSS_ITEM_DROP_AFTER);
+		};
+
+		const resolveDropPosition = (rowEl: HTMLElement, evt: DragEvent): ReorderDropPosition => {
+			const rect = rowEl.getBoundingClientRect();
+			if (isTopPlacement) {
+				return evt.clientX < rect.left + rect.width / 2 ? "before" : "after";
+			}
+			return evt.clientY < rect.top + rect.height / 2 ? "before" : "after";
+		};
+
+		const getRenderedOrder = (): string[] =>
+			rowElements
+				.map((row) => row.getAttribute("data-view-name")?.trim() ?? "")
+				.filter((name) => name.length > 0);
+
 		for (const entry of viewEntries) {
 			const rowEl = doc.createElement("div");
 			rowEl.className = CSS_ITEM_ROW;
 			rowEl.setAttribute("data-view-name", entry.name);
+			rowEl.draggable = true;
+			rowElements.push(rowEl);
 
 			const button = doc.createElement("button");
 			button.type = "button";
@@ -2110,18 +2243,26 @@ export class BasesViewListSidebarService {
 				button.classList.add(CSS_ITEM_ACTIVE);
 			}
 
+			button.addEventListener("pointerdown", (evt) => {
+				if (evt.button !== 0) return;
+				armedDragViewName = entry.name;
+			});
+
 			button.addEventListener("click", () => {
+				armedDragViewName = null;
 				void this.switchView(leaf, entry.name);
 			});
 
 			const itemMenuButtonEl = doc.createElement("button");
 			itemMenuButtonEl.type = "button";
+			itemMenuButtonEl.draggable = false;
 			itemMenuButtonEl.className = CSS_ITEM_MENU_BUTTON;
 			itemMenuButtonEl.setAttribute("aria-label", this.getItemMenuButtonAriaLabel(entry.name));
 			// Keep only Obsidian-style tooltip path via aria-label to avoid duplicated native title tooltip.
 			setIcon(itemMenuButtonEl, "more-horizontal");
 			let pointerActivatedAt = 0;
 			itemMenuButtonEl.addEventListener("pointerdown", (evt) => {
+				armedDragViewName = null;
 				if (evt.button !== 0) return;
 				pointerActivatedAt = Date.now();
 				evt.preventDefault();
@@ -2146,6 +2287,67 @@ export class BasesViewListSidebarService {
 				evt.preventDefault();
 				evt.stopPropagation();
 				void this.openNativeViewSettingsFromItemMenu(leaf, entry, itemMenuButtonEl);
+			});
+
+			rowEl.addEventListener("dragstart", (evt) => {
+				if (armedDragViewName !== entry.name) {
+					evt.preventDefault();
+					return;
+				}
+				draggingViewName = entry.name;
+				for (const row of rowElements) {
+					row.classList.remove(CSS_ITEM_DRAGGING);
+				}
+				rowEl.classList.add(CSS_ITEM_DRAGGING);
+				if (evt.dataTransfer) {
+					evt.dataTransfer.effectAllowed = "move";
+					try {
+						evt.dataTransfer.setData("text/plain", entry.name);
+					} catch {
+						// Ignore environments where setData is unavailable.
+					}
+				}
+			});
+
+			rowEl.addEventListener("dragover", (evt) => {
+				if (!draggingViewName) return;
+				evt.preventDefault();
+				if (draggingViewName === entry.name) {
+					clearDropIndicators();
+					return;
+				}
+				const position = resolveDropPosition(rowEl, evt);
+				setDropIndicator(rowEl, position);
+				if (evt.dataTransfer) {
+					evt.dataTransfer.dropEffect = "move";
+				}
+			});
+
+			rowEl.addEventListener("dragleave", () => {
+				rowEl.classList.remove(CSS_ITEM_DROP_BEFORE, CSS_ITEM_DROP_AFTER);
+			});
+
+			rowEl.addEventListener("drop", (evt) => {
+				if (!draggingViewName) return;
+				evt.preventDefault();
+				evt.stopPropagation();
+
+				const sourceFromData = evt.dataTransfer?.getData("text/plain")?.trim() ?? "";
+				const sourceViewName = draggingViewName || sourceFromData;
+				const position = resolveDropPosition(rowEl, evt);
+				const reorderedNames = this.buildReorderedViewNames(
+					getRenderedOrder(),
+					sourceViewName,
+					entry.name,
+					position
+				);
+				clearDragState();
+				if (!reorderedNames) return;
+				void this.reorderViewsFromDrag(leaf, reorderedNames);
+			});
+
+			rowEl.addEventListener("dragend", () => {
+				clearDragState();
 			});
 
 			rowEl.appendChild(button);
