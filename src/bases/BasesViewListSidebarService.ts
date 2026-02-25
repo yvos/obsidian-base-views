@@ -9,8 +9,6 @@ import {
 	ViewListFormulaPlacement,
 } from "./BaseViewListYamlStore";
 
-// ネイティブdropdownとの併用モードを表す。
-type DropdownMode = "list-only" | "combined";
 // view一覧の配置設定値を表す。
 type LayoutPlacement = "left" | "top" | "none";
 // 実際に描画可能な配置（left/top）を表す。
@@ -157,8 +155,6 @@ const CSS_CLOSE = "tn-bases-view-list__close";
 const CSS_CLOSE_SMALL = "tn-bases-view-list__close--small";
 const CSS_RESIZER = "tn-bases-view-list__resizer";
 const CSS_OPEN_TRIGGER = "tn-bases-view-list-open-trigger";
-const CSS_MODE_LIST_ONLY = "tn-bases-view-list-mode-list-only";
-const CSS_MODE_COMBINED = "tn-bases-view-list-mode-combined";
 const CSS_NATIVE_TOOLBAR_HIDDEN = "tn-bases-native-toolbar-hidden";
 const CSS_FONT_M = "tn-bases-view-list-font-m";
 const CSS_FONT_S = "tn-bases-view-list-font-s";
@@ -229,7 +225,6 @@ export class BasesViewListSidebarService {
 		this.cleanupAllResizeObservers();
 		this.cleanupAllLeaves();
 		this.cleanupAllToolbarOpenTriggers();
-		this.clearModeClassesFromAllBaseLeaves();
 		this.clearNativeToolbarClassesFromAllBaseLeaves();
 		this.temporaryPlacements.clear();
 		this.yamlStore.clearCache();
@@ -280,7 +275,7 @@ export class BasesViewListSidebarService {
 					this.cleanupAllLeaves();
 					this.cleanupAllToolbarOpenTriggers();
 					this.cleanupAllResizeObservers();
-					this.clearModeClassesFromAllBaseLeaves();
+					this.clearNativeToolbarClassesFromAllBaseLeaves();
 					return;
 				}
 				this.scheduleRefresh(50);
@@ -431,7 +426,6 @@ export class BasesViewListSidebarService {
 			this.cleanupAllLeaves();
 			this.cleanupAllToolbarOpenTriggers();
 			this.cleanupAllResizeObservers();
-			this.clearModeClassesFromAllBaseLeaves();
 			this.clearNativeToolbarClassesFromAllBaseLeaves();
 			return;
 		}
@@ -498,8 +492,7 @@ export class BasesViewListSidebarService {
 		if (viewEntries.length <= 1) {
 			this.cleanupLeaf(leaf);
 			this.removeToolbarOpenTrigger(leaf);
-			this.removeModeClassesForLeaf(leaf, basesViewEl);
-			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
+			this.removeNativeToolbarClassesForLeaf(leaf);
 			return;
 		}
 
@@ -511,7 +504,6 @@ export class BasesViewListSidebarService {
 			} else {
 				this.removeToolbarOpenTrigger(leaf);
 			}
-			if (rootEl) this.applyDropdownModeClasses(rootEl);
 			if (rootEl) this.applyNativeToolbarVisibility(rootEl, false);
 			return;
 		}
@@ -532,8 +524,7 @@ export class BasesViewListSidebarService {
 		}
 		if (!state) return;
 
-		this.applyDropdownModeClasses(state.rootEl);
-		this.applyNativeToolbarVisibility(state.rootEl, !this.shouldShowNativeToolbar());
+		this.applyNativeToolbarVisibility(state.rootEl, this.shouldHideNativeToolbar());
 		this.applyFontSizeClasses(state.listEl);
 		this.applyIconVisibilityClasses(state.listEl);
 		this.applyTopOverflowClasses(
@@ -602,8 +593,8 @@ export class BasesViewListSidebarService {
 		return this.plugin.settings.basesViewListShowIcons !== false;
 	}
 
-	private shouldShowNativeToolbar(): boolean {
-		return this.plugin.settings.basesViewListShowNativeToolbar !== false;
+	private shouldHideNativeToolbar(): boolean {
+		return this.plugin.settings.basesViewListHideNativeToolbar === true;
 	}
 
 	private getDefaultTopOverflowMode(): TopOverflowMode {
@@ -1236,44 +1227,6 @@ export class BasesViewListSidebarService {
 		}
 	}
 
-	private applyDropdownModeClasses(rootEl: HTMLElement): void {
-		const mode: DropdownMode = this.plugin.settings.basesViewListDropdownMode;
-		rootEl.classList.toggle(CSS_MODE_LIST_ONLY, mode === "list-only");
-		rootEl.classList.toggle(CSS_MODE_COMBINED, mode === "combined");
-	}
-
-	private removeDropdownModeClasses(rootEl: HTMLElement): void {
-		rootEl.classList.remove(CSS_MODE_LIST_ONLY);
-		rootEl.classList.remove(CSS_MODE_COMBINED);
-	}
-
-	private removeModeClassesForLeaf(leaf: WorkspaceLeaf, basesViewEl: HTMLElement): void {
-		const containerEl = this.getLeafView(leaf)?.containerEl;
-		if (containerEl) {
-			this.removeDropdownModeClasses(containerEl);
-			this.applyNativeToolbarVisibility(containerEl, false);
-		}
-		const { rootEl } = this.resolveLayoutContext(basesViewEl);
-		if (rootEl) {
-			this.removeDropdownModeClasses(rootEl);
-			this.applyNativeToolbarVisibility(rootEl, false);
-		}
-	}
-
-	private clearModeClassesFromAllBaseLeaves(): void {
-		const leaves = this.plugin.app.workspace.getLeavesOfType("bases") as WorkspaceLeaf[];
-		for (const leaf of leaves) {
-			const containerEl = this.getLeafView(leaf)?.containerEl;
-			if (containerEl) {
-				this.removeDropdownModeClasses(containerEl);
-			}
-			const basesViewEl = this.findBasesViewEl(leaf);
-			if (!basesViewEl) continue;
-			const { rootEl } = this.resolveLayoutContext(basesViewEl);
-			if (rootEl) this.removeDropdownModeClasses(rootEl);
-		}
-	}
-
 	private applyNativeToolbarVisibility(rootEl: HTMLElement, hidden: boolean): void {
 		rootEl.classList.toggle(CSS_NATIVE_TOOLBAR_HIDDEN, hidden);
 	}
@@ -1408,12 +1361,12 @@ export class BasesViewListSidebarService {
 			return;
 		}
 		const hiddenByClass = rootEl.classList.contains(CSS_NATIVE_TOOLBAR_HIDDEN);
-		const hiddenBySetting = this.plugin.settings.basesViewListShowNativeToolbar === false;
+		const hiddenBySetting = this.plugin.settings.basesViewListHideNativeToolbar === true;
 		if (hiddenByClass || hiddenBySetting) {
 			// Permanent ON fallback per user request: when opening from 3-dot, keep native toolbar shown.
 			rootEl.classList.remove(CSS_NATIVE_TOOLBAR_HIDDEN);
 			if (hiddenBySetting) {
-				this.plugin.settings.basesViewListShowNativeToolbar = true;
+				this.plugin.settings.basesViewListHideNativeToolbar = false;
 				void this.persistSettings();
 			}
 			await this.waitForNativeToolbarLayoutReady(rootEl);
@@ -1449,7 +1402,7 @@ export class BasesViewListSidebarService {
 		if (!file) return;
 
 		const showProperty = prefs.showProperty;
-		const showNativeToolbar = this.shouldShowNativeToolbar();
+		const hideNativeToolbar = this.shouldHideNativeToolbar();
 		const fontSize = this.getFontSize();
 
 		menu.addItem((item) => {
@@ -1465,12 +1418,12 @@ export class BasesViewListSidebarService {
 
 		menu.addItem((item) => {
 			item.setTitle(
-				showNativeToolbar
-					? this.getContextMenuHideNativeToolbarLabel()
-					: this.getContextMenuShowNativeToolbarLabel()
+				hideNativeToolbar
+					? this.getContextMenuShowNativeToolbarLabel()
+					: this.getContextMenuHideNativeToolbarLabel()
 			);
 			item.onClick(() => {
-				void this.setShowNativeToolbar(!showNativeToolbar);
+				void this.setHideNativeToolbar(!hideNativeToolbar);
 			});
 		});
 
@@ -1678,11 +1631,6 @@ export class BasesViewListSidebarService {
 
 		if (this.resizeDrag?.leaf === leaf) {
 			this.detachResizeDragListeners();
-		}
-
-		this.removeDropdownModeClasses(state.rootEl);
-		if (state.layoutEl.parentElement instanceof HTMLElement) {
-			this.removeDropdownModeClasses(state.layoutEl.parentElement);
 		}
 
 		if (state.placement === "left") {
@@ -2816,9 +2764,9 @@ export class BasesViewListSidebarService {
 		return icon;
 	}
 
-	private async setShowNativeToolbar(show: boolean): Promise<void> {
-		if (this.plugin.settings.basesViewListShowNativeToolbar === show) return;
-		this.plugin.settings.basesViewListShowNativeToolbar = show;
+	private async setHideNativeToolbar(hide: boolean): Promise<void> {
+		if (this.plugin.settings.basesViewListHideNativeToolbar === hide) return;
+		this.plugin.settings.basesViewListHideNativeToolbar = hide;
 		this.scheduleRefresh(0);
 		await this.persistSettings();
 	}

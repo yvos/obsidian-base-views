@@ -88,6 +88,19 @@ export default class TaskNotesPlugin extends Plugin {
 			}
 		}
 
+		// Migration: old "show native toolbar" flag -> new "hide native toolbar" flag.
+		const loadedSettings = loadedData as
+			| (Partial<TaskNotesSettings> & {
+					basesViewListShowNativeToolbar?: boolean;
+			  })
+			| null;
+		if (
+			typeof loadedSettings?.basesViewListHideNativeToolbar !== "boolean" &&
+			typeof loadedSettings?.basesViewListShowNativeToolbar === "boolean"
+		) {
+			this.settings.basesViewListHideNativeToolbar = !loadedSettings.basesViewListShowNativeToolbar;
+		}
+
 		this.settings.uiLanguage = this.normalizeUILanguage(this.settings.uiLanguage);
 		this.settings.enableBases = this.hasAnyFeatureEnabled();
 	}

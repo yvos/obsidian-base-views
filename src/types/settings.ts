@@ -209,13 +209,12 @@ export interface TaskNotesSettings {
 	customTableShowIconicIconInNameColumn: boolean; // Show Iconic file icon before file name in Custom Table view
 	customTableShowGroupingPropertyName: boolean; // Show grouped headers as "property: value" in Custom Table view
 	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
-	basesViewListDropdownMode: "list-only" | "combined"; // Hide/show native Bases view dropdown
 	basesViewListCollapsed: boolean; // Deprecated: global collapse state (kept for migration compatibility)
 	basesViewListPlacement: "left" | "top" | "none"; // Default placement for main pane
 	basesViewListSidePanePlacement: "left" | "top" | "none"; // Default placement for side pane
 	basesViewListFontSize: "m" | "s" | "xs"; // Font size for view rows
 	basesViewListShowProperty: boolean; // Show description text under view name
-	basesViewListShowNativeToolbar: boolean; // Show/hide native Bases header+toolbar when list is visible
+	basesViewListHideNativeToolbar: boolean; // Hide/show native Bases header+toolbar when list is visible
 	basesViewListShowIcons: boolean; // Show/hide view icons in the list
 	basesViewListTopOverflowMode: "wrap" | "scroll"; // Top layout overflow behavior
 	basesViewListNarrowBehavior: "none" | "top" | "hide"; // Behavior when pane width is narrow

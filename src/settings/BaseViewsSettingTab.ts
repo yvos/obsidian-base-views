@@ -146,42 +146,6 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(
 				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.name",
-					"Native view dropdown mode"
-				)
-			)
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.description",
-					"Choose whether to hide the native Bases view dropdown."
-				)
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOption(
-						"list-only",
-						this.t(
-							"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.options.listOnly",
-							"List only"
-						)
-					)
-					.addOption(
-						"combined",
-						this.t(
-							"settings.integrations.basesIntegration.viewListSidebar.dropdownMode.options.combined",
-							"Combined"
-						)
-					)
-					.setValue(this.plugin.settings.basesViewListDropdownMode)
-					.onChange(async (value) => {
-						this.plugin.settings.basesViewListDropdownMode = value as "list-only" | "combined";
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName(
-				this.t(
 					"settings.integrations.basesIntegration.viewListSidebar.placement.name",
 					"View list placement"
 				)
@@ -332,28 +296,6 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(
 				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.nativeToolbar.name",
-					"Show native Bases toolbar"
-				)
-			)
-			.setDesc(
-				this.t(
-					"settings.integrations.basesIntegration.viewListSidebar.nativeToolbar.description",
-					"Show native Bases header and toolbar while the view list is visible."
-				)
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.basesViewListShowNativeToolbar)
-					.onChange(async (value) => {
-						this.plugin.settings.basesViewListShowNativeToolbar = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName(
-				this.t(
 					"settings.integrations.basesIntegration.viewListSidebar.showIcons.name",
 					"Show view icons"
 				)
@@ -474,6 +416,28 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 							this.plugin.settings.basesViewListNarrowThresholdPx = parsed;
 							await this.plugin.saveSettings();
 						}
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(
+				this.t(
+					"settings.integrations.basesIntegration.viewListSidebar.hideNativeToolbar.name",
+					"Hide native Bases toolbar"
+				)
+			)
+			.setDesc(
+				this.t(
+					"settings.integrations.basesIntegration.viewListSidebar.hideNativeToolbar.description",
+					"Hide native Bases header and toolbar while the view list is visible."
+				)
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.basesViewListHideNativeToolbar)
+					.onChange(async (value) => {
+						this.plugin.settings.basesViewListHideNativeToolbar = value;
+						await this.plugin.saveSettings();
 					})
 			);
 

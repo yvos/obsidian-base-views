@@ -1564,15 +1564,6 @@ export const en: TranslationTree = {
 							description:
 								"Show a clickable list of views to the left of base content (or above it on narrow layouts).",
 						},
-						dropdownMode: {
-							name: "Native view dropdown mode",
-							description:
-								"Choose whether to hide the native Bases view dropdown when the sidebar list is enabled.",
-							options: {
-								listOnly: "List only (hide dropdown)",
-								combined: "Combined (list + dropdown)",
-							},
-						},
 						placement: {
 							name: "View list placement",
 							description:
@@ -1602,10 +1593,10 @@ export const en: TranslationTree = {
 								xs: "Very Small",
 							},
 						},
-						nativeToolbar: {
-							name: "Show native Bases toolbar",
+						hideNativeToolbar: {
+							name: "Hide native Bases toolbar",
 							description:
-								"Show native Bases header and toolbar while the view list is visible.",
+								"Hide native Bases header and toolbar while the view list is visible. Due to implementation limits, opening a view settings menu clears this hidden state.",
 						},
 						showIcons: {
 							name: "Show view icons",

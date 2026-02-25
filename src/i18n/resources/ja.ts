@@ -1531,15 +1531,6 @@ export const ja: TranslationTree = {
 							description:
 								"Baseコンテンツの左側（狭いレイアウトでは上部）に、クリック可能なビュー一覧を表示します。",
 						},
-						dropdownMode: {
-							name: "ネイティブビューのプルダウン表示",
-							description:
-								"一覧サイドバー有効時に、Bases標準のビュー選択プルダウンを表示するかを選択します。",
-							options: {
-								listOnly: "一覧のみ（プルダウンを隠す）",
-								combined: "併用（一覧 + プルダウン）",
-							},
-						},
 						placement: {
 							name: "ビュー一覧の配置",
 							description: "baseファイル内でビュー一覧をどこに表示するかを選択します。",
@@ -1568,10 +1559,10 @@ export const ja: TranslationTree = {
 								xs: "Very Small",
 							},
 						},
-						nativeToolbar: {
-							name: "ネイティブBasesツールバーを表示",
+						hideNativeToolbar: {
+							name: "ネイティブBasesツールバーを隠す",
 							description:
-								"view一覧が表示されている間、Bases標準のヘッダーとツールバーを表示します。",
+								"view一覧が表示されている間、Bases標準のヘッダーとツールバーを非表示にします。ただし、仕様上の制限により、viewの設定メニューを開くと、非表示は解除されます。",
 						},
 						showIcons: {
 							name: "view一覧のアイコンを表示",

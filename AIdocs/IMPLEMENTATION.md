@@ -55,12 +55,11 @@
     - 切替: `selectView(viewName)` を優先し、失敗時は `openLinkText(file#view)` へフォールバック
     - 設定:
         - `enableBasesViewListSidebar`（ON/OFF）
-        - `basesViewListDropdownMode`（`list-only` / `combined`）
         - `basesViewListPlacement`（`left` / `top` / `none`、通常ペイン既定）
         - `basesViewListSidePanePlacement`（`left` / `top` / `none`、サイドペイン既定）
         - `basesViewListFontSize`（`m` / `s` / `xs`）
         - `basesViewListShowProperty`（view `description` 行表示ON/OFFの既定）
-        - `basesViewListShowNativeToolbar`（一覧表示中の `.bases-header` / `.bases-toolbar` 表示）
+        - `basesViewListHideNativeToolbar`（一覧表示中の `.bases-header` / `.bases-toolbar` 非表示）
         - `basesViewListShowIcons`（viewアイコン表示ON/OFF）
         - `basesViewListTopOverflowMode`（`wrap` / `scroll` の既定）
         - `basesViewListNarrowBehavior`（`none` / `top` / `hide`）
@@ -253,8 +252,6 @@
     - `group-header` / `group-summary` / `row` の3種を保持
 - `enableBasesViewListSidebar: boolean`
     - `.base` 表示時の view一覧サイドバー機能の有効/無効
-- `basesViewListDropdownMode: "list-only" | "combined"`
-    - view一覧とネイティブdropdownの併用可否
 - `basesViewListCollapsed: boolean`
     - 互換目的の旧設定（挙動決定には不使用）
 - `basesViewListPlacement: "left" | "top" | "none"`
@@ -263,8 +260,8 @@
     - サイドペインにおける view一覧配置の既定値
 - `basesViewListFontSize: "m" | "s" | "xs"`
     - view一覧の文字サイズ
-- `basesViewListShowNativeToolbar: boolean`
-    - 一覧表示中にネイティブBasesツールバーを表示するか
+- `basesViewListHideNativeToolbar: boolean`
+    - 一覧表示中にネイティブBasesツールバーを非表示にするか
 - `basesViewListShowProperty: boolean`
     - 各viewの2行目 `description` 表示ON/OFFの既定値
 - `basesViewListShowIcons: boolean`
@@ -318,8 +315,6 @@
 - セル描画は `Value.renderTo(...)` を試し、失敗時は文字列描画にフォールバック。
 - TaskListView と違い、Custom Table View は TaskNotes 判定で絞り込まず Base の全エントリを表示。
 - view一覧サイドバーは `.bases-view` をレイアウトラッパーで包み、一覧クリック時に view 切替を実行する。
-- `list-only` 設定時は `.bases-toolbar-views-menu` を非表示にし、`combined` では表示維持する。
-- `basesViewListDropdownMode` は views dropdown の表示制御のみで、`.bases-header` / `.bases-toolbar` の表示制御は `basesViewListShowNativeToolbar` が担当する。
 - view数が1件以下のbaseでは、一覧サイドバーとtoolbarの開くトグルを注入しない。
 - 一覧表示の最終決定は `temporary(leaf) > base formulas > plugin default` の順で行う。
 - `none` 時はヘッダーのcloseで temporary `none` を維持し、toolbar左端のopenボタンで通常ペイン=`left`、サイドペイン=`top` を一時適用する。
@@ -344,7 +339,7 @@
 - view行右端3点ボタンでは、ネイティブview設定UIを開く処理を優先し、失敗時はNoticeのみ表示する（既存コンテキストメニューへの自動フォールバックは行わない）。
 - ネイティブview設定起動ロジックは内部DOM依存のため `src/integrations/bases/nativeViewSettingsBridge.ts` に隔離している。
 - ネイティブviewsメニューは「可視化済みかつ行要素生成済み」であることを確認してから行選択へ進む（起動直後の空メニュー誤検出を回避）。
-- 3点ボタンから設定起動時にネイティブツールバーが非表示なら、`basesViewListShowNativeToolbar` をONへ更新し、そのまま表示を維持する（手動でOFFに戻せる）。
+- 3点ボタンから設定起動時にネイティブツールバーが非表示なら、`basesViewListHideNativeToolbar` をOFFへ更新し、そのまま表示を維持する（手動でONに戻せる）。
 - ネイティブツールバー再表示直後は `.bases-toolbar-views-menu` のサイズ/座標（左上原点回避）とrectの連続安定2フレームを確認してからbridgeを実行する。
 - 3点ボタンは `title` 属性を付けず、`aria-label` 経路のツールチップのみを使用して重複表示を避ける。
 - top配置時は `wrap/scroll` 設定を適用し、狭幅 + `narrowBehavior=top` ではユーザー配置が `left/top` のどちらでも `scroll` を強制する。

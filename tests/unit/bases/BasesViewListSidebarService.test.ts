@@ -204,13 +204,12 @@ describe("BasesViewListSidebarService", () => {
 			settings: {
 				enableBases: true,
 				enableBasesViewListSidebar: true,
-				basesViewListDropdownMode: "list-only",
 				basesViewListCollapsed: false,
 				basesViewListPlacement: "left",
 				basesViewListSidePanePlacement: "top",
 				basesViewListFontSize: "m",
 				basesViewListShowProperty: true,
-				basesViewListShowNativeToolbar: true,
+				basesViewListHideNativeToolbar: false,
 				basesViewListShowIcons: true,
 				basesViewListTopOverflowMode: "wrap",
 				basesViewListNarrowBehavior: "top",
@@ -852,7 +851,7 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("hides sidebar and toolbar trigger when only one view exists", async () => {
-		plugin.settings.basesViewListShowNativeToolbar = false;
+		plugin.settings.basesViewListHideNativeToolbar = true;
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -903,7 +902,7 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("opens top layout from trigger when side pane placement is none", async () => {
-		plugin.settings.basesViewListShowNativeToolbar = false;
+		plugin.settings.basesViewListHideNativeToolbar = true;
 		plugin.settings.basesViewListPlacement = "left";
 		plugin.settings.basesViewListSidePanePlacement = "none";
 		const setup = createBaseLeaf({
@@ -1066,8 +1065,8 @@ describe("BasesViewListSidebarService", () => {
 		expect(listEl?.classList.contains("tn-bases-view-list-font-xs")).toBe(true);
 	});
 
-	it("hides native toolbar while list is visible when toolbar setting is off", async () => {
-		plugin.settings.basesViewListShowNativeToolbar = false;
+	it("hides native toolbar while list is visible when hide-toolbar setting is on", async () => {
+		plugin.settings.basesViewListHideNativeToolbar = true;
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1730,7 +1729,7 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("toggles native toolbar display from view-list context menu", async () => {
-		plugin.settings.basesViewListShowNativeToolbar = true;
+		plugin.settings.basesViewListHideNativeToolbar = false;
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1759,7 +1758,7 @@ describe("BasesViewListSidebarService", () => {
 		await onClickHandler();
 		await flushTimersAndPromises(3);
 
-		expect(plugin.settings.basesViewListShowNativeToolbar).toBe(false);
+		expect(plugin.settings.basesViewListHideNativeToolbar).toBe(true);
 		expect(plugin.saveSettings).toHaveBeenCalled();
 		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(true);
 	});

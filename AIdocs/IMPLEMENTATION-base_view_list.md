@@ -48,7 +48,7 @@
     - `top`: ユーザー配置が `left/top` のどちらでも一時的にtop表示（1行横スクロール強制）
     - `hide`: 狭幅中のみ一時非表示（閾値復帰で自動再表示）
   - ネイティブツールバー表示:
-    - 設定 `basesViewListShowNativeToolbar` で `.bases-header` と `.bases-toolbar` の表示/非表示を切替
+    - 設定 `basesViewListHideNativeToolbar` で `.bases-header` と `.bases-toolbar` の表示/非表示を切替（`true` で非表示）
     - 一覧が非表示状態（`none` / 単一view / 狭幅hide / 機能OFF）では復帰導線維持のため強制表示
 - view行表示:
   - view名は常に左寄せ
@@ -77,7 +77,7 @@
   - `basesViewListSidePanePlacement`（global default: side pane）
   - `basesViewListFontSize`（global）
   - `basesViewListShowProperty`（global default, `description` 表示ON/OFF）
-  - `basesViewListShowNativeToolbar`（global）
+  - `basesViewListHideNativeToolbar`（global）
   - `basesViewListShowIcons`（global）
   - `basesViewListTopOverflowMode`（global default）
   - `basesViewListNarrowBehavior`（global）
@@ -129,7 +129,6 @@
 - 開閉状態は global保存せず、leaf temporary state + base formula + plugin default の解決で扱う。
 - `basesViewListCollapsed` は互換目的で設定データに残るが、挙動決定には使用しない。
 - 幅は `.base` 側 `formulas.viewListSize` のみを永続値として使用する。
-- `basesViewListDropdownMode` は views dropdown の表示制御のみを担当し、ネイティブツールバー全体の表示制御は `basesViewListShowNativeToolbar` が担当する。
 - `formulas.viewListSize` は Bases 側仕様に合わせて文字列値で保存し、利用時に数値へ変換する。
 - 自動幅短縮は推定幅ロジックであり、テーマ/フォント差で厳密値ではない。
 - top配置の挿入先は `bases-header` 優先で、DOM差異時は toolbar直前へフォールバックする。
@@ -161,7 +160,7 @@
   - 複数base間移動で base永続設定（position/description表示/overflow）と幅が独立して維持されること
   - 配置切替（設定/右クリック）の即時反映
   - top配置の挿入位置（`bases-header` 直下）
-  - list-only / combined の既存挙動維持
+  - 「ネイティブBasesツールバーを隠す」設定（ON=非表示、OFF=表示）の反映確認
 
 ## 7. 実装ファイル
 - `src/bases/BasesViewListSidebarService.ts`

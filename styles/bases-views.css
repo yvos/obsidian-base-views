@@ -25,10 +25,6 @@
    Base View List Sidebar
    ================================================ */
 
-.tn-bases-view-list-mode-list-only .bases-toolbar-views-menu {
-	display: none;
-}
-
 .tn-bases-native-toolbar-hidden .bases-header,
 .tn-bases-native-toolbar-hidden .bases-toolbar {
 	display: none;
