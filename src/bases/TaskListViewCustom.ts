@@ -150,8 +150,6 @@ export class TaskListViewCustom extends BasesViewBase {
 				typeof subGroupValue === "string" && subGroupValue.trim().length > 0
 					? subGroupValue.trim()
 					: null;
-			// Custom Task List does not expose the legacy search box toggle.
-			this.enableSearch = false;
 			const unnestValue = this.config.get('unnestMultiValueGroup');
 			this.unnestMultiValueGroup = this.parseBooleanOption(unnestValue, true);
 			// Mark config as successfully loaded
@@ -161,7 +159,6 @@ export class TaskListViewCustom extends BasesViewBase {
 			console.warn('[TaskListViewCustom] Failed to parse config:', e);
 			this.subGroupPropertyId = null;
 			this.unnestMultiValueGroup = true;
-			this.enableSearch = false;
 		}
 	}
 
@@ -213,11 +210,6 @@ export class TaskListViewCustom extends BasesViewBase {
 		// Always refresh options so config changes reflect without view switching.
 		if (this.config) {
 			this.readViewOptions();
-		}
-
-		// Now that config is loaded, setup search (idempotent: will only create once)
-		if (this.rootElement) {
-			this.setupSearch(this.rootElement);
 		}
 
 		try {
@@ -332,18 +324,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	private async renderFlat(taskNotes: TaskInfo[]): Promise<void> {
 		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		const visibleProperties = this.getVisibleProperties();
-
-		// Apply search filter
-		const filteredTasks = this.applySearchFilter(taskNotes);
-
-		// Show "no results" if search returned empty but we had tasks
-		if (this.isSearchWithNoResults(filteredTasks, taskNotes.length)) {
-			this.clearAllTaskElements();
-			if (this.itemsContainer) {
-				this.renderSearchNoResults(this.itemsContainer);
-			}
-			return;
-		}
+		const filteredTasks = taskNotes;
 
 		// Note: taskNotes are already sorted by Bases according to sort configuration
 		// No manual sorting needed - Bases provides pre-sorted data
@@ -762,18 +743,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	private async renderGroupedBySubProperty(taskNotes: TaskInfo[]): Promise<void> {
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const visibleProperties = this.getVisibleProperties();
-
-		// Apply search filter
-		const filteredTasks = this.applySearchFilter(taskNotes);
-
-		// Show "no results" if search returned empty but we had tasks
-		if (this.isSearchWithNoResults(filteredTasks, taskNotes.length)) {
-			this.clearAllTaskElements();
-			if (this.itemsContainer) {
-				this.renderSearchNoResults(this.itemsContainer);
-			}
-			return;
-		}
+		const filteredTasks = taskNotes;
 
 		const targetDate = createUTCDateFromLocalCalendarDate(new Date());
 		this.currentTargetDate = targetDate;
@@ -857,18 +827,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	private async renderGrouped(taskNotes: TaskInfo[]): Promise<void> {
 		// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 		const visibleProperties = this.getVisibleProperties();
-
-		// Apply search filter
-		const filteredTasks = this.applySearchFilter(taskNotes);
-
-		// Show "no results" if search returned empty but we had tasks
-		if (this.isSearchWithNoResults(filteredTasks, taskNotes.length)) {
-			this.clearAllTaskElements();
-			if (this.itemsContainer) {
-				this.renderSearchNoResults(this.itemsContainer);
-			}
-			return;
-		}
+		const filteredTasks = taskNotes;
 
 		const targetDate = createUTCDateFromLocalCalendarDate(new Date());
 		this.currentTargetDate = targetDate;
@@ -1508,7 +1467,7 @@ export class TaskListViewCustom extends BasesViewBase {
 			dataItems,
 			taskNotesRuntime ?? this.plugin
 		);
-		const filteredTasks = this.applySearchFilter(taskNotes);
+		const filteredTasks = taskNotes;
 
 		// Build flattened list of items using shared method
 		const primaryGroups = this.resolvePrimaryGroups(filteredTasks);
