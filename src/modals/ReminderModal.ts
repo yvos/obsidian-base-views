@@ -603,42 +603,6 @@ export class ReminderModal extends Modal {
 		}
 	}
 
-	private formatReminderTiming(reminder: Reminder): string {
-		if (reminder.type === "absolute") {
-			return "Absolute reminder";
-		} else {
-			const anchor = reminder.relatedTo === "due" ? "due date" : "scheduled date";
-			const offset = this.formatOffset(reminder.offset || "");
-			return `${offset} ${anchor}`;
-		}
-	}
-
-	private formatReminderDetails(reminder: Reminder): string {
-		if (reminder.type === "absolute") {
-			return `At ${formatDateForDisplay(reminder.absoluteTime || "")}`;
-		} else {
-			const anchor = reminder.relatedTo === "due" ? this.task.due : this.task.scheduled;
-			if (!anchor) {
-				return `Relative to ${reminder.relatedTo} date (not set)`;
-			}
-			return `When ${reminder.relatedTo} date is ${formatDateForDisplay(anchor)}`;
-		}
-	}
-
-	private formatReminderDescription(reminder: Reminder): string {
-		if (reminder.description) {
-			return reminder.description;
-		}
-
-		if (reminder.type === "absolute") {
-			return `At ${formatDateForDisplay(reminder.absoluteTime || "")}`;
-		} else {
-			const anchor = reminder.relatedTo === "due" ? "due date" : "scheduled date";
-			const offset = this.formatOffset(reminder.offset || "");
-			return `${offset} ${anchor}`;
-		}
-	}
-
 	private formatOffset(offset: string): string {
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const isNegative = offset.startsWith("-");
@@ -691,10 +655,6 @@ export class ReminderModal extends Modal {
 				reminder: removedReminder,
 			});
 		}
-	}
-
-	private async refresh(): Promise<void> {
-		await this.initializeWithFreshData();
 	}
 
 	private refreshRemindersListOnly(): void {

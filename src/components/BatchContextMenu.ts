@@ -383,8 +383,4 @@ export class BatchContextMenu {
 	public show(event: MouseEvent): void {
 		this.menu.showAtMouseEvent(event);
 	}
-
-	public showAtPosition(x: number, y: number): void {
-		this.menu.showAtPosition({ x, y });
-	}
 }

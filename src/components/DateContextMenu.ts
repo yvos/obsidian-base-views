@@ -234,13 +234,6 @@ export class DateContextMenu {
 		this.menu.show(event);
 	}
 
-	public showAtElement(element: HTMLElement): void {
-		this.menu.showAtPosition({
-			x: element.getBoundingClientRect().left,
-			y: element.getBoundingClientRect().bottom + 4,
-		});
-	}
-
 	private showDateTimePicker(): void {
 		// Use app from options or plugin
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。

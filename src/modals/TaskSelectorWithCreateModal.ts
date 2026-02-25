@@ -1,4 +1,4 @@
-import { App, SuggestModal, TFile, Notice, setIcon, debounce } from "obsidian";
+import { App, SuggestModal, Notice, setIcon } from "obsidian";
 import { TaskInfo, TaskCreationData } from "../types";
 import { combineDateAndTime, getCurrentTimestamp } from "../utils/dateUtils";
 import { filterEmptyProjects, sanitizeTags } from "../utils/helpers";
@@ -42,7 +42,6 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	private translate: (key: TranslationKey, variables?: Record<string, any>) => string;
 	private nlParser: NaturalLanguageParser;
 	private createFooterEl: HTMLElement | null = null;
-	private currentQuery: string = "";
 	private resultHandled: boolean = false;
 
 	constructor(
@@ -120,7 +119,6 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 
 	private handleInputChange = (): void => {
 		const query = this.inputEl.value.trim();
-		this.currentQuery = query;
 		this.updateCreateFooter(query);
 	};
 
@@ -381,7 +379,6 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 	}
 
 	getSuggestions(query: string): TaskInfo[] {
-		this.currentQuery = query;
 		return this.getFilteredTasks(query);
 	}
 
@@ -480,24 +477,6 @@ export class TaskSelectorWithCreateModal extends SuggestModal<TaskInfo> {
 
 		super.onClose();
 	}
-}
-
-/**
- * Helper function to open the task selector with create modal
- */
-export async function openTaskSelectorWithCreate(
-	plugin: TaskNotesPlugin,
-	options?: Partial<TaskSelectorWithCreateOptions>
-): Promise<TaskSelectorWithCreateResult> {
-	const tasks = await plugin.cacheManager.getAllTasks();
-
-	return new Promise((resolve) => {
-		const modal = new TaskSelectorWithCreateModal(plugin.app, plugin, tasks, {
-			onResult: resolve,
-			...options,
-		});
-		modal.open();
-	});
 }
 
 /**

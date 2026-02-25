@@ -1506,13 +1506,4 @@ export class TaskContextMenu {
 		}
 		this.menu.showAtMouseEvent(event);
 	}
-
-	public showAtElement(element: HTMLElement): void {
-		// Store the document reference from the element to support pop-out windows
-		this.targetDoc = element.ownerDocument;
-		this.menu.showAtPosition({
-			x: element.getBoundingClientRect().left,
-			y: element.getBoundingClientRect().bottom + 4,
-		});
-	}
 }

@@ -315,13 +315,6 @@ export class FieldMapper {
 	}
 
 	/**
-	 * Update mapping configuration
-	 */
-	updateMapping(newMapping: FieldMapping): void {
-		this.mapping = newMapping;
-	}
-
-	/**
 	 * Get current mapping
 	 */
 	getMapping(): FieldMapping {
@@ -386,21 +379,6 @@ export class FieldMapper {
 	}
 
 	/**
-	 * Convert an array of internal field names to their user-configured property names.
-	 *
-	 * @param internalFields - Array of FieldMapping keys
-	 * @returns Array of user-configured property names
-	 *
-	 * @example
-	 * // User has { status: "task-status", due: "deadline" }
-	 * toUserFields(["status", "due", "priority"])
-	 * // Returns: ["task-status", "deadline", "priority"]
-	 */
-	toUserFields(internalFields: (keyof FieldMapping)[]): string[] {
-		return internalFields.map((field) => this.mapping[field]);
-	}
-
-	/**
 	 * @deprecated Use lookupMappingKey() instead for clarity about what is returned
 	 * Convert user's property name back to internal field name
 	 * This is the reverse of toUserField()
@@ -409,29 +387,4 @@ export class FieldMapper {
 		return this.lookupMappingKey(userPropertyName);
 	}
 
-	/**
-	 * Validate that a mapping has no empty field names
-	 */
-	static validateMapping(mapping: FieldMapping): { valid: boolean; errors: string[] } {
-		const errors: string[] = [];
-
-		const fields = Object.keys(mapping) as (keyof FieldMapping)[];
-		for (const field of fields) {
-			if (!mapping[field] || mapping[field].trim() === "") {
-				errors.push(`Field "${field}" cannot be empty`);
-			}
-		}
-
-		// Check for duplicate values
-		const values = Object.values(mapping);
-		const uniqueValues = new Set(values);
-		if (values.length !== uniqueValues.size) {
-			errors.push("Field mappings must have unique property names");
-		}
-
-		return {
-			valid: errors.length === 0,
-			errors,
-		};
-	}
 }

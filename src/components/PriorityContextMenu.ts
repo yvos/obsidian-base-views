@@ -63,20 +63,6 @@ export class PriorityContextMenu {
 		}, 10);
 	}
 
-	public showAtElement(element: HTMLElement): void {
-		// Store the document reference from the element to support pop-out windows
-		this.targetDoc = element.ownerDocument;
-		this.menu.showAtPosition({
-			x: element.getBoundingClientRect().left,
-			y: element.getBoundingClientRect().bottom + 4,
-		});
-
-		// Apply color styling after menu is shown
-		setTimeout(() => {
-			this.applyColorStyling();
-		}, 10);
-	}
-
 	private applyColorStyling(): void {
 		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		const menuEl = this.targetDoc.querySelector(".menu");
