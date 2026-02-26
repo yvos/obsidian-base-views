@@ -139,15 +139,9 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 // Unregister Base Views custom views.
 export function unregisterBasesViews(plugin: TaskNotesPlugin): void {
 	try {
-		// Current views
+		// Unregister only views that BaseViews itself registers.
 		unregisterBasesView(plugin, "tasknotesTaskListCustom");
 		unregisterBasesView(plugin, "tasknotesCustomTable");
-
-		// Legacy IDs cleanup from former TaskNotes-fork behavior
-		unregisterBasesView(plugin, "tasknotesTaskList");
-		unregisterBasesView(plugin, "tasknotesKanban");
-		unregisterBasesView(plugin, "tasknotesCalendar");
-		unregisterBasesView(plugin, "tasknotesMiniCalendar");
 	} catch (error) {
 		console.error("[BaseViews][Bases] Error during view unregistration:", error);
 	}

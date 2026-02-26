@@ -3,9 +3,9 @@ module.exports = {
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/tests'],
   testMatch: [
-    '<rootDir>/tests/unit/services/i18nService.test.ts',
-    '<rootDir>/tests/unit/bases/**/*.test.ts',
-    '<rootDir>/tests/unit/integrations/**/*.test.ts'
+    '**/tests/unit/services/i18nService.test.ts',
+    '**/tests/unit/bases/**/*.test.ts',
+    '**/tests/unit/integrations/**/*.test.ts'
   ],
   transform: {
     '^.+\\.ts$': 'ts-jest',
