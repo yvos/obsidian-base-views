@@ -8,14 +8,12 @@ const CSS_FILES = [
 
     // Components used by current Base Views features
     'styles/task-card-bem.css',
-    'styles/search-box.css',
     'styles/modal-bem.css',
     'styles/reminder-modal.css',
     'styles/task-selector-with-create-modal.css',
 
     // Views used by current Base Views features
     'styles/task-list-view.css',
-    'styles/agenda-view.css',
     'styles/bases-views.css'
 ];
 
@@ -34,14 +32,12 @@ const MAIN_CSS_TEMPLATE = `/* Base Views Plugin Styles */
 
    Components:
    - styles/task-card-bem.css
-   - styles/search-box.css
    - styles/modal-bem.css
    - styles/reminder-modal.css
    - styles/task-selector-with-create-modal.css
 
    Views:
    - styles/task-list-view.css
-   - styles/agenda-view.css
    - styles/bases-views.css
    
    Run 'npm run build-css' to regenerate this file.

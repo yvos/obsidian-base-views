@@ -466,17 +466,6 @@ export interface Reminder {
 	description?: string; // The notification message (optional, can be auto-generated)
 }
 
-// Timeblocking types
-export interface TimeBlock {
-	id: string; // Unique identifier for the timeblock
-	title: string; // Display title for the timeblock
-	startTime: string; // Start time in HH:MM format
-	endTime: string; // End time in HH:MM format
-	attachments?: string[]; // Optional array of markdown links to tasks/notes
-	color?: string; // Optional hex color for display
-	description?: string; // Optional description
-}
-
 // Note types
 export interface NoteInfo {
 	title: string;
@@ -526,14 +515,6 @@ export interface NoteFrontmatter {
 	dateCreated: string;
 	dateModified?: string;
 	tags?: string[];
-}
-
-export interface DailyNoteFrontmatter {
-	title?: string;
-	dateCreated?: string;
-	dateModified?: string;
-	tags?: string[];
-	timeblocks?: TimeBlock[]; // Timeblocks for the day
 }
 
 // Event handler types
