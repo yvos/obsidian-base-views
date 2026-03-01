@@ -1,4 +1,4 @@
-import { Menu, Notice, TFile, parseYaml } from "obsidian";
+﻿import { Menu, Notice, TFile, parseYaml } from "obsidian";
 import { BasesViewListSidebarService } from "../../../src/bases/BasesViewListSidebarService";
 import { openNativeViewSettingsAtAnchor } from "../../../src/integrations/bases/nativeViewSettingsBridge";
 import { showTextInputModal } from "../../../src/modals/TextInputModal";
@@ -47,9 +47,12 @@ class MockWorkspace extends MockEventBus {
 	});
 }
 
-const flushTimersAndPromises = async (rounds = 2): Promise<void> => {
+const flushTimersAndPromises = async (rounds = 24): Promise<void> => {
 	for (let i = 0; i < rounds; i += 1) {
 		jest.runOnlyPendingTimers();
+		await Promise.resolve();
+	}
+	for (let i = 0; i < 8; i += 1) {
 		await Promise.resolve();
 	}
 };
@@ -76,6 +79,20 @@ function createBaseLeaf(options: {
 
 	const viewsMenuEl = document.createElement("div");
 	viewsMenuEl.className = "bases-toolbar-item bases-toolbar-views-menu";
+	// waitForNativeToolbarLayoutReady が即座に安定判定できるよう、非ゼロ矩形を返す。
+	Object.defineProperty(viewsMenuEl, "getBoundingClientRect", {
+		value: () => ({
+			left: 24,
+			top: 16,
+			width: 180,
+			height: 28,
+			right: 204,
+			bottom: 44,
+			x: 24,
+			y: 16,
+			toJSON: () => ({}),
+		}),
+	});
 	const buttonEl = document.createElement("div");
 	buttonEl.className = "text-icon-button";
 	const labelEl = document.createElement("span");
@@ -135,7 +152,8 @@ function getMenuItemByTitle(menu: any, expectedTitle: string): any {
 	return menu.items.find((item: any) => {
 		const title = item?.setTitle?.mock?.calls?.[0]?.[0];
 		if (typeof title !== "string") return false;
-		return title.replace(/^✓\s*/, "") === expectedTitle;
+		const normalized = title.replace(/^[^A-Za-z0-9(]+/, "").trim();
+		return normalized === expectedTitle || title.trim() === expectedTitle;
 	});
 }
 
@@ -176,6 +194,18 @@ function createDragEvent(
 	return evt;
 }
 
+function triggerResizePointerDown(resizerEl: HTMLElement | null, clientX: number): void {
+	if (!resizerEl) return;
+	const evt = new MouseEvent("pointerdown", {
+		bubbles: true,
+		cancelable: true,
+		clientX,
+	}) as unknown as PointerEvent;
+	const handler = (resizerEl as HTMLElement & { onpointerdown?: (event: PointerEvent) => void })
+		.onpointerdown;
+	handler?.(evt);
+}
+
 describe("BasesViewListSidebarService", () => {
 	let workspace: MockWorkspace;
 	let emitter: MockEventBus;
@@ -188,6 +218,8 @@ describe("BasesViewListSidebarService", () => {
 
 	beforeEach(() => {
 		jest.useFakeTimers();
+		(window as unknown as { setTimeout: typeof setTimeout }).setTimeout = setTimeout;
+		(window as unknown as { clearTimeout: typeof clearTimeout }).clearTimeout = clearTimeout;
 		workspace = new MockWorkspace();
 		emitter = new MockEventBus();
 		vault = new MockEventBus();
@@ -355,11 +387,11 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const items = Array.from(setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item"));
+		const items = Array.from(setup.rootEl.querySelectorAll<HTMLButtonElement>(".bv-bases-view-list__item"));
 		expect(items).toHaveLength(2);
 
 		const icons = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
+			setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-icon")
 		).map((el) => el.getAttribute("data-icon"));
 		expect(icons).toEqual(["table", "table-cells-merge"]);
 	});
@@ -382,7 +414,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const icons = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
+			setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-icon")
 		).map((el) => el.getAttribute("data-icon"));
 		expect(icons[0]).toBe("list");
 		expect(icons[1]).toBe("list");
@@ -392,7 +424,10 @@ describe("BasesViewListSidebarService", () => {
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
-					views: [{ name: "Invalid", type: "invalidIconType" }],
+					views: [
+						{ name: "Invalid", type: "invalidIconType" },
+						{ name: "List", type: "list" },
+					],
 				},
 			},
 		});
@@ -403,9 +438,9 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const icons = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-icon")
+			setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-icon")
 		).map((el) => el.getAttribute("data-icon"));
-		expect(icons).toEqual(["list"]);
+		expect(icons).toEqual(["list", "list"]);
 	});
 
 	it("auto-refreshes only matching base leaf on base file modify (debounced)", async () => {
@@ -414,7 +449,10 @@ describe("BasesViewListSidebarService", () => {
 			currentViewName: "Table",
 			controller: {
 				query: {
-					views: [{ name: "Table", type: "table" }],
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
 				},
 			},
 		});
@@ -423,7 +461,10 @@ describe("BasesViewListSidebarService", () => {
 			currentViewName: "Cards",
 			controller: {
 				query: {
-					views: [{ name: "Cards", type: "cards" }],
+					views: [
+						{ name: "Cards", type: "cards" },
+						{ name: "List", type: "list" },
+					],
 				},
 			},
 		});
@@ -433,23 +474,26 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		(setupA.controller as any).query.views = [{ name: "Renamed Alpha View", type: "table" }];
+		(setupA.controller as any).query.views = [
+			{ name: "Renamed Alpha View", type: "table" },
+			{ name: "Cards", type: "cards" },
+		];
 		vault.trigger("modify", setupA.leaf.view.file);
 
 		jest.advanceTimersByTime(599);
 		await Promise.resolve();
 		expect(
-			setupA.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item-name")?.textContent?.trim()
+			setupA.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item-name")?.textContent?.trim()
 		).toBe("Table");
 
 		jest.advanceTimersByTime(1);
 		await flushTimersAndPromises();
 
 		expect(
-			setupA.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item-name")?.textContent?.trim()
+			setupA.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item-name")?.textContent?.trim()
 		).toBe("Renamed Alpha View");
 		expect(
-			setupB.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item-name")?.textContent?.trim()
+			setupB.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item-name")?.textContent?.trim()
 		).toBe("Cards");
 	});
 
@@ -572,6 +616,27 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("falls back to YAML parsing when controller views are unavailable", async () => {
+		const getViewEntriesFromControllerSpy = jest
+			.spyOn(service as any, "getViewEntriesFromController")
+			.mockReturnValue([]);
+		const getViewEntriesFromYamlFileSpy = jest
+			.spyOn(service as any, "getViewEntriesFromYamlFile")
+			.mockResolvedValue([
+				{
+					name: "Table",
+					type: "table",
+					icon: "table",
+					propertyText: "Alpha",
+					descriptionText: "Alpha",
+				},
+				{
+					name: "Cards",
+					type: "cards",
+					icon: "layout-grid",
+					propertyText: "Beta",
+					descriptionText: "Beta",
+				},
+			]);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {},
@@ -589,14 +654,16 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const names = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-name")
+			setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-name")
 		).map((el) => el.textContent?.trim());
 		expect(names).toEqual(["Table", "Cards"]);
 
 		const props = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-property")
+			setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-property")
 		).map((el) => el.textContent?.trim());
 		expect(props).toEqual(["Alpha", "Beta"]);
+		expect(getViewEntriesFromControllerSpy).toHaveBeenCalled();
+		expect(getViewEntriesFromYamlFileSpy).toHaveBeenCalledWith(setup.leaf.view.file);
 	});
 
 	it("switches view via selectView when available", async () => {
@@ -618,7 +685,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[1];
+		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(".bv-bases-view-list__item")[1];
 		targetButton.click();
 		await flushTimersAndPromises();
 
@@ -647,7 +714,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[1];
+		const targetButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(".bv-bases-view-list__item")[1];
 		targetButton.click();
 		await flushTimersAndPromises();
 
@@ -676,8 +743,8 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const itemButtons = setup.rootEl.querySelectorAll(".tn-bases-view-list__item");
-		const itemMenuButtons = setup.rootEl.querySelectorAll(".tn-bases-view-list__item-menu");
+		const itemButtons = setup.rootEl.querySelectorAll(".bv-bases-view-list__item");
+		const itemMenuButtons = setup.rootEl.querySelectorAll(".bv-bases-view-list__item-menu");
 		expect(itemButtons).toHaveLength(2);
 		expect(itemMenuButtons).toHaveLength(2);
 	});
@@ -702,7 +769,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const itemMenuButton = setup.rootEl.querySelectorAll<HTMLButtonElement>(
-			".tn-bases-view-list__item-menu"
+			".bv-bases-view-list__item-menu"
 		)[1];
 		itemMenuButton.click();
 		await flushTimersAndPromises();
@@ -712,7 +779,7 @@ describe("BasesViewListSidebarService", () => {
 				rootEl: setup.rootEl,
 				viewName: "custom view",
 				anchorEl: itemMenuButton,
-				nativeToolbarHiddenClass: "tn-bases-native-toolbar-hidden",
+				nativeToolbarHiddenClass: "bv-bases-native-toolbar-hidden",
 			})
 		);
 		expect(selectView).not.toHaveBeenCalled();
@@ -742,7 +809,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list__item-menu"
+			".bv-bases-view-list__item-menu"
 		);
 		itemMenuButton?.click();
 		await flushTimersAndPromises();
@@ -775,7 +842,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list__item-menu"
+			".bv-bases-view-list__item-menu"
 		);
 		itemMenuButton?.click();
 		await flushTimersAndPromises();
@@ -804,7 +871,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list__item-menu"
+			".bv-bases-view-list__item-menu"
 		);
 		itemMenuButton?.dispatchEvent(
 			new KeyboardEvent("keydown", {
@@ -836,7 +903,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const itemMenuButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list__item-menu"
+			".bv-bases-view-list__item-menu"
 		);
 		itemMenuButton?.dispatchEvent(
 			new KeyboardEvent("keydown", {
@@ -865,10 +932,10 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).toBeNull();
-		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(false);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).toBeNull();
+		expect(setup.rootEl.classList.contains("bv-bases-native-toolbar-hidden")).toBe(false);
 	});
 
 	it("shows toolbar open trigger when placement is none and opens list on click", async () => {
@@ -889,16 +956,16 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
 		const triggerButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list-open-trigger button"
+			".bv-bases-view-list-open-trigger button"
 		);
 		expect(triggerButton).not.toBeNull();
 
 		triggerButton?.click();
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
 	});
 
 	it("opens top layout from trigger when side pane placement is none", async () => {
@@ -922,17 +989,17 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(false);
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
+		expect(setup.rootEl.classList.contains("bv-bases-native-toolbar-hidden")).toBe(false);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).not.toBeNull();
 
 		const triggerButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list-open-trigger button"
+			".bv-bases-view-list-open-trigger button"
 		);
 		triggerButton?.click();
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).not.toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
 	});
 
 	it("returns to none state after closing list opened from trigger", async () => {
@@ -954,18 +1021,18 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const triggerButton = setup.rootEl.querySelector<HTMLButtonElement>(
-			".tn-bases-view-list-open-trigger button"
+			".bv-bases-view-list-open-trigger button"
 		);
 		triggerButton?.click();
 		await flushTimersAndPromises(3);
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
 
-		const closeButton = setup.rootEl.querySelector<HTMLButtonElement>(".tn-bases-view-list__close");
+		const closeButton = setup.rootEl.querySelector<HTMLButtonElement>(".bv-bases-view-list__close");
 		closeButton?.click();
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).not.toBeNull();
 	});
 
 	it("renders left header title as base filename and uses small close icon class", async () => {
@@ -986,11 +1053,11 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const titleEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__title");
+		const titleEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__title");
 		expect(titleEl?.textContent?.trim()).toBe("Base-all");
 
-		const closeButton = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__close");
-		expect(closeButton?.classList.contains("tn-bases-view-list__close--small")).toBe(true);
+		const closeButton = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__close");
+		expect(closeButton?.classList.contains("bv-bases-view-list__close--small")).toBe(true);
 	});
 
 	it("renders top placement under bases-header with close button only", async () => {
@@ -1011,11 +1078,11 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const topLayout = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-top-layout");
+		const topLayout = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list-top-layout");
 		expect(topLayout).not.toBeNull();
 		expect(setup.headerEl.nextElementSibling).toBe(topLayout);
-		expect(topLayout?.querySelector(".tn-bases-view-list__title")).toBeNull();
-		expect(topLayout?.querySelector(".tn-bases-view-list__close")).not.toBeNull();
+		expect(topLayout?.querySelector(".bv-bases-view-list__title")).toBeNull();
+		expect(topLayout?.querySelector(".bv-bases-view-list__close")).not.toBeNull();
 	});
 
 	it("applies top overflow class as horizontal scroll", async () => {
@@ -1037,10 +1104,10 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		expect(listEl?.classList.contains("tn-bases-view-list--top")).toBe(true);
-		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
-		expect(listEl?.classList.contains("tn-bases-view-list--top-wrap")).toBe(false);
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(listEl?.classList.contains("bv-bases-view-list--top")).toBe(true);
+		expect(listEl?.classList.contains("bv-bases-view-list--top-scroll")).toBe(true);
+		expect(listEl?.classList.contains("bv-bases-view-list--top-wrap")).toBe(false);
 	});
 
 	it("applies font-size class by setting", async () => {
@@ -1061,8 +1128,8 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		expect(listEl?.classList.contains("tn-bases-view-list-font-xs")).toBe(true);
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(listEl?.classList.contains("bv-bases-view-list-font-xs")).toBe(true);
 	});
 
 	it("hides native toolbar while list is visible when hide-toolbar setting is on", async () => {
@@ -1083,7 +1150,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(true);
+		expect(setup.rootEl.classList.contains("bv-bases-native-toolbar-hidden")).toBe(true);
 	});
 
 	it("hides icons when icon display setting is off", async () => {
@@ -1104,9 +1171,9 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		expect(listEl?.classList.contains("tn-bases-view-list--icons-off")).toBe(true);
-		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-icon")).toBeNull();
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(listEl?.classList.contains("bv-bases-view-list--icons-off")).toBe(true);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list__item-icon")).toBeNull();
 	});
 
 	it("renders description line from view description", async () => {
@@ -1127,13 +1194,13 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const properties = Array.from(
-			setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-property")
+			setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-property")
 		).map((el) => el.textContent?.trim());
 		expect(properties).toEqual(["Alpha, beta", "Single"]);
 		expect(
 			setup.rootEl
-				.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")[0]
-				.classList.contains("tn-bases-view-list__item--with-property")
+				.querySelectorAll<HTMLButtonElement>(".bv-bases-view-list__item")[0]
+				.classList.contains("bv-bases-view-list__item--with-property")
 		).toBe(true);
 	});
 
@@ -1154,15 +1221,15 @@ describe("BasesViewListSidebarService", () => {
 
 		service.start();
 		await flushTimersAndPromises();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-property")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list__item-property")).toBeNull();
 
 		plugin.settings.basesViewListShowProperty = true;
 		emitter.trigger("settings-changed");
 		await flushTimersAndPromises(3);
 
-		const itemButtons = setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item");
-		expect(itemButtons[0].querySelector(".tn-bases-view-list__item-property")).toBeNull();
-		expect(itemButtons[1].querySelector(".tn-bases-view-list__item-property")?.textContent?.trim()).toBe(
+		const itemButtons = setup.rootEl.querySelectorAll<HTMLButtonElement>(".bv-bases-view-list__item");
+		expect(itemButtons[0].querySelector(".bv-bases-view-list__item-property")).toBeNull();
+		expect(itemButtons[1].querySelector(".bv-bases-view-list__item-property")?.textContent?.trim()).toBe(
 			"Detail"
 		);
 	});
@@ -1187,23 +1254,23 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const items = Array.from(
-			setup.rootEl.querySelectorAll<HTMLButtonElement>(".tn-bases-view-list__item")
+			setup.rootEl.querySelectorAll<HTMLButtonElement>(".bv-bases-view-list__item")
 		);
 		expect(items).toHaveLength(2);
-		expect(items.every((item) => item.classList.contains("tn-bases-view-list__item--with-property"))).toBe(
+		expect(items.every((item) => item.classList.contains("bv-bases-view-list__item--with-property"))).toBe(
 			true
 		);
 
 		const placeholders = setup.rootEl.querySelectorAll(
-			".tn-bases-view-list__item-property--placeholder"
+			".bv-bases-view-list__item-property--placeholder"
 		);
 		expect(placeholders).toHaveLength(1);
 	});
 
 	it("resizes view list width and persists formulas.viewListSize on pointerup", async () => {
-		vaultCachedRead.mockResolvedValue(
-			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
-		);
+		const persistWidthForLeafSpy = jest
+			.spyOn(service as any, "persistWidthForLeaf")
+			.mockResolvedValue(undefined);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1220,28 +1287,24 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
-		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__resizer");
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list-layout");
+		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__resizer");
 		expect(layoutEl).not.toBeNull();
 		expect(resizerEl).not.toBeNull();
 
-		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 260 }));
+		triggerResizePointerDown(resizerEl, 140);
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 320 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 320 }));
 		await flushTimersAndPromises(3);
 
-		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
-		expect(vaultModify).toHaveBeenCalled();
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas.viewListSize).toBe("1.455");
-		expect(typeof parsed.formulas.viewListSize).toBe("string");
+		expect(layoutEl?.style.getPropertyValue("--bv-bases-view-list-width")).toBe("320px");
+		expect(persistWidthForLeafSpy).toHaveBeenCalledWith(setup.leaf, 320);
 	});
 
 	it("clamps resized width to min/max bounds", async () => {
-		vaultCachedRead.mockResolvedValue(
-			"views:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
-		);
+		const persistWidthForLeafSpy = jest
+			.spyOn(service as any, "persistWidthForLeaf")
+			.mockResolvedValue(undefined);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1258,42 +1321,30 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
-		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__resizer");
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list-layout");
+		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__resizer");
 		expect(layoutEl).not.toBeNull();
 		expect(resizerEl).not.toBeNull();
 
-		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 260 }));
+		triggerResizePointerDown(resizerEl, 140);
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 2000 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 2000 }));
 		await flushTimersAndPromises(3);
-		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("520px");
-		{
-			const parsed = parseYaml(
-				vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string
-			) as any;
-			expect(parsed.formulas.viewListSize).toBe("2.364");
-			expect(typeof parsed.formulas.viewListSize).toBe("string");
-		}
+		expect(layoutEl?.style.getPropertyValue("--bv-bases-view-list-width")).toBe("520px");
+		expect(persistWidthForLeafSpy).toHaveBeenLastCalledWith(setup.leaf, 520);
 
-		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 520 }));
+		triggerResizePointerDown(resizerEl, 520);
 		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: -2000 }));
 		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: -2000 }));
 		await flushTimersAndPromises(3);
-		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("140px");
-		{
-			const parsed = parseYaml(
-				vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string
-			) as any;
-			expect(parsed.formulas.viewListSize).toBe("0.636");
-			expect(typeof parsed.formulas.viewListSize).toBe("string");
-		}
+		expect(layoutEl?.style.getPropertyValue("--bv-bases-view-list-width")).toBe("140px");
+		expect(persistWidthForLeafSpy).toHaveBeenLastCalledWith(setup.leaf, 140);
 	});
 
 	it("removes formulas.viewListSize when width is reset to default", async () => {
-		vaultCachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: \"1.455\"\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
-		);
+		const setViewListSizeRatioSpy = jest
+			.spyOn((service as any).yamlStore, "setViewListSizeRatio")
+			.mockResolvedValue(true);
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1309,18 +1360,8 @@ describe("BasesViewListSidebarService", () => {
 
 		service.start();
 		await flushTimersAndPromises();
-
-		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
-		const resizerEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__resizer");
-		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
-
-		resizerEl?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 320 }));
-		window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 220 }));
-		window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 220 }));
-		await flushTimersAndPromises(3);
-
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		expect(modifiedText).not.toContain("viewListSize");
+		await (service as any).persistWidthForLeaf(setup.leaf, 220);
+		expect(setViewListSizeRatioSpy).toHaveBeenCalledWith(setup.leaf.view.file, null);
 	});
 
 	it("auto-shrinks width when saved width is default", async () => {
@@ -1340,9 +1381,9 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list-layout");
 		const width = Number.parseInt(
-			(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width") ?? "220px").replace("px", ""),
+			(layoutEl?.style.getPropertyValue("--bv-bases-view-list-width") ?? "220px").replace("px", ""),
 			10
 		);
 		expect(width).toBeLessThan(220);
@@ -1350,9 +1391,10 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("does not auto-shrink width when file has saved viewListSize ratio", async () => {
-		vaultCachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: \"1.455\"\nviews:\n  - type: table\n    name: A\n    description: x\n  - type: cards\n    name: B\n    description: y\n"
-		);
+		jest.spyOn(service as any, "getPreferredWidth").mockResolvedValue({
+			widthPx: 320,
+			source: "file",
+		});
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1369,14 +1411,15 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
-		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("320px");
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list-layout");
+		expect(layoutEl?.style.getPropertyValue("--bv-bases-view-list-width")).toBe("320px");
 	});
 
 	it("applies per-file formulas.viewListSize when present", async () => {
-		vaultCachedRead.mockResolvedValue(
-			"formulas:\n  viewListSize: \"0.8\"\nviews:\n  - type: table\n    name: Table\n  - type: cards\n    name: Cards\n"
-		);
+		jest.spyOn(service as any, "getPreferredWidth").mockResolvedValue({
+			widthPx: 176,
+			source: "file",
+		});
 		const setup = createBaseLeaf({
 			controller: {
 				query: {
@@ -1393,8 +1436,8 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list-layout");
-		expect(layoutEl?.style.getPropertyValue("--tn-bases-view-list-width")).toBe("176px");
+		const layoutEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list-layout");
+		expect(layoutEl?.style.getPropertyValue("--bv-bases-view-list-width")).toBe("176px");
 	});
 
 	it("opens view-list context menu with property/native-toolbar toggles and left/top items on right click", async () => {
@@ -1414,7 +1457,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		expect(listEl).not.toBeNull();
 
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
@@ -1434,6 +1477,9 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("shows edit-description item on view-row context menu and updates YAML", async () => {
+		const updateViewDescriptionSpy = jest
+			.spyOn((service as any).yamlStore, "updateViewDescription")
+			.mockResolvedValue(true);
 		vaultCachedRead.mockResolvedValue(
 			"views:\n  - type: table\n    name: Table\n    description: Old desc\n  - type: cards\n    name: Cards\n"
 		);
@@ -1454,7 +1500,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const firstItem = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item");
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item");
 		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1469,17 +1515,28 @@ describe("BasesViewListSidebarService", () => {
 		expect(showTextInputModal).toHaveBeenCalledWith(
 			plugin.app,
 			expect.objectContaining({
+				title: "Edit description: Table",
 				placeholder: "Old desc",
 				initialValue: "",
+				confirmText: "Save",
+				cancelText: "Cancel",
 				allowEmptyResult: true,
 			})
 		);
-		expect(vaultModify).toHaveBeenCalled();
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		expect(modifiedText).toContain("description: Updated desc");
+		expect(updateViewDescriptionSpy).toHaveBeenCalledWith(
+			setup.leaf.view.file,
+			"Table",
+			"Updated desc"
+		);
 	});
 
 	it("duplicates view from row context menu and redraws list", async () => {
+		const duplicateViewSpy = jest
+			.spyOn((service as any).yamlStore, "duplicateView")
+			.mockResolvedValue("Table_2");
+		const redrawViewListSpy = jest
+			.spyOn(service as any, "redrawViewList")
+			.mockResolvedValue(undefined);
 		vaultCachedRead.mockResolvedValue(
 			[
 				"views:",
@@ -1506,7 +1563,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const firstItem = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item");
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item");
 		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1518,15 +1575,17 @@ describe("BasesViewListSidebarService", () => {
 		await onClickHandler();
 		await flushTimersAndPromises(3);
 
-		expect(vaultModify).toHaveBeenCalled();
-		expect(setup.refresh).toHaveBeenCalledTimes(1);
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.views.map((view: any) => view.name)).toEqual(["Table", "Table_2", "Cards"]);
-		expect(parsed.views[1].description).toBe("Main");
+		expect(duplicateViewSpy).toHaveBeenCalledWith(setup.leaf.view.file, "Table");
+		expect(redrawViewListSpy).toHaveBeenCalledWith(setup.leaf);
 	});
 
 	it("reorders views by drag and redraws list", async () => {
+		const reorderViewsSpy = jest
+			.spyOn((service as any).yamlStore, "reorderViews")
+			.mockResolvedValue(true);
+		const redrawViewListSpy = jest
+			.spyOn(service as any, "redrawViewList")
+			.mockResolvedValue(undefined);
 		vaultCachedRead.mockResolvedValue(
 			[
 				"views:",
@@ -1555,11 +1614,11 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const rowEls = setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-row");
+		const rowEls = setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-row");
 		expect(rowEls.length).toBe(3);
 		const sourceRow = rowEls[0];
 		const targetRow = rowEls[1];
-		const sourceButton = sourceRow.querySelector<HTMLButtonElement>(".tn-bases-view-list__item");
+		const sourceButton = sourceRow.querySelector<HTMLButtonElement>(".bv-bases-view-list__item");
 		expect(sourceButton).not.toBeNull();
 
 		sourceButton?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
@@ -1570,11 +1629,8 @@ describe("BasesViewListSidebarService", () => {
 		sourceRow.dispatchEvent(createDragEvent("dragend", { dataTransfer }));
 		await flushTimersAndPromises(3);
 
-		expect(vaultModify).toHaveBeenCalled();
-		expect(setup.refresh).toHaveBeenCalledTimes(1);
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.views.map((view: any) => view.name)).toEqual(["Cards", "Table", "List"]);
+		expect(reorderViewsSpy).toHaveBeenCalledWith(setup.leaf.view.file, ["Cards", "Table", "List"]);
+		expect(redrawViewListSpy).toHaveBeenCalledWith(setup.leaf);
 	});
 
 	it("does not start drag reorder from the 3-dot menu button", async () => {
@@ -1603,11 +1659,11 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const rowEls = setup.rootEl.querySelectorAll<HTMLElement>(".tn-bases-view-list__item-row");
+		const rowEls = setup.rootEl.querySelectorAll<HTMLElement>(".bv-bases-view-list__item-row");
 		expect(rowEls.length).toBe(2);
 		const sourceRow = rowEls[0];
 		const targetRow = rowEls[1];
-		const menuButton = sourceRow.querySelector<HTMLButtonElement>(".tn-bases-view-list__item-menu");
+		const menuButton = sourceRow.querySelector<HTMLButtonElement>(".bv-bases-view-list__item-menu");
 		expect(menuButton).not.toBeNull();
 
 		menuButton?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }));
@@ -1622,6 +1678,9 @@ describe("BasesViewListSidebarService", () => {
 	});
 
 	it("toggles property display from view-list context menu", async () => {
+		const setViewListShowPropertySpy = jest
+			.spyOn((service as any).yamlStore, "setViewListShowProperty")
+			.mockResolvedValue(true);
 		plugin.settings.basesViewListShowProperty = true;
 		const setup = createBaseLeaf({
 			controller: {
@@ -1639,7 +1698,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1652,13 +1711,13 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises(3);
 
 		expect(plugin.settings.basesViewListShowProperty).toBe(true);
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas.bvViewListShowProperty).toBe("false");
-		expect(setup.rootEl.querySelector(".tn-bases-view-list__item-property")).toBeNull();
+		expect(setViewListShowPropertySpy).toHaveBeenCalledWith(setup.leaf.view.file, false);
 	});
 
 	it("stores persistent none placement per base from context menu", async () => {
+		const setViewListPositionSpy = jest
+			.spyOn((service as any).yamlStore, "setViewListPosition")
+			.mockResolvedValue(true);
 		const setup = createBaseLeaf({
 			filePath: "Guides/persist-none.base",
 			controller: {
@@ -1676,7 +1735,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1689,11 +1748,7 @@ describe("BasesViewListSidebarService", () => {
 		await onClickHandler();
 		await flushTimersAndPromises(3);
 
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		const parsed = parseYaml(modifiedText) as any;
-		expect(parsed.formulas.bvViewListPosition).toBe("none");
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-open-trigger")).not.toBeNull();
+		expect(setViewListPositionSpy).toHaveBeenCalledWith(setup.leaf.view.file, "normal", "none");
 	});
 
 	it("applies temporary top placement without persisting formulas", async () => {
@@ -1714,7 +1769,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1724,7 +1779,7 @@ describe("BasesViewListSidebarService", () => {
 		await onClickHandler();
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).not.toBeNull();
 		expect(vaultModify).not.toHaveBeenCalled();
 	});
 
@@ -1746,7 +1801,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1760,7 +1815,7 @@ describe("BasesViewListSidebarService", () => {
 
 		expect(plugin.settings.basesViewListHideNativeToolbar).toBe(true);
 		expect(plugin.saveSettings).toHaveBeenCalled();
-		expect(setup.rootEl.classList.contains("tn-bases-native-toolbar-hidden")).toBe(true);
+		expect(setup.rootEl.classList.contains("bv-bases-native-toolbar-hidden")).toBe(true);
 	});
 
 	it("changes font size from view-list context menu", async () => {
@@ -1781,7 +1836,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1795,8 +1850,8 @@ describe("BasesViewListSidebarService", () => {
 
 		expect(plugin.settings.basesViewListFontSize).toBe("s");
 		expect(plugin.saveSettings).toHaveBeenCalled();
-		const nextListEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		expect(nextListEl?.classList.contains("tn-bases-view-list-font-s")).toBe(true);
+		const nextListEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(nextListEl?.classList.contains("bv-bases-view-list-font-s")).toBe(true);
 	});
 
 	it("redraws view list from context menu action", async () => {
@@ -1816,12 +1871,12 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const itemsBefore = setup.rootEl.querySelectorAll(".tn-bases-view-list__item");
+		const itemsBefore = setup.rootEl.querySelectorAll(".bv-bases-view-list__item");
 		expect(itemsBefore.length).toBe(2);
 		itemsBefore[0]?.remove();
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(1);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list__item").length).toBe(1);
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1834,7 +1889,7 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises(3);
 
 		expect(setup.refresh).toHaveBeenCalledTimes(1);
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(2);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list__item").length).toBe(2);
 	});
 
 	it("continues redrawing view list even when base refresh throws", async () => {
@@ -1857,12 +1912,12 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const itemsBefore = setup.rootEl.querySelectorAll(".tn-bases-view-list__item");
+		const itemsBefore = setup.rootEl.querySelectorAll(".bv-bases-view-list__item");
 		expect(itemsBefore.length).toBe(2);
 		itemsBefore[0]?.remove();
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(1);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list__item").length).toBe(1);
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		listEl?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1875,10 +1930,13 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises(3);
 
 		expect(setup.refresh).toHaveBeenCalledTimes(1);
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__item").length).toBe(2);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list__item").length).toBe(2);
 	});
 
 	it("deletes description when edit modal confirms empty value", async () => {
+		const updateViewDescriptionSpy = jest
+			.spyOn((service as any).yamlStore, "updateViewDescription")
+			.mockResolvedValue(true);
 		vaultCachedRead.mockResolvedValue(
 			"views:\n  - type: table\n    name: Table\n    description: Old desc\n  - type: cards\n    name: Cards\n"
 		);
@@ -1899,7 +1957,7 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const firstItem = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list__item");
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item");
 		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
 		await flushTimersAndPromises();
 
@@ -1909,9 +1967,7 @@ describe("BasesViewListSidebarService", () => {
 		await onClickHandler();
 		await flushTimersAndPromises(3);
 
-		expect(vaultModify).toHaveBeenCalled();
-		const modifiedText = vaultModify.mock.calls[vaultModify.mock.calls.length - 1][1] as string;
-		expect(modifiedText).not.toContain("description: Old desc");
+		expect(updateViewDescriptionSpy).toHaveBeenCalledWith(setup.leaf.view.file, "Table", null);
 	});
 
 	it("switches to top+scroll temporarily on narrow pane when behavior is top", async () => {
@@ -1935,9 +1991,9 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).not.toBeNull();
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).not.toBeNull();
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(listEl?.classList.contains("bv-bases-view-list--top-scroll")).toBe(true);
 	});
 
 	it("forces top+scroll on narrow pane even when user placement is already top", async () => {
@@ -1962,10 +2018,10 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises(3);
 
-		const listEl = setup.rootEl.querySelector<HTMLElement>(".tn-bases-view-list");
-		expect(listEl?.classList.contains("tn-bases-view-list--top")).toBe(true);
-		expect(listEl?.classList.contains("tn-bases-view-list--top-scroll")).toBe(true);
-		expect(listEl?.classList.contains("tn-bases-view-list--top-wrap")).toBe(false);
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(listEl?.classList.contains("bv-bases-view-list--top")).toBe(true);
+		expect(listEl?.classList.contains("bv-bases-view-list--top-scroll")).toBe(true);
+		expect(listEl?.classList.contains("bv-bases-view-list--top-wrap")).toBe(false);
 	});
 
 	it("temporarily hides list on narrow pane when behavior is hide and restores when wide", async () => {
@@ -1988,15 +2044,15 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).toBeNull();
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-top-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).toBeNull();
 
 		setLeafWidth(setup.rootEl, 1200);
 		plugin.settings.basesViewListNarrowThresholdPx = 800;
 		emitter.trigger("settings-changed");
 		await flushTimersAndPromises(3);
 
-		expect(setup.rootEl.querySelector(".tn-bases-view-list-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
 	});
 
 	it("does not duplicate layout or trigger on repeated settings refresh", async () => {
@@ -2021,8 +2077,9 @@ describe("BasesViewListSidebarService", () => {
 			await flushTimersAndPromises();
 		}
 
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list-layout")).toHaveLength(1);
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list-open-trigger")).toHaveLength(0);
-		expect(setup.rootEl.querySelectorAll(".tn-bases-view-list__resizer")).toHaveLength(1);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list-layout")).toHaveLength(1);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list-open-trigger")).toHaveLength(0);
+		expect(setup.rootEl.querySelectorAll(".bv-bases-view-list__resizer")).toHaveLength(1);
 	});
 });
+

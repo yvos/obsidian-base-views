@@ -47,7 +47,6 @@
 		"typescript": "^5.9.2"
 	},
 	"dependencies": {
-		"chrono-node": "^2.7.5",
 		"date-fns": "^4.1.0",
 		"rrule": "^2.8.1"
 	}
