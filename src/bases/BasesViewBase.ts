@@ -174,7 +174,10 @@ export abstract class BasesViewBase extends Component {
 		// Use correct document for pop-out window support
 		const doc = this.containerEl.ownerDocument;
 		const root = doc.createElement("div");
-		root.className = `tn-bases-integration tasknotes-plugin tasknotes-container tn-${this.type}`;
+		const isTaskListCustom = this.type === "tasknotesTaskListCustom";
+		const typeClass = isTaskListCustom ? `tn-${this.type}` : `bv-${this.type}`;
+		const scopeClasses = isTaskListCustom ? " tasknotes-plugin tasknotes-container" : "";
+		root.className = `bv-bases-integration${scopeClasses} ${typeClass}`;
 		root.tabIndex = -1; // Make focusable without adding to tab order
 		this.containerEl.appendChild(root);
 		this.rootElement = root;
@@ -236,14 +239,14 @@ export abstract class BasesViewBase extends Component {
 		}
 
 		// Check if we already added the button (reuse existing)
-		if (toolbarEl.querySelector(".tn-bases-new-task-btn")) return;
+		if (toolbarEl.querySelector(".bv-bases-new-task-btn")) return;
 
 		// Use correct document for pop-out window support
 		const doc = this.containerEl.ownerDocument;
 
 		// Create "New Task" button matching Bases' text-icon-button style
 		const newTaskBtn = doc.createElement("div");
-		newTaskBtn.className = "bases-toolbar-item tn-bases-new-task-btn";
+		newTaskBtn.className = "bases-toolbar-item bv-bases-new-task-btn";
 
 		const innerBtn = doc.createElement("div");
 		innerBtn.className = "text-icon-button";

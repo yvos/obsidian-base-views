@@ -7,7 +7,7 @@ const VIEWS_TRIGGER_SELECTOR = ".bases-toolbar-views-menu";
 const MENU_SELECTOR = ".menu";
 const MENU_ITEM_SELECTOR = ".menu-item, .bases-toolbar-menu-item";
 const MENU_ITEM_TITLE_SELECTOR = ".menu-item-title, .bases-toolbar-menu-item-name";
-const DEFAULT_NATIVE_TOOLBAR_HIDDEN_CLASS = "tn-bases-native-toolbar-hidden";
+const DEFAULT_NATIVE_TOOLBAR_HIDDEN_CLASS = "bv-bases-native-toolbar-hidden";
 const NATIVE_VIEWS_MENU_CLASS = "bases-toolbar-views-menu";
 const NATIVE_SETTINGS_STATE_SELECTORS = [
 	".view-config-menu",

@@ -1,18 +1,10 @@
 import { readFileSync, writeFileSync } from 'fs';
 
 const CSS_FILES = [
-    // Core
+    // Core tokens used by Base Views UI
     'styles/variables.css',
-    'styles/utilities.css',
-    'styles/base.css',
-
-    // Components used by current Base Views features
-    'styles/task-card-bem.css',
-    'styles/modal-bem.css',
-    'styles/reminder-modal.css',
 
     // Views used by current Base Views features
-    'styles/task-list-view.css',
     'styles/bases-views.css'
 ];
 
@@ -26,16 +18,8 @@ const MAIN_CSS_TEMPLATE = `/* Base Views Plugin Styles */
    
    Core:
    - styles/variables.css
-   - styles/utilities.css
-   - styles/base.css
-
-   Components:
-   - styles/task-card-bem.css
-   - styles/modal-bem.css
-   - styles/reminder-modal.css
 
    Views:
-   - styles/task-list-view.css
    - styles/bases-views.css
    
    Run 'npm run build-css' to regenerate this file.

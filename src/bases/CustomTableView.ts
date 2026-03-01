@@ -1,4 +1,4 @@
-import { Keymap, Menu, Notice, TFile, setIcon } from "obsidian";
+﻿import { Keymap, Menu, Notice, TFile, setIcon } from "obsidian";
 import TaskNotesPlugin from "../main";
 import { BasesViewBase } from "./BasesViewBase";
 import { TaskInfo } from "../types";
@@ -261,12 +261,12 @@ export class CustomTableView extends BasesViewBase {
 		super.setupContainer();
 
 		if (!this.rootElement) return;
-		this.rootElement.classList.add("tn-bases-custom-table-view");
+		this.rootElement.classList.add("bv-bases-custom-table-view");
 		this.rootElement.style.cssText = "display: flex; flex-direction: column; height: 100%;";
 
 		const doc = this.containerEl.ownerDocument;
 		this.tableScrollEl = doc.createElement("div");
-		this.tableScrollEl.className = "tn-bases-table-scroll";
+		this.tableScrollEl.className = "bv-bases-table-scroll";
 		this.registerDomEvent(this.tableScrollEl, "pointerover", this.handleTablePointerOver);
 		this.rootElement.appendChild(this.tableScrollEl);
 	}
@@ -330,9 +330,9 @@ export class CustomTableView extends BasesViewBase {
 	private applyRowHeightClass(): void {
 		if (!this.rootElement) return;
 		for (const option of VALID_ROW_HEIGHTS) {
-			this.rootElement.classList.remove(`tn-bases-table-row-height-${option}`);
+			this.rootElement.classList.remove(`bv-bases-table-row-height-${option}`);
 		}
-		this.rootElement.classList.add(`tn-bases-table-row-height-${this.rowHeight}`);
+		this.rootElement.classList.add(`bv-bases-table-row-height-${this.rowHeight}`);
 	}
 
 	private getVisibleColumns(): string[] {
@@ -517,7 +517,7 @@ export class CustomTableView extends BasesViewBase {
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) return;
 
-		const hoveredRow = target.closest<HTMLElement>(".tn-bases-table-row[data-tn-row-order]");
+		const hoveredRow = target.closest<HTMLElement>(".bv-bases-table-row[data-tn-row-order]");
 		if (!hoveredRow) return;
 
 		const hoveredOrderRaw = hoveredRow.dataset.tnRowOrder;
@@ -531,7 +531,7 @@ export class CustomTableView extends BasesViewBase {
 
 	private findRenderedRowByOrder(rowOrder: number): HTMLElement | null {
 		return this.rootElement?.querySelector<HTMLElement>(
-			`.tn-bases-table-row[data-tn-row-order="${rowOrder}"]`
+			`.bv-bases-table-row[data-tn-row-order="${rowOrder}"]`
 		) ?? null;
 	}
 
@@ -556,7 +556,7 @@ export class CustomTableView extends BasesViewBase {
 			this.jumpHighlightFindRAF = null;
 			this.jumpHighlightRowEl = rowEl;
 			this.jumpHighlightRowOrder = rowOrder;
-			rowEl.classList.add("tn-bases-table-row--jump-target");
+			rowEl.classList.add("bv-bases-table-row--jump-target");
 
 			// Allow one frame where both hover and jump target highlight can coexist.
 			this.jumpHighlightCanClear = false;
@@ -582,7 +582,7 @@ export class CustomTableView extends BasesViewBase {
 
 	private clearJumpTargetHighlight(): void {
 		if (this.jumpHighlightRowEl?.isConnected) {
-			this.jumpHighlightRowEl.classList.remove("tn-bases-table-row--jump-target");
+			this.jumpHighlightRowEl.classList.remove("bv-bases-table-row--jump-target");
 		}
 		this.jumpHighlightRowEl = null;
 		this.jumpHighlightRowOrder = null;
@@ -904,10 +904,10 @@ export class CustomTableView extends BasesViewBase {
 
 		for (const primary of nestedGroups) {
 			const sectionEl = this.containerEl.ownerDocument.createElement("section");
-			sectionEl.className = "tn-bases-table-group";
+			sectionEl.className = "bv-bases-table-group";
 
 			const titleEl = this.containerEl.ownerDocument.createElement("h3");
-			titleEl.className = "tn-bases-table-group-title";
+			titleEl.className = "bv-bases-table-group-title";
 			titleEl.setText(`${primary.title} (${primary.entries.length})`);
 			sectionEl.appendChild(titleEl);
 
@@ -929,7 +929,7 @@ export class CustomTableView extends BasesViewBase {
 		columns: string[]
 	): void {
 		const subtitleEl = this.containerEl.ownerDocument.createElement("h4");
-		subtitleEl.className = "tn-bases-table-subgroup-title";
+		subtitleEl.className = "bv-bases-table-subgroup-title";
 		subtitleEl.setText(`${subGroup.title} (${subGroup.entries.length})`);
 		sectionEl.appendChild(subtitleEl);
 		this.renderGroupTableIntoSection(sectionEl, subGroup.entries, columns, true);
@@ -942,9 +942,9 @@ export class CustomTableView extends BasesViewBase {
 		nested = false
 	): void {
 		const tableWrapper = this.containerEl.ownerDocument.createElement("div");
-		tableWrapper.className = "tn-bases-table-wrapper";
+		tableWrapper.className = "bv-bases-table-wrapper";
 		if (nested) {
-			tableWrapper.classList.add("tn-bases-table-wrapper--nested");
+			tableWrapper.classList.add("bv-bases-table-wrapper--nested");
 		}
 		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
 		const tableEl = this.createTable(entries, columns, true);
@@ -1067,7 +1067,7 @@ export class CustomTableView extends BasesViewBase {
 		this.renderedTables = [];
 
 		const tableWrapper = this.containerEl.ownerDocument.createElement("div");
-		tableWrapper.className = "tn-bases-table-wrapper";
+		tableWrapper.className = "bv-bases-table-wrapper";
 		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
 		const tableEl = this.createTable(entries, columns, false);
 		this.renderedTables.push(tableEl);
@@ -1185,7 +1185,7 @@ export class CustomTableView extends BasesViewBase {
 
 		const doc = this.containerEl.ownerDocument;
 		const virtualContainer = doc.createElement("div");
-		virtualContainer.className = "tn-bases-table-wrapper tn-bases-table-virtual";
+		virtualContainer.className = "bv-bases-table-wrapper bv-bases-table-virtual";
 		virtualContainer.style.setProperty("--tn-table-columns-template", template);
 		virtualContainer.style.setProperty("--tn-table-min-width", minWidth);
 		virtualContainer.style.minWidth = minWidth;
@@ -1194,17 +1194,17 @@ export class CustomTableView extends BasesViewBase {
 		virtualContainer.appendChild(headerRow);
 
 		const viewport = doc.createElement("div");
-		viewport.className = "tn-bases-table-virtual-viewport";
+		viewport.className = "bv-bases-table-virtual-viewport";
 		virtualContainer.appendChild(viewport);
 
 		const host = doc.createElement("div");
-		host.className = "tn-bases-table-virtual-host";
+		host.className = "bv-bases-table-virtual-host";
 		viewport.appendChild(host);
 
 		let footerRow: HTMLElement | null = null;
 		if (includeFooter) {
 			footerRow = doc.createElement("div");
-			footerRow.className = "tn-bases-table-summary-row tn-bases-table-summary-row--virtual";
+			footerRow.className = "bv-bases-table-summary-row bv-bases-table-summary-row--virtual";
 			virtualContainer.appendChild(footerRow);
 		}
 
@@ -1237,7 +1237,7 @@ export class CustomTableView extends BasesViewBase {
 
 		for (const propertyId of columns) {
 			const cell = this.containerEl.ownerDocument.createElement("div");
-			cell.className = "tn-bases-table-summary-cell";
+			cell.className = "bv-bases-table-summary-cell";
 
 			const summaryKey = this.tableSummaries[propertyId];
 			if (summaryKey) {
@@ -1254,7 +1254,7 @@ export class CustomTableView extends BasesViewBase {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const row = doc.createElement("div");
-		row.className = "tn-bases-table-header-row tn-bases-table-header-row--virtual";
+		row.className = "bv-bases-table-header-row bv-bases-table-header-row--virtual";
 		row.style.display = "grid";
 		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
 		row.style.minWidth = "var(--tn-table-min-width)";
@@ -1262,7 +1262,7 @@ export class CustomTableView extends BasesViewBase {
 		for (let index = 0; index < columns.length; index++) {
 			const propertyId = columns[index];
 			const cell = doc.createElement("div");
-			cell.className = "tn-bases-table-header-cell tn-bases-table-header-cell--virtual";
+			cell.className = "bv-bases-table-header-cell bv-bases-table-header-cell--virtual";
 			cell.appendChild(this.createHeaderCellLabel(propertyId));
 			cell.dataset.propertyId = propertyId;
 			cell.addEventListener("contextmenu", (event) =>
@@ -1284,9 +1284,9 @@ export class CustomTableView extends BasesViewBase {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const row = doc.createElement("div");
-		row.className = "tn-bases-table-row tn-bases-table-row--virtual";
+		row.className = "bv-bases-table-row bv-bases-table-row--virtual";
 		if (nested) {
-			row.classList.add("tn-bases-table-row--nested");
+			row.classList.add("bv-bases-table-row--nested");
 		}
 		if (typeof rowOrder === "number" && Number.isFinite(rowOrder)) {
 			row.dataset.tnRowOrder = String(rowOrder);
@@ -1297,7 +1297,7 @@ export class CustomTableView extends BasesViewBase {
 
 		for (const propertyId of columns) {
 			const cell = doc.createElement("div");
-			cell.className = "tn-bases-table-cell";
+			cell.className = "bv-bases-table-cell";
 			this.renderCell(cell, entry, propertyId, rowOrder);
 			row.appendChild(cell);
 		}
@@ -1307,7 +1307,7 @@ export class CustomTableView extends BasesViewBase {
 
 	private createVirtualPrimaryHeaderRow(item: { title: string; count: number }): HTMLElement {
 		const row = this.containerEl.ownerDocument.createElement("div");
-		row.className = "tn-bases-table-group-title-row tn-bases-table-group-title-row--primary";
+		row.className = "bv-bases-table-group-title-row bv-bases-table-group-title-row--primary";
 		row.style.minWidth = "var(--tn-table-min-width)";
 		row.setText(`${item.title} (${item.count})`);
 		return row;
@@ -1315,7 +1315,7 @@ export class CustomTableView extends BasesViewBase {
 
 	private createVirtualSecondaryHeaderRow(item: { title: string; count: number }): HTMLElement {
 		const row = this.containerEl.ownerDocument.createElement("div");
-		row.className = "tn-bases-table-group-title-row tn-bases-table-group-title-row--secondary";
+		row.className = "bv-bases-table-group-title-row bv-bases-table-group-title-row--secondary";
 		row.style.minWidth = "var(--tn-table-min-width)";
 		row.setText(`${item.title} (${item.count})`);
 		return row;
@@ -1328,9 +1328,9 @@ export class CustomTableView extends BasesViewBase {
 	): HTMLElement {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const row = this.containerEl.ownerDocument.createElement("div");
-		row.className = "tn-bases-table-summary-row tn-bases-table-summary-row--group tn-bases-table-summary-row--virtual";
+		row.className = "bv-bases-table-summary-row bv-bases-table-summary-row--group bv-bases-table-summary-row--virtual";
 		if (nested) {
-			row.classList.add("tn-bases-table-summary-row--nested");
+			row.classList.add("bv-bases-table-summary-row--nested");
 		}
 		row.style.display = "grid";
 		row.style.gridTemplateColumns = "var(--tn-table-columns-template)";
@@ -1338,7 +1338,7 @@ export class CustomTableView extends BasesViewBase {
 
 		for (const propertyId of columns) {
 			const cell = this.containerEl.ownerDocument.createElement("div");
-			cell.className = "tn-bases-table-summary-cell";
+			cell.className = "bv-bases-table-summary-cell";
 			cell.setText(summaryValues[propertyId] || "");
 			row.appendChild(cell);
 		}
@@ -1428,7 +1428,7 @@ export class CustomTableView extends BasesViewBase {
 		if (isLastColumn) return;
 
 		const handle = this.containerEl.ownerDocument.createElement("div");
-		handle.className = "tn-bases-table-resize-handle";
+		handle.className = "bv-bases-table-resize-handle";
 		handle.setAttribute("role", "separator");
 		handle.setAttribute("aria-orientation", "vertical");
 
@@ -1468,7 +1468,7 @@ export class CustomTableView extends BasesViewBase {
 		let hasWidthChanged = false;
 
 		this.stopActiveColumnResize();
-		this.rootElement?.classList.add("tn-bases-table--resizing");
+		this.rootElement?.classList.add("bv-bases-table--resizing");
 
 		const onPointerMove = (moveEvent: PointerEvent): void => {
 			const deltaX = moveEvent.clientX - startX;
@@ -1508,7 +1508,7 @@ export class CustomTableView extends BasesViewBase {
 			doc.removeEventListener("pointerup", onPointerUp as EventListener);
 			doc.removeEventListener("pointercancel", onPointerUp as EventListener);
 			win.removeEventListener("blur", onPointerUp as EventListener);
-			this.rootElement?.classList.remove("tn-bases-table--resizing");
+			this.rootElement?.classList.remove("bv-bases-table--resizing");
 			this.activeColumnResizeCleanup = null;
 		};
 	}
@@ -1538,15 +1538,15 @@ export class CustomTableView extends BasesViewBase {
 		const doc = this.containerEl.ownerDocument;
 
 		const sectionEl = doc.createElement("section");
-		sectionEl.className = "tn-bases-table-group";
+		sectionEl.className = "bv-bases-table-group";
 
 		const titleEl = doc.createElement("h3");
-		titleEl.className = "tn-bases-table-group-title";
+		titleEl.className = "bv-bases-table-group-title";
 		titleEl.setText(`${groupTitle} (${entries.length})`);
 		sectionEl.appendChild(titleEl);
 
 		const tableWrapper = doc.createElement("div");
-		tableWrapper.className = "tn-bases-table-wrapper";
+		tableWrapper.className = "bv-bases-table-wrapper";
 		tableWrapper.style.minWidth = this.getTableMinWidth(columns);
 		const tableEl = this.createTable(entries, columns, true);
 		this.renderedTables.push(tableEl);
@@ -1560,7 +1560,7 @@ export class CustomTableView extends BasesViewBase {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const doc = this.containerEl.ownerDocument;
 		const tableEl = doc.createElement("table");
-		tableEl.className = "tn-bases-custom-table";
+		tableEl.className = "bv-bases-custom-table";
 		tableEl.style.setProperty("--tn-table-min-width", this.getTableMinWidth(columns));
 
 		const widths = resolveColumnWidths(
@@ -1581,12 +1581,12 @@ export class CustomTableView extends BasesViewBase {
 
 		const theadEl = tableEl.createTHead();
 		const headerRow = theadEl.insertRow();
-		headerRow.className = "tn-bases-table-header-row";
+		headerRow.className = "bv-bases-table-header-row";
 
 		for (let index = 0; index < columns.length; index++) {
 			const propertyId = columns[index];
 			const th = doc.createElement("th");
-			th.className = "tn-bases-table-header-cell";
+			th.className = "bv-bases-table-header-cell";
 			th.appendChild(this.createHeaderCellLabel(propertyId));
 			th.dataset.propertyId = propertyId;
 			th.addEventListener("contextmenu", (event) =>
@@ -1604,12 +1604,12 @@ export class CustomTableView extends BasesViewBase {
 
 		for (const entry of entries) {
 			const row = tbodyEl.insertRow();
-			row.className = "tn-bases-table-row";
+			row.className = "bv-bases-table-row";
 			const rowOrder = this.consumeNormalRowOrder();
 			row.dataset.tnRowOrder = String(rowOrder);
 			for (const propertyId of columns) {
 				const td = row.insertCell();
-				td.className = "tn-bases-table-cell";
+				td.className = "bv-bases-table-cell";
 				this.renderCell(td, entry, propertyId, rowOrder);
 			}
 		}
@@ -1625,16 +1625,16 @@ export class CustomTableView extends BasesViewBase {
 	private createHeaderCellLabel(propertyId: string): HTMLElement {
 		const doc = this.containerEl.ownerDocument;
 		const wrapper = doc.createElement("span");
-		wrapper.className = "tn-bases-table-header-label";
+		wrapper.className = "bv-bases-table-header-label";
 
 		const iconEl = doc.createElement("span");
-		iconEl.className = "tn-bases-table-header-icon";
+		iconEl.className = "bv-bases-table-header-icon";
 		iconEl.setAttribute("aria-hidden", "true");
 		this.renderHeaderIcon(iconEl, propertyId);
 		wrapper.appendChild(iconEl);
 
 		const textEl = doc.createElement("span");
-		textEl.className = "tn-bases-table-header-text";
+		textEl.className = "bv-bases-table-header-text";
 		textEl.setText(this.getPropertyDisplayName(propertyId));
 		wrapper.appendChild(textEl);
 
@@ -1759,12 +1759,12 @@ export class CustomTableView extends BasesViewBase {
 
 		const row = sectionEl.insertRow();
 		row.className = groupedSection
-			? "tn-bases-table-summary-row tn-bases-table-summary-row--group"
-			: "tn-bases-table-summary-row";
+			? "bv-bases-table-summary-row bv-bases-table-summary-row--group"
+			: "bv-bases-table-summary-row";
 
 		for (const propertyId of columns) {
 			const cell = groupedSection ? sectionEl.ownerDocument.createElement("td") : row.insertCell();
-			cell.className = "tn-bases-table-summary-cell";
+			cell.className = "bv-bases-table-summary-cell";
 			const summaryKey = this.tableSummaries[propertyId];
 			if (summaryKey) {
 				const values = entries.map((entry) => this.safeGetValue(entry, propertyId));
@@ -1867,13 +1867,13 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		const linkWrapper = this.containerEl.ownerDocument.createElement("span");
-		linkWrapper.className = "tn-bases-table-file-link-wrap";
+		linkWrapper.className = "bv-bases-table-file-link-wrap";
 
 		if (this.showIconicIconInNameColumn) {
 			const iconicIcon = resolveIconicFileIcon(this.app || this.plugin.app, filePath);
 			if (iconicIcon) {
 				const iconEl = this.containerEl.ownerDocument.createElement("span");
-				iconEl.className = "tn-bases-table-file-icon";
+				iconEl.className = "bv-bases-table-file-icon";
 				iconEl.setAttribute("aria-hidden", "true");
 				this.renderIconicFileIcon(iconEl, iconicIcon.icon);
 				if (iconicIcon.color) {
@@ -1884,7 +1884,7 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		const linkEl = this.containerEl.ownerDocument.createElement("a");
-		linkEl.className = "tn-bases-table-file-link internal-link";
+		linkEl.className = "bv-bases-table-file-link internal-link";
 		linkEl.setText(fileName);
 		linkEl.href = "#";
 		linkEl.setAttribute("data-href", filePath);
@@ -1928,7 +1928,7 @@ export class CustomTableView extends BasesViewBase {
 		) {
 			const jumpButton = this.containerEl.ownerDocument.createElement("button");
 			jumpButton.type = "button";
-			jumpButton.className = "tn-bases-table-duplicate-jump";
+			jumpButton.className = "bv-bases-table-duplicate-jump";
 			jumpButton.setAttribute("aria-label", "Jump to next same file row");
 			jumpButton.setAttribute("title", "Jump to next same file row");
 			setIcon(jumpButton, "git-branch");
@@ -2090,14 +2090,14 @@ export class CustomTableView extends BasesViewBase {
 		if (lucideName) {
 			try {
 				setIcon(iconEl, lucideName);
-				iconEl.classList.add("tn-bases-table-file-icon--lucide");
+				iconEl.classList.add("bv-bases-table-file-icon--lucide");
 				return;
 			} catch {
 				// Fallback to text rendering below.
 			}
 		}
 
-		iconEl.classList.add("tn-bases-table-file-icon--text");
+		iconEl.classList.add("bv-bases-table-file-icon--text");
 		iconEl.setText(iconId);
 	}
 
@@ -2117,7 +2117,7 @@ export class CustomTableView extends BasesViewBase {
 	private renderValue(cellEl: HTMLElement, value: any): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (value == null || (typeof value.isEmpty === "function" && value.isEmpty())) {
-			cellEl.classList.add("tn-bases-table-cell--empty");
+			cellEl.classList.add("bv-bases-table-cell--empty");
 			cellEl.setText("");
 			return;
 		}
@@ -2134,7 +2134,7 @@ export class CustomTableView extends BasesViewBase {
 		}
 
 		const textEl = this.containerEl.ownerDocument.createElement("span");
-		textEl.className = "tn-bases-table-text-value";
+		textEl.className = "bv-bases-table-text-value";
 		textEl.setText(this.valueToString(value));
 		cellEl.appendChild(textEl);
 	}
@@ -2159,7 +2159,7 @@ export class CustomTableView extends BasesViewBase {
 		if (!this.tableScrollEl) return;
 		const doc = this.containerEl.ownerDocument;
 		const emptyEl = doc.createElement("div");
-		emptyEl.className = "tn-bases-empty";
+		emptyEl.className = "bv-bases-empty";
 		emptyEl.setText(message);
 		this.tableScrollEl.appendChild(emptyEl);
 	}
@@ -2168,7 +2168,7 @@ export class CustomTableView extends BasesViewBase {
 		if (!this.tableScrollEl) return;
 		const doc = this.containerEl.ownerDocument;
 		const errorEl = doc.createElement("div");
-		errorEl.className = "tn-bases-error";
+		errorEl.className = "bv-bases-error";
 		errorEl.style.cssText =
 			"padding: 20px; color: #d73a49; background: #ffeaea; border-radius: 4px; margin: 10px 0;";
 		errorEl.setText(`Error loading table: ${error.message || "Unknown error"}`);
@@ -2208,3 +2208,4 @@ export function buildCustomTableViewFactory(plugin: TaskNotesPlugin) {
 		return new CustomTableView(controller, containerEl, plugin);
 	};
 }
+

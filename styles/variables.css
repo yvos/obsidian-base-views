@@ -233,7 +233,8 @@
    TASKNOTES PLUGIN SCOPED VARIABLES
    ================================================ */
 
-.tasknotes-plugin {
+.tasknotes-plugin,
+.bv-bases-integration {
     /* ================================================
        SCOPED THEME INTEGRATION
        ================================================ */

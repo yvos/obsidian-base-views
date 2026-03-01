@@ -127,38 +127,38 @@ interface PreferredWidthResult {
 // ドラッグ並び替え時の挿入位置を表す。
 type ReorderDropPosition = "before" | "after";
 
-const CSS_LAYOUT = "tn-bases-view-list-layout";
-const CSS_LAYOUT_TOP = "tn-bases-view-list-top-layout";
-const CSS_LIST = "tn-bases-view-list";
-const CSS_LIST_TOP = "tn-bases-view-list--top";
-const CSS_LIST_TOP_WRAP = "tn-bases-view-list--top-wrap";
-const CSS_LIST_TOP_SCROLL = "tn-bases-view-list--top-scroll";
-const CSS_LIST_ICONS_OFF = "tn-bases-view-list--icons-off";
-const CSS_BODY = "tn-bases-view-list-body";
-const CSS_ITEM = "tn-bases-view-list__item";
-const CSS_ITEM_ROW = "tn-bases-view-list__item-row";
+const CSS_LAYOUT = "bv-bases-view-list-layout";
+const CSS_LAYOUT_TOP = "bv-bases-view-list-top-layout";
+const CSS_LIST = "bv-bases-view-list";
+const CSS_LIST_TOP = "bv-bases-view-list--top";
+const CSS_LIST_TOP_WRAP = "bv-bases-view-list--top-wrap";
+const CSS_LIST_TOP_SCROLL = "bv-bases-view-list--top-scroll";
+const CSS_LIST_ICONS_OFF = "bv-bases-view-list--icons-off";
+const CSS_BODY = "bv-bases-view-list-body";
+const CSS_ITEM = "bv-bases-view-list__item";
+const CSS_ITEM_ROW = "bv-bases-view-list__item-row";
 const CSS_ITEM_ACTIVE = "is-active";
-const CSS_ITEM_DRAGGING = "tn-bases-view-list__item-row--dragging";
-const CSS_ITEM_DROP_BEFORE = "tn-bases-view-list__item-row--drop-before";
-const CSS_ITEM_DROP_AFTER = "tn-bases-view-list__item-row--drop-after";
-const CSS_ITEM_WITH_PROPERTY = "tn-bases-view-list__item--with-property";
-const CSS_ITEM_ICON = "tn-bases-view-list__item-icon";
-const CSS_ITEM_CONTENT = "tn-bases-view-list__item-content";
-const CSS_ITEM_NAME = "tn-bases-view-list__item-name";
-const CSS_ITEM_PROPERTY = "tn-bases-view-list__item-property";
-const CSS_ITEM_PROPERTY_PLACEHOLDER = "tn-bases-view-list__item-property--placeholder";
-const CSS_ITEM_MENU_BUTTON = "tn-bases-view-list__item-menu";
-const CSS_HEADER = "tn-bases-view-list__header";
-const CSS_HEADER_TOP = "tn-bases-view-list__header--top";
-const CSS_TITLE = "tn-bases-view-list__title";
-const CSS_CLOSE = "tn-bases-view-list__close";
-const CSS_CLOSE_SMALL = "tn-bases-view-list__close--small";
-const CSS_RESIZER = "tn-bases-view-list__resizer";
-const CSS_OPEN_TRIGGER = "tn-bases-view-list-open-trigger";
-const CSS_NATIVE_TOOLBAR_HIDDEN = "tn-bases-native-toolbar-hidden";
-const CSS_FONT_M = "tn-bases-view-list-font-m";
-const CSS_FONT_S = "tn-bases-view-list-font-s";
-const CSS_FONT_XS = "tn-bases-view-list-font-xs";
+const CSS_ITEM_DRAGGING = "bv-bases-view-list__item-row--dragging";
+const CSS_ITEM_DROP_BEFORE = "bv-bases-view-list__item-row--drop-before";
+const CSS_ITEM_DROP_AFTER = "bv-bases-view-list__item-row--drop-after";
+const CSS_ITEM_WITH_PROPERTY = "bv-bases-view-list__item--with-property";
+const CSS_ITEM_ICON = "bv-bases-view-list__item-icon";
+const CSS_ITEM_CONTENT = "bv-bases-view-list__item-content";
+const CSS_ITEM_NAME = "bv-bases-view-list__item-name";
+const CSS_ITEM_PROPERTY = "bv-bases-view-list__item-property";
+const CSS_ITEM_PROPERTY_PLACEHOLDER = "bv-bases-view-list__item-property--placeholder";
+const CSS_ITEM_MENU_BUTTON = "bv-bases-view-list__item-menu";
+const CSS_HEADER = "bv-bases-view-list__header";
+const CSS_HEADER_TOP = "bv-bases-view-list__header--top";
+const CSS_TITLE = "bv-bases-view-list__title";
+const CSS_CLOSE = "bv-bases-view-list__close";
+const CSS_CLOSE_SMALL = "bv-bases-view-list__close--small";
+const CSS_RESIZER = "bv-bases-view-list__resizer";
+const CSS_OPEN_TRIGGER = "bv-bases-view-list-open-trigger";
+const CSS_NATIVE_TOOLBAR_HIDDEN = "bv-bases-native-toolbar-hidden";
+const CSS_FONT_M = "bv-bases-view-list-font-m";
+const CSS_FONT_S = "bv-bases-view-list-font-s";
+const CSS_FONT_XS = "bv-bases-view-list-font-xs";
 
 const WIDTH_MIN = 140;
 const WIDTH_MAX = 520;
@@ -1118,11 +1118,11 @@ export class BasesViewListSidebarService {
 	}
 
 	private applyLayoutWidth(layoutEl: HTMLElement, widthPx: number): void {
-		layoutEl.style.setProperty("--tn-bases-view-list-width", `${this.clampWidth(widthPx)}px`);
+		layoutEl.style.setProperty("--bv-bases-view-list-width", `${this.clampWidth(widthPx)}px`);
 	}
 
 	private getLayoutWidth(layoutEl: HTMLElement): number {
-		const fromVar = layoutEl.style.getPropertyValue("--tn-bases-view-list-width").trim();
+		const fromVar = layoutEl.style.getPropertyValue("--bv-bases-view-list-width").trim();
 		if (fromVar.endsWith("px")) {
 			const parsed = Number.parseInt(fromVar.slice(0, -2), 10);
 			if (Number.isFinite(parsed)) return this.clampWidth(parsed);
