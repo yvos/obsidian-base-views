@@ -1,12 +1,12 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { App, PluginSettingTab, Setting } from "obsidian";
+import BaseViewsPlugin from "../main";
 
 // Settings tab focused on Base Views-only features.
 // BaseViewsSettingTabの中核ロジックをまとめるクラス。
 export class BaseViewsSettingTab extends PluginSettingTab {
-	declare plugin: TaskNotesPlugin;
+	declare plugin: BaseViewsPlugin;
 
-	constructor(app: App, plugin: TaskNotesPlugin) {
+	constructor(app: App, plugin: BaseViewsPlugin) {
 		super(app, plugin);
 	}
 
@@ -492,3 +492,4 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 			);
 	}
 }
+

@@ -1,7 +1,7 @@
-/* eslint-disable no-console */
+﻿/* eslint-disable no-console */
 import { TFile, setIcon, Notice, Modal, App, setTooltip, parseLinktext, Menu } from "obsidian";
 import { TaskInfo } from "../types";
-import TaskNotesPlugin from "../main";
+import BaseViewsPlugin from "../main";
 import { TaskContextMenu } from "../components/TaskContextMenu";
 import {
 	getEffectiveTaskStatus,
@@ -133,7 +133,7 @@ function updateBadgeIndicator(
  */
 function createStatusCycleHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	card: HTMLElement,
 	statusDot: HTMLElement,
 	targetDate: Date
@@ -190,7 +190,7 @@ function createStatusCycleHandler(
 function updateCardCompletionState(
 	card: HTMLElement,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	isCompleted: boolean,
 	effectiveStatus: string
 ): void {
@@ -219,7 +219,7 @@ function updateCardCompletionState(
  */
 function createPriorityClickHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): (e: MouseEvent) => void {
 	return (e: MouseEvent) => {
 		e.stopPropagation();
@@ -244,7 +244,7 @@ function createPriorityClickHandler(
  */
 function createRecurrenceClickHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): (e: MouseEvent) => void {
 	return (e: MouseEvent) => {
 		e.stopPropagation();
@@ -274,7 +274,7 @@ function createRecurrenceClickHandler(
  */
 function createReminderClickHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): () => void {
 	return () => {
 		const modal = new ReminderModal(plugin.app, plugin, task, async (reminders) => {
@@ -294,7 +294,7 @@ function createReminderClickHandler(
  */
 function createProjectClickHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): () => Promise<void> {
 	return async () => {
 		try {
@@ -311,7 +311,7 @@ function createProjectClickHandler(
  */
 function createChevronClickHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	card: HTMLElement,
 	chevron: HTMLElement
 ): () => Promise<void> {
@@ -339,7 +339,7 @@ function createChevronClickHandler(
  */
 function createBlockingToggleClickHandler(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	card: HTMLElement,
 	toggle: HTMLElement
 ): () => Promise<void> {
@@ -355,7 +355,7 @@ function createBlockingToggleClickHandler(
 function attachDateClickHandler(
 	span: HTMLElement,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	dateType: "due" | "scheduled"
 ): void {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
@@ -400,7 +400,7 @@ function attachDateClickHandler(
  * @param plugin - The plugin instance with fieldMapper
  * @returns Array of user-configured property names
  */
-function getDefaultVisibleProperties(plugin: TaskNotesPlugin): string[] {
+function getDefaultVisibleProperties(plugin: BaseViewsPlugin): string[] {
 	// Combine FieldMapping properties with special properties
 	const internalDefaults = [
 		...DEFAULT_INTERNAL_VISIBLE_PROPERTIES,
@@ -504,7 +504,7 @@ function extractBasesValue(value: unknown): unknown {
  * @param plugin - TaskNotes plugin instance
  * @returns The property value, or undefined if not found
  */
-function getPropertyValue(task: TaskInfo, propertyId: string, plugin: TaskNotesPlugin): unknown {
+function getPropertyValue(task: TaskInfo, propertyId: string, plugin: BaseViewsPlugin): unknown {
 	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	try {
 		// Check if this is a user-configured name for a mapped field
@@ -616,7 +616,7 @@ function getPropertyValue(task: TaskInfo, propertyId: string, plugin: TaskNotesP
 function getUserPropertyValue(
 	task: TaskInfo,
 	propertyId: string,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): unknown {
 	const fieldId = propertyId.slice(5);
 	const userField = plugin.settings.userFields?.find((f) => f.id === fieldId);
@@ -639,7 +639,7 @@ function getUserPropertyValue(
 /**
  * Safely extract frontmatter value with proper typing
  */
-function getFrontmatterValue(taskPath: string, key: string, plugin: TaskNotesPlugin): unknown {
+function getFrontmatterValue(taskPath: string, key: string, plugin: BaseViewsPlugin): unknown {
 	try {
 		const fileMetadata = plugin.app.metadataCache.getCache(taskPath);
 		if (!fileMetadata?.frontmatter) {
@@ -661,7 +661,7 @@ type PropertyRenderer = (
 	element: HTMLElement,
 	value: unknown,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ) => void;
 
 /**
@@ -891,7 +891,7 @@ function renderPropertyMetadata(
 	container: HTMLElement,
 	propertyId: string,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): HTMLElement | null {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const value = getPropertyValue(task, propertyId, plugin);
@@ -954,7 +954,7 @@ function renderUserProperty(
 	element: HTMLElement,
 	propertyId: string,
 	value: unknown,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): void {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const fieldId = propertyId.slice(5);
@@ -1046,7 +1046,7 @@ function renderGenericProperty(
 	element: HTMLElement,
 	propertyId: string,
 	value: unknown,
-	plugin?: TaskNotesPlugin
+	plugin?: BaseViewsPlugin
 ): void {
 	// Handle formula properties - show just the formula name, not "formula.TESTST"
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
@@ -1084,7 +1084,7 @@ function renderGenericProperty(
 function renderPropertyValue(
 	container: HTMLElement,
 	value: unknown,
-	plugin?: TaskNotesPlugin
+	plugin?: BaseViewsPlugin
 ): void {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	if (typeof value === "string" && plugin) {
@@ -1206,7 +1206,7 @@ function renderDueDateProperty(
 	element: HTMLElement,
 	due: string,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): void {
 	// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 	const isDueToday = isTodayTimeAware(due);
@@ -1257,7 +1257,7 @@ function renderScheduledDateProperty(
 	element: HTMLElement,
 	scheduled: string,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): void {
 	// 描画要素の組み立てと状態反映をまとめて行い、再描画処理を一元化する。
 	const isScheduledToday = isTodayTimeAware(scheduled);
@@ -1335,7 +1335,7 @@ function updateMetadataVisibility(metadataLine: HTMLElement, metadataElements: H
  */
 export function createTaskCard(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	visibleProperties?: string[],
 	options: Partial<TaskCardOptions> = {}
 ): HTMLElement {
@@ -1711,7 +1711,7 @@ export function createTaskCard(
 export async function showTaskContextMenu(
 	event: MouseEvent,
 	taskPath: string,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	targetDate: Date
 ) {
 	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
@@ -1752,7 +1752,7 @@ export async function showTaskContextMenu(
 	}
 }
 
-function showFileContextMenu(event: MouseEvent, file: TFile, plugin: TaskNotesPlugin) {
+function showFileContextMenu(event: MouseEvent, file: TFile, plugin: BaseViewsPlugin) {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 	const menu = new Menu();
 
@@ -1790,7 +1790,7 @@ function showFileContextMenu(event: MouseEvent, file: TFile, plugin: TaskNotesPl
 export function updateTaskCard(
 	element: HTMLElement,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	visibleProperties?: string[],
 	options: Partial<TaskCardOptions> = {}
 ): void {
@@ -2339,7 +2339,7 @@ class DeleteTaskConfirmationModal extends Modal {
  */
 export async function showDeleteConfirmationModal(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const modal = new DeleteTaskConfirmationModal(plugin.app, task, async () => {
@@ -2380,7 +2380,7 @@ export function cleanupTaskCard(card: HTMLElement): void {
 export async function toggleSubtasks(
 	card: HTMLElement,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	expanded: boolean
 ): Promise<void> {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
@@ -2517,7 +2517,7 @@ export async function toggleSubtasks(
 export async function toggleBlockingTasks(
 	card: HTMLElement,
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	shouldExpand: boolean
 ): Promise<void> {
 	// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
@@ -2579,7 +2579,7 @@ export async function toggleBlockingTasks(
  */
 export async function refreshParentTaskSubtasks(
 	updatedTask: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	container: HTMLElement
 ): Promise<void> {
 	// Only process if the updated task has projects (i.e., is a subtask)
@@ -2664,3 +2664,4 @@ export async function refreshParentTaskSubtasks(
 		}
 	}
 }
+

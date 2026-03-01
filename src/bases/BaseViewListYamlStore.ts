@@ -1,5 +1,5 @@
-import { TFile, parseYaml, stringifyYaml } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { TFile, parseYaml, stringifyYaml } from "obsidian";
+import BaseViewsPlugin from "../main";
 
 // `.base` 内の `views[]` 要素から抽出したビュー情報を表す。
 export interface BaseViewRecord {
@@ -40,7 +40,7 @@ export class BaseViewListYamlStore {
 	private cache = new Map<string, CachedBaseYaml>();
 
 	// YAMLアクセスに必要なplugin参照を受け取りストアを初期化する。
-	constructor(private plugin: TaskNotesPlugin) {}
+	constructor(private plugin: BaseViewsPlugin) {}
 
 	// 指定ファイルまたは全件のYAMLキャッシュを破棄する。
 	clearCache(filePath?: string): void {
@@ -89,7 +89,7 @@ export class BaseViewListYamlStore {
 			key,
 			normalized ?? undefined,
 			(current) => this.parseViewListPlacement(current) === normalized,
-			"[TaskNotes][Bases] Failed to update view list position formula"
+			"[BaseViews][Bases] Failed to update view list position formula"
 		);
 	}
 
@@ -101,7 +101,7 @@ export class BaseViewListYamlStore {
 			VIEW_LIST_SHOW_PROPERTY_KEY,
 			normalized ?? undefined,
 			(current) => this.normalizeBooleanFormulaString(current) === normalized,
-			"[TaskNotes][Bases] Failed to update view list showProperty formula"
+			"[BaseViews][Bases] Failed to update view list showProperty formula"
 		);
 	}
 
@@ -116,7 +116,7 @@ export class BaseViewListYamlStore {
 			VIEW_LIST_TOP_OVERFLOW_KEY,
 			normalized ?? undefined,
 			(current) => this.parseTopOverflowMode(current) === normalized,
-			"[TaskNotes][Bases] Failed to update view list top overflow formula"
+			"[BaseViews][Bases] Failed to update view list top overflow formula"
 		);
 	}
 
@@ -134,41 +134,18 @@ export class BaseViewListYamlStore {
 
 	// view一覧の保存幅比率（formulas.viewListSize）を更新する。
 	async setViewListSizeRatio(file: TFile, ratio: number | null): Promise<boolean> {
-		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		try {
-			const root = await this.readRoot(file);
-			const formulas = this.asRecord(root.formulas) ?? {};
-			const normalizedRatio = ratio == null ? null : this.roundRatio(ratio);
-			const nextRatioText =
-				normalizedRatio == null ? null : this.formatRatioString(normalizedRatio);
-			const currentRaw = formulas[VIEW_LIST_SIZE_KEY];
-			const previousRatioText = this.normalizeRatioText(currentRaw);
-
-			if (nextRatioText == null) {
-				if (typeof formulas[VIEW_LIST_SIZE_KEY] === "undefined") {
-					return false;
-				}
-				delete formulas[VIEW_LIST_SIZE_KEY];
-			} else {
-				// Keep formulas.viewListSize as string to satisfy Bases schema.
-				if (typeof currentRaw === "string" && previousRatioText === nextRatioText) {
-					return false;
-				}
-				formulas[VIEW_LIST_SIZE_KEY] = nextRatioText;
-			}
-
-			if (Object.keys(formulas).length === 0) {
-				delete root.formulas;
-			} else {
-				root.formulas = formulas;
-			}
-
-			await this.writeRoot(file, root);
-			return true;
-		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to update formulas.viewListSize", error);
-			return false;
-		}
+		const normalizedRatio = ratio == null ? null : this.roundRatio(ratio);
+		const nextRatioText =
+			normalizedRatio == null ? null : this.formatRatioString(normalizedRatio);
+		return this.updateFormulaField(
+			file,
+			VIEW_LIST_SIZE_KEY,
+			nextRatioText ?? undefined,
+			// Keep formulas.viewListSize as string to satisfy Bases schema.
+			(current) =>
+				typeof current === "string" && this.normalizeRatioText(current) === nextRatioText,
+			"[BaseViews][Bases] Failed to update formulas.viewListSize"
+		);
 	}
 
 	// `.base` 内 `views[]` を走査してビュー名・type一覧を返す。
@@ -236,7 +213,7 @@ export class BaseViewListYamlStore {
 			await this.writeRoot(file, root);
 			return true;
 		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to update view description", error);
+			console.warn("[BaseViews][Bases] Failed to update view description", error);
 			return false;
 		}
 	}
@@ -312,7 +289,7 @@ export class BaseViewListYamlStore {
 			await this.writeRoot(file, root);
 			return true;
 		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to reorder views", error);
+			console.warn("[BaseViews][Bases] Failed to reorder views", error);
 			return false;
 		}
 	}
@@ -362,7 +339,7 @@ export class BaseViewListYamlStore {
 			await this.writeRoot(file, root);
 			return nextName;
 		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to duplicate view", error);
+			console.warn("[BaseViews][Bases] Failed to duplicate view", error);
 			return null;
 		}
 	}
@@ -462,12 +439,7 @@ export class BaseViewListYamlStore {
 
 	// view一覧配置の保存文字列を有効値へ正規化する。
 	private parseViewListPlacement(value: unknown): ViewListFormulaPlacement | null {
-		if (typeof value !== "string") return null;
-		const normalized = value.trim().toLowerCase();
-		if (normalized === "left" || normalized === "top" || normalized === "none") {
-			return normalized;
-		}
-		return null;
+		return this.parseEnumString(value, ["left", "top", "none"]);
 	}
 
 	// 入力値をview一覧配置の保存値へ正規化する。
@@ -477,12 +449,19 @@ export class BaseViewListYamlStore {
 
 	// top配置のoverflowモード保存文字列を有効値へ正規化する。
 	private parseTopOverflowMode(value: unknown): ViewListFormulaTopOverflowMode | null {
+		return this.parseEnumString(value, ["wrap", "scroll"]);
+	}
+
+	// 文字列値を許可リスト内の小文字文字列へ正規化する。
+	private parseEnumString<T extends string>(
+		value: unknown,
+		allowed: readonly T[]
+	): T | null {
 		if (typeof value !== "string") return null;
 		const normalized = value.trim().toLowerCase();
-		if (normalized === "wrap" || normalized === "scroll") {
-			return normalized;
-		}
-		return null;
+		return (allowed as readonly string[]).includes(normalized)
+			? (normalized as T)
+			: null;
 	}
 
 	// formulas未設定時に返す空の既定設定オブジェクトを生成する。
@@ -565,3 +544,5 @@ export class BaseViewListYamlStore {
 		return value.toFixed(3).replace(/\.?0+$/, "");
 	}
 }
+
+

@@ -1,5 +1,5 @@
-/* eslint-disable no-console */
-import TaskNotesPlugin from "../main";
+﻿/* eslint-disable no-console */
+import BaseViewsPlugin from "../main";
 import { TaskInfo } from "../types";
 import { calculateTotalTimeSpent } from "../utils/helpers";
 
@@ -20,7 +20,7 @@ export interface BasesDataItem {
 function createTaskInfoFromProperties(
 	props: Record<string, any>,
 	basesItem: BasesDataItem,
-	plugin?: TaskNotesPlugin
+	plugin?: BaseViewsPlugin
 ): TaskInfo {
 	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	const knownProperties = new Set([
@@ -118,7 +118,7 @@ function createTaskInfoFromProperties(
 
 export function createTaskInfoFromBasesData(
 	basesItem: BasesDataItem,
-	plugin?: TaskNotesPlugin
+	plugin?: BaseViewsPlugin
 ): TaskInfo | null {
 	// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 	if (!basesItem?.path) return null;
@@ -160,8 +160,8 @@ export function createTaskInfoFromBasesData(
  */
 export async function identifyTaskNotesFromBasesData(
 	dataItems: BasesDataItem[],
-	plugin?: TaskNotesPlugin,
-	toTaskInfo?: (item: BasesDataItem, plugin?: TaskNotesPlugin) => TaskInfo | null
+	plugin?: BaseViewsPlugin,
+	toTaskInfo?: (item: BasesDataItem, plugin?: BaseViewsPlugin) => TaskInfo | null
 ): Promise<TaskInfo[]> {
 	const taskInfoConverter = toTaskInfo || createTaskInfoFromBasesData;
 	const taskNotes: TaskInfo[] = [];
@@ -176,3 +176,4 @@ export async function identifyTaskNotesFromBasesData(
 	}
 	return taskNotes;
 }
+

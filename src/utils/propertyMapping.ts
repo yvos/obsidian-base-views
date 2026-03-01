@@ -1,4 +1,4 @@
-import type TaskNotesPlugin from "../main";
+﻿import type BaseViewsPlugin from "../main";
 import type { FieldMapping } from "../types";
 
 /**
@@ -32,7 +32,7 @@ function isSpecialProperty(property: string): property is SpecialProperty {
  */
 export function convertInternalToUserProperties(
 	internalNames: string[],
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): string[] {
 	return internalNames.map((name) => {
 		// Special properties pass through unchanged
@@ -67,7 +67,8 @@ export function convertInternalToUserProperties(
 export function isPropertyForField(
 	propertyId: string,
 	internalField: keyof FieldMapping,
-	plugin: TaskNotesPlugin
+	plugin: BaseViewsPlugin
 ): boolean {
 	return plugin.fieldMapper.isPropertyForField(propertyId, internalField);
 }
+

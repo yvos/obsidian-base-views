@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
+﻿/* eslint-disable no-console */
 import { requireApiVersion } from "obsidian";
-import TaskNotesPlugin from "../main";
+import BaseViewsPlugin from "../main";
 import { buildTaskListViewCustomFactory } from "./TaskListViewCustom";
 import { buildCustomTableViewFactory } from "./CustomTableView";
 import { registerBasesView, unregisterBasesView } from "./api";
@@ -25,7 +25,7 @@ function isSubGroupProperty(prop: string): boolean {
 }
 
 // Register Base Views custom views only.
-export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<void> {
+export async function registerBasesTaskList(plugin: BaseViewsPlugin): Promise<void> {
 	// 必要なイベントやコマンドを一括登録し、初期化の前提を整える。
 	const legacyEnabled = plugin.settings.enableBases !== false;
 	const enableTaskListCustom =
@@ -137,7 +137,7 @@ export async function registerBasesTaskList(plugin: TaskNotesPlugin): Promise<vo
 }
 
 // Unregister Base Views custom views.
-export function unregisterBasesViews(plugin: TaskNotesPlugin): void {
+export function unregisterBasesViews(plugin: BaseViewsPlugin): void {
 	try {
 		// Unregister only views that BaseViews itself registers.
 		unregisterBasesView(plugin, "tasknotesTaskListCustom");
@@ -146,3 +146,4 @@ export function unregisterBasesViews(plugin: TaskNotesPlugin): void {
 		console.error("[BaseViews][Bases] Error during view unregistration:", error);
 	}
 }
+

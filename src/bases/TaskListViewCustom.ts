@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+﻿/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Notice, TFile, setIcon } from "obsidian";
-import TaskNotesPlugin from "../main";
+import BaseViewsPlugin from "../main";
 import { BasesViewBase } from "./BasesViewBase";
 import { TaskInfo } from "../types";
 import { identifyTaskNotesFromBasesData, BasesDataItem } from "./helpers";
@@ -65,7 +65,7 @@ export class TaskListViewCustom extends BasesViewBase {
 	 */
 	private readonly VIRTUAL_SCROLL_THRESHOLD = 100;
 
-	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
+	constructor(controller: any, containerEl: HTMLElement, plugin: BaseViewsPlugin) {
 		super(controller, containerEl, plugin);
 		// BasesView now provides this.data, this.config, and this.app directly
 		// Update the data adapter to use this BasesView instance
@@ -2001,7 +2001,7 @@ export class TaskListViewCustom extends BasesViewBase {
  * Returns an actual TaskListViewCustom instance (extends BasesView).
  */
 // Bases登録時にTaskListViewCustomインスタンスを生成するファクトリを返す。
-export function buildTaskListViewCustomFactory(plugin: TaskNotesPlugin) {
+export function buildTaskListViewCustomFactory(plugin: BaseViewsPlugin) {
 	return function (controller: any, containerEl: HTMLElement): TaskListViewCustom {
 		if (!containerEl) {
 			console.error("[TaskNotes][TaskListViewCustom] No containerEl provided");
@@ -2013,3 +2013,4 @@ export function buildTaskListViewCustomFactory(plugin: TaskNotesPlugin) {
 		return new TaskListViewCustom(controller, containerEl, plugin);
 	};
 }
+

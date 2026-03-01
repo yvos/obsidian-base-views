@@ -13,11 +13,11 @@
 }
 
 /* When a TaskNotes view is active: show our button, hide native */
-.tasknotes-view-active .bv-bases-new-task-btn {
+.baseviews-view-active .bv-bases-new-task-btn {
 	display: flex;
 }
 
-.tasknotes-view-active .bases-toolbar-new-item-menu {
+.baseviews-view-active .bases-toolbar-new-item-menu {
 	display: none;
 }
 
@@ -1084,4 +1084,5 @@ button.bv-bases-view-list__item-menu {
         padding: var(--tn-spacing-sm) 0 var(--tn-spacing-xs);
     }
 }
+
 

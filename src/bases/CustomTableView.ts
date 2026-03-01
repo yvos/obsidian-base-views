@@ -1,5 +1,5 @@
 ﻿import { Keymap, Menu, Notice, TFile, setIcon } from "obsidian";
-import TaskNotesPlugin from "../main";
+import BaseViewsPlugin from "../main";
 import { BasesViewBase } from "./BasesViewBase";
 import { TaskInfo } from "../types";
 import { calculateSummary, getSummaryOptions, TableSummaryKey } from "./tableSummary";
@@ -179,7 +179,7 @@ export class CustomTableView extends BasesViewBase {
 	private jumpHighlightScheduleTimer: number | null = null;
 	private jumpHighlightCanClear = true;
 
-	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
+	constructor(controller: any, containerEl: HTMLElement, plugin: BaseViewsPlugin) {
 		super(controller, containerEl, plugin);
 		(this.dataAdapter as any).basesView = this;
 		this.basesController = controller;
@@ -227,7 +227,7 @@ export class CustomTableView extends BasesViewBase {
 			try {
 				this.render();
 			} catch (error) {
-				console.error(`[TaskNotes][${this.type}] Render error:`, error);
+				console.error(`[BaseViews][${this.type}] Render error:`, error);
 				this.renderError(error as Error);
 			}
 		}, delay);
@@ -316,7 +316,7 @@ export class CustomTableView extends BasesViewBase {
 
 			this.configLoaded = true;
 		} catch (error) {
-			console.warn("[TaskNotes][CustomTableView] Failed to read view options:", error);
+			console.warn("[BaseViews][CustomTableView] Failed to read view options:", error);
 			this.rowHeight = "medium";
 			this.tableSummaries = {};
 			this.columnSize = {};
@@ -1528,7 +1528,7 @@ export class CustomTableView extends BasesViewBase {
 			}
 			this.config.set("columnSize", this.columnSize);
 		} catch (error) {
-			console.error("[TaskNotes][CustomTableView] Failed to persist column sizes:", error);
+			console.error("[BaseViews][CustomTableView] Failed to persist column sizes:", error);
 		}
 	}
 
@@ -1818,7 +1818,7 @@ export class CustomTableView extends BasesViewBase {
 			this.config?.set?.("tableSummaries", next);
 			void this.render();
 		} catch (error) {
-			console.error("[TaskNotes][CustomTableView] Failed to update table summary setting:", error);
+			console.error("[BaseViews][CustomTableView] Failed to update table summary setting:", error);
 			new Notice("Failed to update summary setting.");
 		}
 	}
@@ -2129,7 +2129,7 @@ export class CustomTableView extends BasesViewBase {
 				value.renderTo(cellEl, { hoverPopover: null } as any);
 				return;
 			} catch (error) {
-				console.debug("[TaskNotes][CustomTableView] value.renderTo failed; fallback to toString()", error);
+				console.debug("[BaseViews][CustomTableView] value.renderTo failed; fallback to toString()", error);
 			}
 		}
 
@@ -2199,13 +2199,15 @@ export class CustomTableView extends BasesViewBase {
 }
 
 // Bases登録時にCustomTableViewインスタンスを生成するファクトリを返す。
-export function buildCustomTableViewFactory(plugin: TaskNotesPlugin) {
+export function buildCustomTableViewFactory(plugin: BaseViewsPlugin) {
 	return function (controller: any, containerEl: HTMLElement): CustomTableView {
 		if (!containerEl) {
-			console.error("[TaskNotes][CustomTableView] No containerEl provided");
+			console.error("[BaseViews][CustomTableView] No containerEl provided");
 			throw new Error("CustomTableView requires a containerEl");
 		}
 		return new CustomTableView(controller, containerEl, plugin);
 	};
 }
+
+
 

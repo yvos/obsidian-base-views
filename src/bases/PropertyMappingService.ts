@@ -1,4 +1,4 @@
-import TaskNotesPlugin from "../main";
+﻿import BaseViewsPlugin from "../main";
 import { FieldMapper } from "../services/FieldMapper";
 import type { FrontmatterPropertyName, TaskCardPropertyId } from "../types";
 
@@ -31,7 +31,7 @@ import type { FrontmatterPropertyName, TaskCardPropertyId } from "../types";
 // 関連ドメインの処理を集約し、利用側へ一貫したAPIを提供する。
 export class PropertyMappingService {
 	constructor(
-		private plugin: TaskNotesPlugin,
+		private plugin: BaseViewsPlugin,
 		private fieldMapper: FieldMapper
 	) {}
 
@@ -214,3 +214,4 @@ export class PropertyMappingService {
 		return basesPropertyIds.map((id) => this.basesToTaskCardProperty(id));
 	}
 }
+

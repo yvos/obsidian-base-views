@@ -1,5 +1,5 @@
-import { EventRef, Menu, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { EventRef, Menu, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
+import BaseViewsPlugin from "../main";
 import { openNativeViewSettingsAtAnchor } from "../integrations/bases/nativeViewSettingsBridge";
 import { showTextInputModal } from "../modals/TextInputModal";
 import {
@@ -204,7 +204,7 @@ export class BasesViewListSidebarService {
 		void this.endResizeDrag(true);
 	};
 
-	constructor(private plugin: TaskNotesPlugin) {
+	constructor(private plugin: BaseViewsPlugin) {
 		this.yamlStore = new BaseViewListYamlStore(plugin);
 	}
 
@@ -2025,7 +2025,7 @@ export class BasesViewListSidebarService {
 			if (!updated) return;
 			await this.redrawViewList(leaf);
 		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to reorder views from drag", error);
+			console.warn("[BaseViews][Bases] Failed to reorder views from drag", error);
 			new Notice(this.getReorderViewsFailedNotice());
 		}
 	}
@@ -2042,7 +2042,7 @@ export class BasesViewListSidebarService {
 			}
 			await this.redrawViewList(leaf);
 		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to duplicate view from menu", error);
+			console.warn("[BaseViews][Bases] Failed to duplicate view from menu", error);
 			new Notice(this.getDuplicateViewFailedNotice());
 		}
 	}
@@ -2409,7 +2409,7 @@ export class BasesViewListSidebarService {
 				this.scheduleRefresh(80);
 				return;
 			} catch (error) {
-				console.debug("[TaskNotes][Bases] selectView failed, falling back to openLinkText", error);
+				console.debug("[BaseViews][Bases] selectView failed, falling back to openLinkText", error);
 			}
 		}
 
@@ -2426,7 +2426,7 @@ export class BasesViewListSidebarService {
 			workspace.setActiveLeaf?.(leaf, { focus: false });
 			await this.plugin.app.workspace.openLinkText(`${file.path}#${viewName}`, file.path, false);
 		} catch (error) {
-			console.error("[TaskNotes][Bases] Failed to switch base view", error);
+			console.error("[BaseViews][Bases] Failed to switch base view", error);
 		}
 
 		this.scheduleRefresh(120);
@@ -2784,7 +2784,7 @@ export class BasesViewListSidebarService {
 			try {
 				leafView.refresh();
 			} catch (error) {
-				console.debug("[TaskNotes][Bases] Failed to refresh bases view before redrawing list", error);
+				console.debug("[BaseViews][Bases] Failed to refresh bases view before redrawing list", error);
 			}
 		}
 		this.cleanupLeaf(leaf);
@@ -2814,7 +2814,7 @@ export class BasesViewListSidebarService {
 		try {
 			await pluginWithSave.saveSettings();
 		} catch (error) {
-			console.warn("[TaskNotes][Bases] Failed to persist view list settings", error);
+			console.warn("[BaseViews][Bases] Failed to persist view list settings", error);
 		}
 	}
 
@@ -2870,3 +2870,5 @@ export class BasesViewListSidebarService {
 		}
 	}
 }
+
+

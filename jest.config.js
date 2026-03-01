@@ -3,7 +3,7 @@ module.exports = {
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/tests'],
   testMatch: [
-    '**/tests/unit/services/i18nService.test.ts',
+    '**/tests/unit/services/**/*.test.ts',
     '**/tests/unit/bases/**/*.test.ts',
     '**/tests/unit/integrations/**/*.test.ts'
   ],

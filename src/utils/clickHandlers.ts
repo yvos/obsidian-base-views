@@ -1,10 +1,10 @@
-import { TFile } from "obsidian";
+﻿import { TFile } from "obsidian";
 import { TaskInfo } from "../types";
-import TaskNotesPlugin from "../main";
+import BaseViewsPlugin from "../main";
 
 export interface ClickHandlerOptions {
 	task: TaskInfo;
-	plugin: TaskNotesPlugin;
+	plugin: BaseViewsPlugin;
 	excludeSelector?: string; // CSS selector for elements that should not trigger click behavior
 	onSingleClick?: (e: MouseEvent) => Promise<void>; // Optional override for single click
 	onDoubleClick?: (e: MouseEvent) => Promise<void>; // Optional override for double click
@@ -204,7 +204,7 @@ export function createTaskClickHandler(options: ClickHandlerOptions) {
 /**
  * Creates a standard hover preview handler for task elements
  */
-export function createTaskHoverHandler(task: TaskInfo, plugin: TaskNotesPlugin) {
+export function createTaskHoverHandler(task: TaskInfo, plugin: BaseViewsPlugin) {
 	return (event: MouseEvent) => {
 		const file = plugin.app.vault.getAbstractFileByPath(task.path);
 		if (file) {
@@ -231,7 +231,7 @@ const calendarClickTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
  */
 export async function handleCalendarTaskClick(
 	task: TaskInfo,
-	plugin: TaskNotesPlugin,
+	plugin: BaseViewsPlugin,
 	jsEvent: MouseEvent,
 	eventId: string,
 	onTaskUpdated?: () => void
@@ -308,3 +308,4 @@ export function cleanupCalendarClickTimeout(eventId: string) {
 		calendarClickTimeouts.delete(eventId);
 	}
 }
+

@@ -1,12 +1,12 @@
-import { Menu, Notice } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { Menu, Notice } from "obsidian";
+import BaseViewsPlugin from "../main";
 import { TaskInfo } from "../types";
 import { DateContextMenu } from "./DateContextMenu";
 import { ContextMenu } from "./ContextMenu";
 import { showConfirmationModal } from "../modals/ConfirmationModal";
 
 export interface BatchContextMenuOptions {
-	plugin: TaskNotesPlugin;
+	plugin: BaseViewsPlugin;
 	selectedPaths: string[];
 	onUpdate?: () => void;
 }
@@ -384,3 +384,4 @@ export class BatchContextMenu {
 		this.menu.showAtMouseEvent(event);
 	}
 }
+

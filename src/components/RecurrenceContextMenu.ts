@@ -1,6 +1,6 @@
-import { App, Modal, Setting } from "obsidian";
+﻿import { App, Modal, Setting } from "obsidian";
 import { TranslationKey } from "../i18n";
-import TaskNotesPlugin from "../main";
+import BaseViewsPlugin from "../main";
 import { ContextMenu } from "./ContextMenu";
 
 export interface RecurrenceOption {
@@ -15,7 +15,7 @@ export interface RecurrenceContextMenuOptions {
 	currentAnchor?: 'scheduled' | 'completion';
 	onSelect: (value: string | null, anchor?: 'scheduled' | 'completion') => void;
 	app: App;
-	plugin: TaskNotesPlugin;
+	plugin: BaseViewsPlugin;
 }
 
 // RecurrenceContextMenuの中核ロジックをまとめるクラス。
@@ -922,3 +922,4 @@ class CustomRecurrenceModal extends Modal {
 		contentEl.empty();
 	}
 }
+

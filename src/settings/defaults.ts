@@ -1,6 +1,6 @@
-import { FieldMapping, StatusConfig, PriorityConfig } from "../types";
+﻿import { FieldMapping, StatusConfig, PriorityConfig } from "../types";
 import {
-	TaskNotesSettings,
+	BaseViewsSettings,
 	TaskCreationDefaults,
 	CalendarViewSettings,
 	ICSIntegrationSettings,
@@ -254,7 +254,7 @@ export const DEFAULT_NLP_TRIGGERS: NLPTriggersConfig = {
 	],
 };
 
-export const DEFAULT_SETTINGS: TaskNotesSettings = {
+export const DEFAULT_SETTINGS: BaseViewsSettings = {
 	tasksFolder: "TaskNotes/Tasks",
 	moveArchivedTasks: false,
 	archiveFolder: "TaskNotes/Archive",
@@ -423,3 +423,4 @@ export const DEFAULT_SETTINGS: TaskNotesSettings = {
 	// Google Calendar task export settings
 	googleCalendarExport: DEFAULT_GOOGLE_CALENDAR_EXPORT,
 };
+

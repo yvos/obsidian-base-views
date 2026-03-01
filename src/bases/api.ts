@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bases Plugin API Module
  *
  * This module provides a type-safe interface to the Bases plugin,
@@ -123,20 +123,20 @@ export function getBasesAPI(app: App): BasesAPI | null {
 		// Try the correct path for Bases plugin (internal plugins)
 		const internalPlugins = (app as any).internalPlugins;
 		if (!internalPlugins) {
-			console.debug("[TaskNotes][Bases] Internal plugins manager not available");
+			console.debug("[BaseViews][Bases] Internal plugins manager not available");
 			return null;
 		}
 
 		const basesPlugin = internalPlugins.getEnabledPluginById?.("bases");
 		if (!basesPlugin) {
-			console.debug("[TaskNotes][Bases] Bases plugin not found or not enabled");
+			console.debug("[BaseViews][Bases] Bases plugin not found or not enabled");
 			return null;
 		}
 
 		// Check if the plugin has the expected API structure
 		if (!basesPlugin.registrations || typeof basesPlugin.registrations !== "object") {
 			console.warn(
-				"[TaskNotes][Bases] Bases plugin found but registrations API not available"
+				"[BaseViews][Bases] Bases plugin found but registrations API not available"
 			);
 			return null;
 		}
@@ -147,7 +147,7 @@ export function getBasesAPI(app: App): BasesAPI | null {
 			version: basesPlugin.manifest?.version || "unknown",
 		};
 	} catch (error) {
-		console.warn("[TaskNotes][Bases] Error accessing Bases plugin API:", error);
+		console.warn("[BaseViews][Bases] Error accessing Bases plugin API:", error);
 		return null;
 	}
 }
@@ -176,31 +176,31 @@ export function registerBasesView(
 			const success = (plugin as any).registerBasesView(viewId, registration);
 			if (success) {
 				console.debug(
-					`[TaskNotes][Bases] Successfully registered view via public API: ${viewId}`
+					`[BaseViews][Bases] Successfully registered view via public API: ${viewId}`
 				);
 				return true;
 			}
 			console.debug(
-				`[TaskNotes][Bases] Public API returned false (Bases may be disabled)`
+				`[BaseViews][Bases] Public API returned false (Bases may be disabled)`
 			);
 			return false;
 		} catch (error: any) {
 			// Check if error is because view already exists - treat as success
 			if (error?.message?.includes("already exists")) {
 				console.debug(
-					`[TaskNotes][Bases] View ${viewId} already registered via public API`
+					`[BaseViews][Bases] View ${viewId} already registered via public API`
 				);
 				return true;
 			}
 			console.warn(
-				`[TaskNotes][Bases] Public API registration failed for ${viewId}:`,
+				`[BaseViews][Bases] Public API registration failed for ${viewId}:`,
 				error
 			);
 			return false;
 		}
 	}
 
-	console.warn("[TaskNotes][Bases] Cannot register view: Bases public API not available (requires Obsidian 1.10.0+)");
+	console.warn("[BaseViews][Bases] Cannot register view: Bases public API not available (requires Obsidian 1.10.0+)");
 	return false;
 }
 
@@ -222,7 +222,7 @@ export function unregisterBasesView(plugin: Plugin, viewId: string): boolean {
 		}
 		return true;
 	} catch (error) {
-		console.error(`[TaskNotes][Bases] Error unregistering view ${viewId}:`, error);
+		console.error(`[BaseViews][Bases] Error unregistering view ${viewId}:`, error);
 		return false;
 	}
 }
@@ -242,3 +242,4 @@ export function isValidBasesContainer(container: any): container is BasesContain
 		isValidViewContainer
 	);
 }
+

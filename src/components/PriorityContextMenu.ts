@@ -1,11 +1,11 @@
-import TaskNotesPlugin from "../main";
+﻿import BaseViewsPlugin from "../main";
 import { PriorityConfig } from "../types";
 import { ContextMenu } from "./ContextMenu";
 
 export interface PriorityContextMenuOptions {
 	currentValue?: string;
 	onSelect: (value: string) => void;
-	plugin: TaskNotesPlugin;
+	plugin: BaseViewsPlugin;
 }
 
 // PriorityContextMenuの中核ロジックをまとめるクラス。
@@ -82,3 +82,4 @@ export class PriorityContextMenu {
 		});
 	}
 }
+

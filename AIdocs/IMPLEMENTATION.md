@@ -650,3 +650,33 @@
   - `notices` / `commands` / `modals` / `services` の timeblock / pomodoro / releaseNotes 関連未使用キー
 - 目的は「不要機能削除後に残った翻訳資産の整合化」であり、挙動追加は行っていない。
 - i18n欠損時は既存の fallback（キー文字列返却）があるため、実行時致命エラーには直結しない設計だが、`typecheck` 通過を前提に静的整合は維持している。
+
+## 11.16 2026-03-01 コード全体レビュー後削減簡素化計画（Phase 3〜5）反映
+
+- 設定型/プラグイン型の命名整理を実施。
+  - `TaskNotesSettings` を `BaseViewsSettings` に改名（`src/types/settings.ts`）。
+  - `TaskNotesPlugin` を `BaseViewsPlugin` に改名（`src/main.ts` と `src` 全体の型参照）。
+- 設定移行ロジックを `main.ts` から分離。
+  - `src/settings/migrations.ts` を追加し、以下を集約:
+    - 旧 `enableBases` から3機能トグルへの展開
+    - `basesViewListShowNativeToolbar` から `basesViewListHideNativeToolbar` への移行
+    - UI言語正規化（`en`/`ja`）と `enableBases` 集約値の再計算
+  - `main.ts` は `migrateBaseViewsSettings()` / `hasAnyBaseViewsFeatureEnabled()` / `normalizeBaseViewsUILanguage()` を呼ぶ構成へ変更。
+- 設定移行の互換テストを追加。
+  - `tests/unit/services/baseViewsSettingsMigration.test.ts` を追加。
+  - `jest.config.js` の services テスト対象を `tests/unit/services/**/*.test.ts` に拡張。
+- 命名方針に沿った非TaskList専用領域の正規化を実施。
+  - View一覧/CustomTable/共通Bases層のログ接頭辞を `[BaseViews][...]` へ統一。
+  - `tasknotes-view-active` クラスを `baseviews-view-active` へ変更（`BasesViewBase` と CSS を同期）。
+- 簡素化（重複・過剰分岐の削減）を実施。
+  - `src/components/TaskContextMenu.ts`
+    - 依存追加/組織追加で重複していた編集モーダル起動処理を共通化。
+  - `src/bases/BaseViewListYamlStore.ts`
+    - `setViewListSizeRatio` を `updateFormulaField` 共通経路に統合。
+    - enum文字列パースを `parseEnumString` へ共通化。
+- 互換リスクにより据え置いた項目。
+  - `tasknotesCustomTable` view type ID は既存 `.base` 参照互換を優先し据え置き。
+- 検証結果（2026-03-01 実施）
+  - `npm run build-css`: 成功
+  - `npm run typecheck`: 成功
+  - `npx jest --testPathPatterns=unit --runInBand`: 成功（17/17 suites, 144/144 tests）

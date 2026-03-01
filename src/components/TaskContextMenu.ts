@@ -1,5 +1,5 @@
-import { Menu, Notice, TFile } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { Menu, Notice, TFile } from "obsidian";
+import BaseViewsPlugin from "../main";
 import { TaskInfo } from "../types";
 import { formatDateForStorage } from "../utils/dateUtils";
 import { ReminderModal } from "../modals/ReminderModal";
@@ -13,7 +13,7 @@ import { ContextMenu } from "./ContextMenu";
 
 export interface TaskContextMenuOptions {
 	task: TaskInfo;
-	plugin: TaskNotesPlugin;
+	plugin: BaseViewsPlugin;
 	targetDate: Date;
 	onUpdate?: () => void;
 }
@@ -655,14 +655,18 @@ export class TaskContextMenu {
 		}, 10);
 	}
 
-	private addDependencyMenuItems(menu: Menu, task: TaskInfo, plugin: TaskNotesPlugin): void {
+	private addDependencyMenuItems(menu: Menu, task: TaskInfo, plugin: BaseViewsPlugin): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		menu.addItem((subItem: any) => {
 			subItem.setTitle(this.t("contextMenus.task.dependencies.addBlockedBy"));
 			subItem.setIcon("link-2");
 			subItem.onClick(() => {
-				this.menu.hide();
-				void this.openTaskEditForDependencyUpdate(task, plugin);
+				this.hideMenuAndOpenTaskEditModal(
+					task,
+					plugin,
+					"contextMenus.task.dependencies.notices.openTaskEditFailed",
+					"dependency update"
+				);
 			});
 		});
 
@@ -708,8 +712,12 @@ export class TaskContextMenu {
 			subItem.setTitle(this.t("contextMenus.task.dependencies.addBlocking"));
 			subItem.setIcon("git-branch-plus");
 			subItem.onClick(() => {
-				this.menu.hide();
-				void this.openTaskEditForDependencyUpdate(task, plugin);
+				this.hideMenuAndOpenTaskEditModal(
+					task,
+					plugin,
+					"contextMenus.task.dependencies.notices.openTaskEditFailed",
+					"dependency update"
+				);
 			});
 		});
 
@@ -756,26 +764,18 @@ export class TaskContextMenu {
 		}
 	}
 
-	private async openTaskEditForDependencyUpdate(
-		task: TaskInfo,
-		plugin: TaskNotesPlugin
-	): Promise<void> {
-		try {
-			await plugin.openTaskEditModal(task);
-		} catch (error) {
-			console.error("Failed to open TaskNotes edit modal for dependency update:", error);
-			new Notice(this.t("contextMenus.task.dependencies.notices.openTaskEditFailed"));
-		}
-	}
-
-	private addOrganizationMenuItems(menu: Menu, task: TaskInfo, plugin: TaskNotesPlugin): void {
+	private addOrganizationMenuItems(menu: Menu, task: TaskInfo, plugin: BaseViewsPlugin): void {
 		// Add to project
 		menu.addItem((subItem: any) => {
 			subItem.setTitle(this.t("contextMenus.task.organization.addToProject"));
 			subItem.setIcon("folder-plus");
 			subItem.onClick(() => {
-				this.menu.hide();
-				void this.openTaskEditForOrganizationUpdate(task, plugin);
+				this.hideMenuAndOpenTaskEditModal(
+					task,
+					plugin,
+					"contextMenus.task.organization.notices.openTaskEditFailed",
+					"organization update"
+				);
 			});
 		});
 
@@ -784,25 +784,41 @@ export class TaskContextMenu {
 			subItem.setTitle(this.t("contextMenus.task.organization.addSubtasks"));
 			subItem.setIcon("indent");
 			subItem.onClick(() => {
-				this.menu.hide();
-				void this.openTaskEditForOrganizationUpdate(task, plugin);
+				this.hideMenuAndOpenTaskEditModal(
+					task,
+					plugin,
+					"contextMenus.task.organization.notices.openTaskEditFailed",
+					"organization update"
+				);
 			});
 		});
 	}
 
-	private async openTaskEditForOrganizationUpdate(
+	private hideMenuAndOpenTaskEditModal(
 		task: TaskInfo,
-		plugin: TaskNotesPlugin
+		plugin: BaseViewsPlugin,
+		noticeKey: string,
+		errorContext: string
+	): void {
+		this.menu.hide();
+		void this.openTaskEditModalWithNotice(task, plugin, noticeKey, errorContext);
+	}
+
+	private async openTaskEditModalWithNotice(
+		task: TaskInfo,
+		plugin: BaseViewsPlugin,
+		noticeKey: string,
+		errorContext: string
 	): Promise<void> {
 		try {
 			await plugin.openTaskEditModal(task);
 		} catch (error) {
-			console.error("Failed to open TaskNotes edit modal for organization update:", error);
-			new Notice(this.t("contextMenus.task.organization.notices.openTaskEditFailed"));
+			console.error(`Failed to open task edit modal for ${errorContext}:`, error);
+			new Notice(this.t(noticeKey));
 		}
 	}
 
-	private updateMainMenuIconColors(task: TaskInfo, plugin: TaskNotesPlugin): void {
+	private updateMainMenuIconColors(task: TaskInfo, plugin: BaseViewsPlugin): void {
 		// 条件分岐に応じて状態更新と副作用処理を段階的に適用する。
 		const menuEl = this.targetDoc.querySelector(".menu");
 		if (!menuEl) return;
@@ -842,7 +858,7 @@ export class TaskContextMenu {
 		});
 	}
 
-	private addStatusOptions(submenu: any, task: TaskInfo, plugin: TaskNotesPlugin): void {
+	private addStatusOptions(submenu: any, task: TaskInfo, plugin: BaseViewsPlugin): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const statusOptions = this.getStatusOptions(task, plugin);
 
@@ -890,7 +906,7 @@ export class TaskContextMenu {
 		});
 	}
 
-	private addPriorityOptions(submenu: any, task: TaskInfo, plugin: TaskNotesPlugin): void {
+	private addPriorityOptions(submenu: any, task: TaskInfo, plugin: BaseViewsPlugin): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const priorityOptions = plugin.priorityManager.getPrioritiesByWeight();
 
@@ -1027,7 +1043,7 @@ export class TaskContextMenu {
 		submenu: any,
 		currentValue: string | undefined,
 		onSelect: (value: string | null) => Promise<void>,
-		plugin: TaskNotesPlugin
+		plugin: BaseViewsPlugin
 	): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const today = new Date();
@@ -1151,7 +1167,7 @@ export class TaskContextMenu {
 		}
 	}
 
-	private getStatusOptions(task: TaskInfo, plugin: TaskNotesPlugin) {
+	private getStatusOptions(task: TaskInfo, plugin: BaseViewsPlugin) {
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		const statusConfigs = plugin.settings.customStatuses;
 		const statusOptions: any[] = [];
@@ -1178,7 +1194,7 @@ export class TaskContextMenu {
 	private addQuickRemindersSection(
 		submenu: any,
 		task: TaskInfo,
-		plugin: TaskNotesPlugin,
+		plugin: BaseViewsPlugin,
 		anchor: "due" | "scheduled",
 		title: string
 	): void {
@@ -1224,7 +1240,7 @@ export class TaskContextMenu {
 
 	private async addQuickReminder(
 		task: TaskInfo,
-		plugin: TaskNotesPlugin,
+		plugin: BaseViewsPlugin,
 		anchor: "due" | "scheduled",
 		offset: string,
 		description: string
@@ -1257,3 +1273,4 @@ export class TaskContextMenu {
 		this.menu.showAtMouseEvent(event);
 	}
 }
+

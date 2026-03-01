@@ -1,11 +1,11 @@
-import { App, Modal, Setting, setIcon, Notice, setTooltip } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { App, Modal, Setting, setIcon, Notice, setTooltip } from "obsidian";
+import BaseViewsPlugin from "../main";
 import { TaskInfo, Reminder } from "../types";
 import { formatDateForDisplay } from "../utils/dateUtils";
 
 // ユーザー確認や入力フローを担うモーダルコンポーネント。
 export class ReminderModal extends Modal {
-	private plugin: TaskNotesPlugin;
+	private plugin: BaseViewsPlugin;
 	private task: TaskInfo;
 	private reminders: Reminder[];
 	private onSave: (reminders: Reminder[]) => void;
@@ -24,7 +24,7 @@ export class ReminderModal extends Modal {
 
 	constructor(
 		app: App,
-		plugin: TaskNotesPlugin,
+		plugin: BaseViewsPlugin,
 		task: TaskInfo,
 		onSave: (reminders: Reminder[]) => void
 	) {
@@ -791,3 +791,4 @@ export class ReminderModal extends Modal {
 		contentEl.empty();
 	}
 }
+

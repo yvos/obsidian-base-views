@@ -1,5 +1,5 @@
-import { Component, App, Notice, normalizePath, setIcon } from "obsidian";
-import TaskNotesPlugin from "../main";
+﻿import { Component, App, Notice, normalizePath, setIcon } from "obsidian";
+import BaseViewsPlugin from "../main";
 import { BasesDataAdapter } from "./BasesDataAdapter";
 import { PropertyMappingService } from "./PropertyMappingService";
 import { TaskInfo, EVENT_TASK_UPDATED } from "../types";
@@ -8,7 +8,7 @@ import { DEFAULT_INTERNAL_VISIBLE_PROPERTIES } from "../settings/defaults";
 import { BatchContextMenu } from "../components/BatchContextMenu";
 
 /**
- * Abstract base class for all TaskNotes Bases views.
+ * Abstract base class for all Base Views Bases views.
  * Properly extends Component to leverage lifecycle, and implements BasesView interface.
  * Note: Bases types (BasesView, BasesViewConfig) are available from obsidian-api declarations.
  */
@@ -19,7 +19,7 @@ export abstract class BasesViewBase extends Component {
 	app!: App;
 	config!: any; // BasesViewConfig - using any since not exported from public API
 	data!: any; // BasesQueryResult - using any since not exported from public API
-	protected plugin: TaskNotesPlugin;
+	protected plugin: BaseViewsPlugin;
 	protected dataAdapter: BasesDataAdapter;
 	protected propertyMapper: PropertyMappingService;
 	protected containerEl: HTMLElement;
@@ -33,7 +33,7 @@ export abstract class BasesViewBase extends Component {
 	protected selectionModeCleanup: (() => void) | null = null;
 	protected selectionIndicatorEl: HTMLElement | null = null;
 
-	constructor(controller: any, containerEl: HTMLElement, plugin: TaskNotesPlugin) {
+	constructor(controller: any, containerEl: HTMLElement, plugin: BaseViewsPlugin) {
 		// Call Component constructor
 		super();
 		this.plugin = plugin;
@@ -86,7 +86,7 @@ export abstract class BasesViewBase extends Component {
 			try {
 				this.render();
 			} catch (error) {
-				console.error(`[TaskNotes][${this.type}] Render error:`, error);
+				console.error(`[BaseViews][${this.type}] Render error:`, error);
 				this.renderError(error as Error);
 			}
 		}, 500);  // 500ms debounce for data updates
@@ -131,7 +131,7 @@ export abstract class BasesViewBase extends Component {
 				this.rootElement.scrollTop = state.scrollTop;
 			}
 		} catch (e) {
-			console.debug("[TaskNotes][Bases] Failed to restore ephemeral state:", e);
+			console.debug("[BaseViews][Bases] Failed to restore ephemeral state:", e);
 		}
 	}
 
@@ -144,7 +144,7 @@ export abstract class BasesViewBase extends Component {
 				this.rootElement.focus();
 			}
 		} catch (e) {
-			console.debug("[TaskNotes][Bases] Failed to focus view:", e);
+			console.debug("[BaseViews][Bases] Failed to focus view:", e);
 		}
 	}
 
@@ -187,7 +187,7 @@ export abstract class BasesViewBase extends Component {
 	}
 
 	/**
-	 * Setup custom "New Task" button that opens TaskNotes creation modal.
+	 * Setup custom "New Task" button that opens the external task runtime creation modal.
 	 * Injects the button into the Bases toolbar and hides the default "New" button.
 	 */
 	protected setupNewTaskButton(): void {
@@ -206,7 +206,7 @@ export abstract class BasesViewBase extends Component {
 		const parentEl = basesViewEl?.parentElement;
 
 		// Only remove the "active" class - button stays for potential reuse
-		parentEl?.classList.remove("tasknotes-view-active");
+		parentEl?.classList.remove("baseviews-view-active");
 	}
 
 	/**
@@ -217,7 +217,7 @@ export abstract class BasesViewBase extends Component {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const basesViewEl = this.containerEl.closest(".bases-view");
 		if (!basesViewEl) {
-			console.debug("[TaskNotes][Bases] No .bases-view found");
+			console.debug("[BaseViews][Bases] No .bases-view found");
 			return;
 		}
 
@@ -225,16 +225,16 @@ export abstract class BasesViewBase extends Component {
 		// Look in the parent container for the toolbar
 		const parentEl = basesViewEl.parentElement;
 		if (!parentEl) {
-			console.debug("[TaskNotes][Bases] No parent element found");
+			console.debug("[BaseViews][Bases] No parent element found");
 			return;
 		}
 
-		// Mark parent as having an active TaskNotes view (controls visibility via CSS)
-		parentEl.classList.add("tasknotes-view-active");
+		// Mark parent as having an active Base Views custom view (controls visibility via CSS)
+		parentEl.classList.add("baseviews-view-active");
 
 		const toolbarEl = parentEl.querySelector(".bases-toolbar");
 		if (!toolbarEl) {
-			console.debug("[TaskNotes][Bases] No .bases-toolbar found in parent");
+			console.debug("[BaseViews][Bases] No .bases-toolbar found in parent");
 			return;
 		}
 
@@ -280,7 +280,7 @@ export abstract class BasesViewBase extends Component {
 			toolbarEl.appendChild(newTaskBtn);
 		}
 
-		console.debug("[TaskNotes][Bases] Injected New Task button into toolbar");
+		console.debug("[BaseViews][Bases] Injected New Task button into toolbar");
 	}
 
 	/**
@@ -306,7 +306,7 @@ export abstract class BasesViewBase extends Component {
 					await this.handleTaskUpdate(updatedTask);
 				}
 			} catch (error) {
-				console.error("[TaskNotes][Bases] Error in task update handler:", error);
+				console.error("[BaseViews][Bases] Error in task update handler:", error);
 				this.debouncedRefresh();
 			}
 		});
@@ -342,14 +342,14 @@ export abstract class BasesViewBase extends Component {
 	}
 
 	/**
-	 * Override Bases "New" button to open TaskNotes creation modal instead of default file creation.
+	 * Override Bases "New" button to open external runtime task creation instead of default file creation.
 	 * Called when user clicks the "New" button in the Bases toolbar.
 	 *
 	 * NOTE: This requires Obsidian API 1.10.2+ and Bases support for createFileForView.
 	 * As of the current implementation, Bases (still in beta) may not yet call this method.
 	 * When Obsidian 1.10.2 is released and Bases supports it, this will work automatically.
 	 *
-	 * @param baseFileName - Suggested filename from Bases (typically unused in TaskNotes)
+	 * @param baseFileName - Suggested filename from Bases (typically unused in this integration)
 	 * @param frontmatterProcessor - Optional callback that Bases uses to set default frontmatter values
 	 */
 	async createFileForView(
@@ -359,8 +359,10 @@ export abstract class BasesViewBase extends Component {
 		const app = this.app || this.plugin.app;
 
 		const runtimeResolver = (
-			this.plugin as unknown as { getTaskNotesRuntime?: () => unknown }
-		).getTaskNotesRuntime;
+			this.plugin as unknown as {
+				getTaskRuntime?: () => unknown;
+			}
+		).getTaskRuntime;
 		if (typeof runtimeResolver === "function") {
 			const runtime = runtimeResolver.call(this.plugin) as
 				| { openTaskCreationModal?: () => unknown }
@@ -371,7 +373,7 @@ export abstract class BasesViewBase extends Component {
 			}
 		}
 
-		const folder = this.plugin.settings.tasksFolder || "TaskNotes/Tasks";
+		const folder = this.plugin.settings.tasksFolder || "Tasks";
 		const safeName = (baseFileName || "New Task")
 			.replace(/[\\\\/:*?\"<>|]/g, " ")
 			.trim()
@@ -682,3 +684,6 @@ export abstract class BasesViewBase extends Component {
 	 */
 	abstract type: string;
 }
+
+
+

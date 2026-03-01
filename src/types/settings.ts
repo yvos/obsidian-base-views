@@ -1,4 +1,4 @@
-import { FieldMapping, StatusConfig, PriorityConfig, SavedView, WebhookConfig } from "../types";
+﻿import { FieldMapping, StatusConfig, PriorityConfig, SavedView, WebhookConfig } from "../types";
 
 export interface FileFilterConfig {
 	requiredTags?: string[];
@@ -95,7 +95,7 @@ export interface ProjectAutosuggestSettings {
 	propertyValue?: string; // Expected value for the property (empty = property must exist)
 }
 
-export interface TaskNotesSettings {
+export interface BaseViewsSettings {
 	tasksFolder: string; // Now just a default location for new tasks
 	moveArchivedTasks: boolean; // Whether to move tasks to archive folder when archived
 	archiveFolder: string; // Folder to move archived tasks to, supports template variables
@@ -376,3 +376,4 @@ export interface CalendarViewSettings {
 	dayMaxEvents: number | boolean; // Max events per day in dayGrid view (true = auto, number = limit, false = unlimited)
 	dayMaxEventRows: number | boolean; // Max event rows per day in dayGrid view (true = auto, number = limit, false = unlimited)
 }
+
