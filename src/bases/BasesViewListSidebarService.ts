@@ -903,7 +903,7 @@ export class BasesViewListSidebarService {
 
 		const listEl = doc.createElement("nav");
 		listEl.className = CSS_LIST;
-		listEl.setAttribute("aria-label", this.getListAriaLabel(leaf));
+		listEl.removeAttribute("aria-label");
 
 		const resizerEl = this.createResizerEl(doc);
 
@@ -967,7 +967,7 @@ export class BasesViewListSidebarService {
 			}
 			current.listEl = listEl;
 			current.listEl.classList.add(CSS_LIST_TOP);
-			current.listEl.setAttribute("aria-label", this.getListAriaLabel(leaf));
+			current.listEl.removeAttribute("aria-label");
 			current.rootEl = containerEl;
 			current.basesViewEl = basesViewEl;
 			return current;
@@ -985,7 +985,7 @@ export class BasesViewListSidebarService {
 			layoutEl.appendChild(listEl);
 		}
 		listEl.classList.add(CSS_LIST_TOP);
-		listEl.setAttribute("aria-label", this.getListAriaLabel(leaf));
+		listEl.removeAttribute("aria-label");
 		this.ensureTopLayoutPosition(leaf, layoutEl, basesViewEl);
 
 		const state: ManagedLeafState = {
@@ -1701,11 +1701,9 @@ export class BasesViewListSidebarService {
 		}
 	}
 
-	private getListAriaLabel(leaf: WorkspaceLeaf): string {
-		const file = this.getLeafFile(leaf);
-		if (file?.basename && file.basename.trim().length > 0) {
-			return file.basename.trim();
-		}
+	private getListAriaLabel(_leaf: WorkspaceLeaf): string {
+		// Keep container label generic to avoid transient tooltip flicker
+		// when pointer crosses gaps between view-row buttons.
 		return this.getListLabel();
 	}
 
