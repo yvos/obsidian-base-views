@@ -448,12 +448,12 @@ export abstract class BasesViewBase extends Component {
 		this.rootElement.addEventListener("keydown", handleKeyDown);
 
 		// Listen for selection changes to update UI
-		const unsubscribeSelection = selectionService.onSelectionChange((paths) => {
+		const unsubscribeSelection = selectionService.onSelectionChange((paths: string[]) => {
 			this.updateSelectionVisuals();
 			this.updateSelectionIndicator(paths.length);
 		});
 
-		const unsubscribeMode = selectionService.onSelectionModeChange((active) => {
+		const unsubscribeMode = selectionService.onSelectionModeChange((active: boolean) => {
 			this.updateSelectionModeUI(active);
 		});
 

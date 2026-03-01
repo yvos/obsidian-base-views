@@ -2,6 +2,12 @@ import { App, TFile } from "obsidian";
 
 export const TASKNOTES_PLUGIN_ID = "tasknotes";
 
+export interface TaskCalendarSyncServiceLike {
+	isEnabled: () => boolean;
+	syncTaskToCalendar: (...args: unknown[]) => Promise<unknown>;
+	deleteTaskFromCalendarByPath: (...args: unknown[]) => Promise<unknown>;
+}
+
 // External TaskNotes runtime surface used by Base Views.
 export interface TaskNotesRuntimeLike {
 	settings?: Record<string, unknown>;
@@ -17,6 +23,7 @@ export interface TaskNotesRuntimeLike {
 	statusManager?: unknown;
 	priorityManager?: unknown;
 	taskService?: unknown;
+	taskCalendarSyncService?: TaskCalendarSyncServiceLike;
 	projectSubtasksService?: unknown;
 	expandedProjectsService?: unknown;
 	taskSelectionService?: unknown;
@@ -24,6 +31,7 @@ export interface TaskNotesRuntimeLike {
 	toggleTaskStatus?: (...args: unknown[]) => Promise<unknown>;
 	updateTaskProperty?: (...args: unknown[]) => Promise<unknown>;
 	openTaskEditModal?: (...args: unknown[]) => Promise<unknown>;
+	openTaskCreationModal?: (...args: unknown[]) => unknown;
 	applyProjectSubtaskFilter?: (...args: unknown[]) => Promise<unknown>;
 	getActiveTimeSession?: (...args: unknown[]) => unknown;
 	openTagsPane?: (...args: unknown[]) => Promise<unknown>;

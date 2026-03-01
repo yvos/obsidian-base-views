@@ -2772,6 +2772,7 @@ export const ja: TranslationTree = {
 					unresolved: "解決できませんでした：{entries}",
 					noEligibleTasks: "一致するタスクが利用できません",
 					updateFailed: "依存関係の更新に失敗しました",
+					openTaskEditFailed: "TaskNotesの編集モーダルを開けませんでした",
 				},
 			},
 			organization: {
@@ -2791,6 +2792,7 @@ export const ja: TranslationTree = {
 					subtaskSelectFailed: "サブタスクセレクターを開けませんでした",
 					noEligibleSubtasks: "サブタスクとして割り当て可能なタスクがありません",
 					currentTaskNotFound: "現在のタスクファイルが見つかりませんでした",
+					openTaskEditFailed: "TaskNotesの編集モーダルを開けませんでした",
 				},
 			},
 			subtasks: {

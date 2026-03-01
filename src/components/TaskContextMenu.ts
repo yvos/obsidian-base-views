@@ -1,6 +1,6 @@
 import { Menu, Notice, TFile } from "obsidian";
 import TaskNotesPlugin from "../main";
-import { TaskDependency, TaskInfo } from "../types";
+import { TaskInfo } from "../types";
 import { formatDateForStorage } from "../utils/dateUtils";
 import { ReminderModal } from "../modals/ReminderModal";
 import { CalendarExportService } from "../services/CalendarExportService";
@@ -8,13 +8,6 @@ import { showConfirmationModal } from "../modals/ConfirmationModal";
 import { DateContextMenu } from "./DateContextMenu";
 import { RecurrenceContextMenu } from "./RecurrenceContextMenu";
 import { showTextInputModal } from "../modals/TextInputModal";
-import { openTaskSelector } from "../modals/TaskSelectorWithCreateModal";
-import { ProjectSelectModal } from "../modals/ProjectSelectModal";
-import {
-	DEFAULT_DEPENDENCY_RELTYPE,
-	formatDependencyLink,
-	normalizeDependencyEntry,
-} from "../utils/dependencyUtils";
 import { generateLink } from "../utils/linkUtils";
 import { ContextMenu } from "./ContextMenu";
 
@@ -669,7 +662,7 @@ export class TaskContextMenu {
 			subItem.setIcon("link-2");
 			subItem.onClick(() => {
 				this.menu.hide();
-				void this.openBlockedBySelector(task, plugin);
+				void this.openTaskEditForDependencyUpdate(task, plugin);
 			});
 		});
 
@@ -716,7 +709,7 @@ export class TaskContextMenu {
 			subItem.setIcon("git-branch-plus");
 			subItem.onClick(() => {
 				this.menu.hide();
-				void this.openBlockingSelector(task, plugin);
+				void this.openTaskEditForDependencyUpdate(task, plugin);
 			});
 		});
 
@@ -763,159 +756,16 @@ export class TaskContextMenu {
 		}
 	}
 
-	private dedupeDependencyEntries(entries: Array<TaskDependency | string>): TaskDependency[] {
-		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		const seen = new Map<string, TaskDependency>();
-		for (const entry of entries) {
-			const normalized = normalizeDependencyEntry(entry);
-			if (!normalized) {
-				continue;
-			}
-			const key = this.getDependencyKey(normalized);
-			if (!seen.has(key)) {
-				seen.set(key, normalized);
-			}
-		}
-		return Array.from(seen.values());
-	}
-
-	private async openBlockedBySelector(task: TaskInfo, plugin: TaskNotesPlugin): Promise<void> {
-		const existingUids = new Set(
-			(Array.isArray(task.blockedBy) ? task.blockedBy : []).map((dependency) => dependency.uid)
-		);
-		await this.openTaskDependencySelector(
-			plugin,
-			(candidate) => {
-				if (candidate.path === task.path) return false;
-				const candidateUid = formatDependencyLink(plugin.app, task.path, candidate.path, plugin.settings.useFrontmatterMarkdownLinks);
-				return !existingUids.has(candidateUid);
-			},
-			async (selected) => {
-				await this.handleBlockedBySelection(task, plugin, selected);
-			}
-		);
-	}
-
-	private async openBlockingSelector(task: TaskInfo, plugin: TaskNotesPlugin): Promise<void> {
-		const existingPaths = new Set(task.blocking ?? []);
-		await this.openTaskDependencySelector(
-			plugin,
-			(candidate) => {
-				if (candidate.path === task.path) return false;
-				return !existingPaths.has(candidate.path);
-			},
-			async (selected) => {
-				await this.handleBlockingSelection(task, plugin, selected);
-			}
-		);
-	}
-
-	private async openTaskDependencySelector(
-		plugin: TaskNotesPlugin,
-		filter: (candidate: TaskInfo) => boolean,
-		onSelect: (selected: TaskInfo) => Promise<void>
-	): Promise<void> {
-		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		try {
-			const cacheManager: any = plugin.cacheManager;
-			const allTasks: TaskInfo[] = (await cacheManager?.getAllTasks?.()) ?? [];
-			const candidates = allTasks.filter(filter);
-
-			if (candidates.length === 0) {
-				new Notice(
-					this.t("contextMenus.task.dependencies.notices.noEligibleTasks")
-				);
-				return;
-			}
-
-			openTaskSelector(plugin, candidates, async (task) => {
-				if (!task) return;
-				await onSelect(task);
-			});
-		} catch (error) {
-			console.error("Failed to open task selector for dependencies:", error);
-			new Notice(this.t("contextMenus.task.dependencies.notices.updateFailed"));
-		}
-	}
-
-	private async handleBlockedBySelection(
+	private async openTaskEditForDependencyUpdate(
 		task: TaskInfo,
-		plugin: TaskNotesPlugin,
-		selectedTask: TaskInfo
+		plugin: TaskNotesPlugin
 	): Promise<void> {
-		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
-		if (selectedTask.path === task.path) {
-			return;
-		}
-
 		try {
-			const dependency: TaskDependency = {
-				uid: formatDependencyLink(plugin.app, task.path, selectedTask.path, plugin.settings.useFrontmatterMarkdownLinks),
-				reltype: DEFAULT_DEPENDENCY_RELTYPE,
-			};
-			const existing = Array.isArray(task.blockedBy) ? task.blockedBy : [];
-			const combined = this.dedupeDependencyEntries([...existing, dependency]);
-			if (combined.length === existing.length) {
-				return;
-			}
-
-			const updatedTask = await plugin.updateTaskProperty(task, "blockedBy", combined);
-			Object.assign(task, updatedTask);
-
-			new Notice(
-				this.t("contextMenus.task.dependencies.notices.blockedByAdded", { count: 1 })
-			);
-			this.options.onUpdate?.();
+			await plugin.openTaskEditModal(task);
 		} catch (error) {
-			console.error("Failed to add blocked-by dependency via selector:", error);
-			new Notice(this.t("contextMenus.task.dependencies.notices.updateFailed"));
+			console.error("Failed to open TaskNotes edit modal for dependency update:", error);
+			new Notice(this.t("contextMenus.task.dependencies.notices.openTaskEditFailed"));
 		}
-	}
-
-	private async handleBlockingSelection(
-		task: TaskInfo,
-		plugin: TaskNotesPlugin,
-		selectedTask: TaskInfo
-	): Promise<void> {
-		// イベント種別ごとの分岐処理を集約し、状態遷移を一箇所で制御する。
-		const blockedPath = selectedTask.path;
-		if (blockedPath === task.path) {
-			return;
-		}
-		if (task.blocking?.includes(blockedPath)) {
-			return;
-		}
-
-		try {
-			const rawEntry: TaskDependency = {
-				uid: formatDependencyLink(plugin.app, blockedPath, task.path, plugin.settings.useFrontmatterMarkdownLinks),
-				reltype: DEFAULT_DEPENDENCY_RELTYPE,
-			};
-			await plugin.taskService.updateBlockingRelationships(task, [blockedPath], [], {
-				[blockedPath]: rawEntry,
-			});
-
-			const refreshed = await plugin.cacheManager.getTaskInfo(task.path);
-			if (refreshed) {
-				Object.assign(task, refreshed);
-			} else if (Array.isArray(task.blocking)) {
-				task.blocking = Array.from(new Set([...task.blocking, blockedPath]));
-			} else {
-				task.blocking = [blockedPath];
-			}
-
-			new Notice(
-				this.t("contextMenus.task.dependencies.notices.blockingAdded", { count: 1 })
-			);
-			this.options.onUpdate?.();
-		} catch (error) {
-			console.error("Failed to add blocking dependency via selector:", error);
-			new Notice(this.t("contextMenus.task.dependencies.notices.updateFailed"));
-		}
-	}
-
-	private getDependencyKey(entry: TaskDependency): string {
-		return `${entry.uid}::${entry.reltype}::${entry.gap ?? ""}`;
 	}
 
 	private addOrganizationMenuItems(menu: Menu, task: TaskInfo, plugin: TaskNotesPlugin): void {
@@ -925,7 +775,7 @@ export class TaskContextMenu {
 			subItem.setIcon("folder-plus");
 			subItem.onClick(() => {
 				this.menu.hide();
-				void this.openProjectSelector(task, plugin);
+				void this.openTaskEditForOrganizationUpdate(task, plugin);
 			});
 		});
 
@@ -935,122 +785,21 @@ export class TaskContextMenu {
 			subItem.setIcon("indent");
 			subItem.onClick(() => {
 				this.menu.hide();
-				void this.openSubtaskAssignmentSelector(task, plugin);
+				void this.openTaskEditForOrganizationUpdate(task, plugin);
 			});
 		});
 	}
 
-	private async openProjectSelector(task: TaskInfo, plugin: TaskNotesPlugin): Promise<void> {
+	private async openTaskEditForOrganizationUpdate(
+		task: TaskInfo,
+		plugin: TaskNotesPlugin
+	): Promise<void> {
 		try {
-			const selector = new ProjectSelectModal(plugin.app, plugin, async (projectFile) => {
-				if (!projectFile) return;
-				await this.addTaskToProject(task, plugin, projectFile);
-			});
-			selector.open();
+			await plugin.openTaskEditModal(task);
 		} catch (error) {
-			console.error("Failed to open project selector:", error);
-			new Notice(this.t("contextMenus.task.organization.notices.projectSelectFailed"));
+			console.error("Failed to open TaskNotes edit modal for organization update:", error);
+			new Notice(this.t("contextMenus.task.organization.notices.openTaskEditFailed"));
 		}
-	}
-
-	private async openSubtaskAssignmentSelector(task: TaskInfo, plugin: TaskNotesPlugin): Promise<void> {
-		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		try {
-			const cacheManager: any = plugin.cacheManager;
-			const allTasks: TaskInfo[] = (await cacheManager?.getAllTasks?.()) ?? [];
-
-			// Filter out the current task
-			const candidates = allTasks.filter(candidate => candidate.path !== task.path);
-
-			if (candidates.length === 0) {
-				new Notice(this.t("contextMenus.task.organization.notices.noEligibleSubtasks"));
-				return;
-			}
-
-			openTaskSelector(plugin, candidates, async (subtask) => {
-				if (!subtask) return;
-				await this.assignTaskAsSubtask(task, plugin, subtask);
-			});
-		} catch (error) {
-			console.error("Failed to open subtask assignment selector:", error);
-			new Notice(this.t("contextMenus.task.organization.notices.subtaskSelectFailed"));
-		}
-	}
-
-	private async addTaskToProject(task: TaskInfo, plugin: TaskNotesPlugin, projectFile: any): Promise<void> {
-		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		try {
-			if (!(projectFile instanceof TFile)) {
-				new Notice(this.t("contextMenus.task.organization.notices.projectSelectFailed"));
-				return;
-			}
-
-			const projectReference = generateLink(plugin.app, projectFile, task.path, "", "", plugin.settings.useFrontmatterMarkdownLinks);
-			const legacyReference = `[[${projectFile.basename}]]`;
-			const currentProjects = Array.isArray(task.projects) ? task.projects : [];
-
-			if (
-				currentProjects.includes(projectReference) ||
-				currentProjects.includes(legacyReference)
-			) {
-				new Notice(this.t("contextMenus.task.organization.notices.alreadyInProject"));
-				return;
-			}
-
-			const sanitizedProjects = currentProjects.filter((entry) => entry !== legacyReference);
-			const updatedProjects = [...sanitizedProjects, projectReference];
-			const updatedTask = await plugin.updateTaskProperty(task, "projects", updatedProjects);
-			Object.assign(task, updatedTask);
-
-			new Notice(this.t("contextMenus.task.organization.notices.addedToProject", {
-				project: projectFile.basename
-			}));
-			this.options.onUpdate?.();
-		} catch (error) {
-			console.error("Failed to add task to project:", error);
-			new Notice(this.t("contextMenus.task.organization.notices.addToProjectFailed"));
-		}
-	}
-
-	private async assignTaskAsSubtask(task: TaskInfo, plugin: TaskNotesPlugin, subtask: TaskInfo): Promise<void> {
-		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		try {
-			const currentTaskFile = plugin.app.vault.getAbstractFileByPath(task.path);
-			if (!(currentTaskFile instanceof TFile)) {
-				new Notice(this.t("contextMenus.task.organization.notices.currentTaskNotFound"));
-				return;
-			}
-
-			const projectReference = generateLink(plugin.app, currentTaskFile, subtask.path, "", "", plugin.settings.useFrontmatterMarkdownLinks);
-			const legacyReference = `[[${currentTaskFile.basename}]]`;
-			const subtaskProjects = Array.isArray(subtask.projects) ? subtask.projects : [];
-
-			if (
-				subtaskProjects.includes(projectReference) ||
-				subtaskProjects.includes(legacyReference)
-			) {
-				new Notice(this.t("contextMenus.task.organization.notices.alreadySubtask"));
-				return;
-			}
-
-			const sanitizedProjects = subtaskProjects.filter((entry) => entry !== legacyReference);
-			const updatedProjects = [...sanitizedProjects, projectReference];
-			const updatedSubtask = await plugin.updateTaskProperty(subtask, "projects", updatedProjects);
-			Object.assign(subtask, updatedSubtask);
-
-			new Notice(this.t("contextMenus.task.organization.notices.addedAsSubtask", {
-				subtask: subtask.title,
-				parent: currentTaskFile.basename
-			}));
-			this.options.onUpdate?.();
-		} catch (error) {
-			console.error("Failed to assign task as subtask:", error);
-			new Notice(this.t("contextMenus.task.organization.notices.addAsSubtaskFailed"));
-		}
-	}
-
-	private buildProjectReference(targetFile: TFile, sourcePath: string, plugin: TaskNotesPlugin): string {
-		return generateLink(plugin.app, targetFile, sourcePath, "", "", plugin.settings.useFrontmatterMarkdownLinks);
 	}
 
 	private updateMainMenuIconColors(task: TaskInfo, plugin: TaskNotesPlugin): void {
@@ -1145,7 +894,7 @@ export class TaskContextMenu {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		const priorityOptions = plugin.priorityManager.getPrioritiesByWeight();
 
-		priorityOptions.forEach((priority) => {
+		priorityOptions.forEach((priority: { label: string; value: string; color?: string }) => {
 			submenu.addItem((item: any) => {
 				let title = priority.label;
 
@@ -1174,13 +923,14 @@ export class TaskContextMenu {
 				});
 
 				// Apply color directly to this item
-				if (priority.color) {
+				const priorityColor = priority.color;
+				if (priorityColor) {
 					setTimeout(() => {
 						const itemEl = item.dom || item.domEl;
 						if (itemEl) {
 							const iconEl = itemEl.querySelector(".menu-item-icon");
 							if (iconEl) {
-								(iconEl as HTMLElement).style.color = priority.color;
+								(iconEl as HTMLElement).style.color = priorityColor;
 							}
 						}
 					}, 10);

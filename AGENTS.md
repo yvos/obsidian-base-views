@@ -1,6 +1,7 @@
 # Obsidian community plugin
 
 ## Language
+
 特に必要がない限り、チャットは日本語で行うこと。
 コード内のコメントや文字列の言語は、特にAIdocs/SPEC.mdで指定がない限り既存のコメントや文字列に従うこと。
 
@@ -49,35 +50,35 @@ npm run build
 - **Organize code into multiple files**: Split functionality across separate modules rather than putting everything in `main.ts`.
 - Source lives in `src/`. Keep `main.ts` small and focused on plugin lifecycle (loading, unloading, registering commands).
 - **Example file structure**:
-  ```
-  src/
-    main.ts           # Plugin entry point, lifecycle management
-    settings.ts       # Settings interface and defaults
-    commands/         # Command implementations
-      command1.ts
-      command2.ts
-    ui/              # UI components, modals, views
-      modal.ts
-      view.ts
-    utils/           # Utility functions, helpers
-      helpers.ts
-      constants.ts
-    types.ts         # TypeScript interfaces and types
-  ```
+    ```
+    src/
+      main.ts           # Plugin entry point, lifecycle management
+      settings.ts       # Settings interface and defaults
+      commands/         # Command implementations
+        command1.ts
+        command2.ts
+      ui/              # UI components, modals, views
+        modal.ts
+        view.ts
+      utils/           # Utility functions, helpers
+        helpers.ts
+        constants.ts
+      types.ts         # TypeScript interfaces and types
+    ```
 - **Do not commit build artifacts**: Never commit `node_modules/`, `main.js`, or other generated files to version control.
 - Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
 - Generated output should be placed at the plugin root or `dist/` depending on your build setup. Release artifacts must end up at the top level of the plugin folder in the vault (`main.js`, `manifest.json`, `styles.css`).
 
 ## Manifest rules (`manifest.json`)
 
-- Must include (non-exhaustive):  
-  - `id` (plugin ID; for local dev it should match the folder name)  
-  - `name`  
-  - `version` (Semantic Versioning `x.y.z`)  
-  - `minAppVersion`  
-  - `description`  
-  - `isDesktopOnly` (boolean)  
-  - Optional: `author`, `authorUrl`, `fundingUrl` (string or map)
+- Must include (non-exhaustive):
+    - `id` (plugin ID; for local dev it should match the folder name)
+    - `name`
+    - `version` (Semantic Versioning `x.y.z`)
+    - `minAppVersion`
+    - `description`
+    - `isDesktopOnly` (boolean)
+    - Optional: `author`, `authorUrl`, `fundingUrl` (string or map)
 - Never change `id` after release. Treat it as stable API.
 - Keep `minAppVersion` accurate when using newer APIs.
 - Canonical requirements are coded here: https://github.com/obsidianmd/obsidian-releases/blob/master/.github/workflows/validate-plugin-entry.yml
@@ -85,9 +86,9 @@ npm run build
 ## Testing
 
 - Manual install for testing: copy `main.js`, `manifest.json`, `styles.css` (if any) to:
-  ```
-  <Vault>/.obsidian/plugins/<plugin-id>/
-  ```
+    ```
+    <Vault>/.obsidian/plugins/<plugin-id>/
+    ```
 - Reload Obsidian and enable the plugin in **Settings → Community plugins**.
 
 ## Commands & settings
@@ -151,12 +152,14 @@ Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particula
 ## Agent do/don't
 
 **Do**
+
 - Add commands with stable IDs (don't rename once released).
 - Provide defaults and validation in settings.
 - Write idempotent code paths so reload/unload doesn't leak listeners or intervals.
 - Use `this.register*` helpers for everything that needs cleanup.
 
 **Don't**
+
 - Introduce network calls without an obvious user-facing reason and documentation.
 - Ship features that require cloud services without clear disclosure and explicit opt-in.
 - Store or transmit vault contents unless essential and consented.
@@ -166,45 +169,48 @@ Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particula
 ### Organize code across multiple files
 
 **main.ts** (minimal, lifecycle only):
+
 ```ts
 import { Plugin } from "obsidian";
 import { MySettings, DEFAULT_SETTINGS } from "./settings";
 import { registerCommands } from "./commands";
 
 export default class MyPlugin extends Plugin {
-  settings: MySettings;
+	settings: MySettings;
 
-  async onload() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    registerCommands(this);
-  }
+	async onload() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		registerCommands(this);
+	}
 }
 ```
 
 **settings.ts**:
+
 ```ts
 export interface MySettings {
-  enabled: boolean;
-  apiKey: string;
+	enabled: boolean;
+	apiKey: string;
 }
 
 export const DEFAULT_SETTINGS: MySettings = {
-  enabled: true,
-  apiKey: "",
+	enabled: true,
+	apiKey: "",
 };
 ```
 
 **commands/index.ts**:
+
 ```ts
 import { Plugin } from "obsidian";
 import { doSomething } from "./my-command";
 
 export function registerCommands(plugin: Plugin) {
-  plugin.addCommand({
-    id: "do-something",
-    name: "Do something",
-    callback: () => doSomething(plugin),
-  });
+	plugin.addCommand({
+		id: "do-something",
+		name: "Do something",
+		callback: () => doSomething(plugin),
+	});
 }
 ```
 
@@ -212,9 +218,9 @@ export function registerCommands(plugin: Plugin) {
 
 ```ts
 this.addCommand({
-  id: "your-command-id",
-  name: "Do the thing",
-  callback: () => this.doTheThing(),
+	id: "your-command-id",
+	name: "Do the thing",
+	callback: () => this.doTheThing(),
 });
 ```
 
@@ -233,14 +239,24 @@ async onload() {
 ### Register listeners safely
 
 ```ts
-this.registerEvent(this.app.workspace.on("file-open", f => { /* ... */ }));
-this.registerDomEvent(window, "resize", () => { /* ... */ });
-this.registerInterval(window.setInterval(() => { /* ... */ }, 1000));
+this.registerEvent(
+	this.app.workspace.on("file-open", (f) => {
+		/* ... */
+	})
+);
+this.registerDomEvent(window, "resize", () => {
+	/* ... */
+});
+this.registerInterval(
+	window.setInterval(() => {
+		/* ... */
+	}, 1000)
+);
 ```
 
 ## Troubleshooting
 
-- Plugin doesn't load after build: ensure `main.js` and `manifest.json` are at the top level of the plugin folder under `<Vault>/.obsidian/plugins/<plugin-id>/`. 
+- Plugin doesn't load after build: ensure `main.js` and `manifest.json` are at the top level of the plugin folder under `<Vault>/.obsidian/plugins/<plugin-id>/`.
 - Build issues: if `main.js` is missing, run `npm run build` or `npm run dev` to compile your TypeScript source code.
 - Commands not appearing: verify `addCommand` runs after `onload` and IDs are unique.
 - Settings not persisting: ensure `loadData`/`saveData` are awaited and you re-render the UI after changes.
@@ -255,16 +271,19 @@ this.registerInterval(window.setInterval(() => { /* ... */ }, 1000));
 - Style guide: https://help.obsidian.md/style-guide
 
 ## Project Documents and Source of Truth
+
 - 既存のリポジトリのフォークの場合は、以下は存在しないこともある。
 - `AIdocs/SPEC.md`: リポジトリ全体の概要、最終的な仕様をSPEC.mdにまとめる。プラン作成の際や、その他必要になった際に参照すること。修正が必要だと判断した場合は、直接修正せず、理由と影響範囲を明示した提案を行うこと。明示的な承認が得られた場合のみ、SPEC.md を修正してよい。
-- `AIdocs/PLAN-{YYYYMMDD}_改修機能名.md`: 現在のセッションまたは短期スプリントの作業計画を示す（以下PLANファイル）。YYYYMMDDはPLANファイル作成時の日付。改修機能名は実装しようとしている修正内容や新規機能名。.cursor\plansフォルダ内の改修機能名.plan.md形式のファイルをコンテキストとして渡された場合はそちらをPLANファイルとして扱い新規作成は不要。そうでない場合は実装を開始する前に、上記の通りPLANファイルを作成すること。CodexやClaude CodeなどのPLANモードで計画を立てた場合はその内容をそのまま転記する。コンテキストとして渡された場合や、そのセッションで作成した場合は常に参照しながら実装を進め、PLANファイル内のタスクが完了したらそれにあわせて更新すること。
+- `AIdocs/PLAN-{YYYYMMDD}_改修機能名.md`: 現在のセッションまたは短期スプリントの作業計画を示す（以下PLANファイル）。YYYYMMDDはPLANファイル作成時の日付。改修機能名は実装しようとしている修正内容や新規機能名。.cursor\plansフォルダ内の改修機能名.plan.md形式のファイルをコンテキストとして渡された場合はそちらをPLANファイルとして扱い新規作成は不要。そうでない場合は実装を開始する前に、上記の通りPLANファイルを作成すること。CodexやClaude CodeなどのPLANモードで計画を立てた場合はその内容をそのまま転記する。末尾にTODOリストのセクションを作成して実行予定順にタスクリストを作成し、タスクの進捗状況が分かるようにすること。完了した項目には簡単な結果をつけること。変更したり中止した項目にはその内容と理由を簡単に記すこと。コンテキストとして渡された場合や、そのセッションで作成した場合は常に参照しながら実装を進め、計画や変更やタスクが完了の際はそれにあわせて更新すること。
+- `.cursor\plans\プロジェクト名_改修機能名.plan.md`: 前項のPLANファイルと同等に扱い、これがコンテキストとして渡された場合は前項のPLANファイル作成は不要。同じく末尾にTODOリストのセクションを設けること。
 - `AIdocs/IMPLEMENTATION.md`: 現在の実装状況をまとめたもの。ファイル構成や、テストについての情報、運用や今後の実装についての注意点や参照情報などを含む。必要に応じて参照すること。ある機能の実装や修正が完了し、実装状態として定着したと判断される場合に更新すること。
-軽微な変更や一時的な試行については LOG に記録し、IMPLEMENTATION.md には反映しない。
+  軽微な変更や一時的な試行については LOG に記録し、IMPLEMENTATION.md には反映しない。
 - `AIdocs/LOG-{YYYYMMDD}.md` : ある機能の実装や修正が終わるごとに、実装した内容やADRについて、日付つきのログファイルに記録すること。ログには、実装内容だけでなく「なぜそうしたか（判断理由）」を簡潔に含めること。
 
 ### AIdocs/IMPLEMENTATION.mdの推奨構成
+
 - 原則以下のようにするが、補うべき項目があれば適宜追加すること。
-- 0. この文章の意義、位置づけ: このファイルは現在の実装状況や関連情報をまとめたものである。最終的な仕様を示したSPEC.mdとは区別される。このファイルを最終的な仕様と解釈すべきではない。
+-   0. この文章の意義、位置づけ: このファイルは現在の実装状況や関連情報をまとめたものである。最終的な仕様を示したSPEC.mdとは区別される。このファイルを最終的な仕様と解釈すべきではない。
 - 1.実装状況のサマリー: これまでに実装した内容を1機能1～2行程度で簡潔にまとめる。
 - 2.実装済み機能: 実装済みの機能を列挙してまとめる。
 - 3.ファイル構造: ファイル/フォルダ構成と各ファイルの簡潔な説明
@@ -276,17 +295,20 @@ this.registerInterval(window.setInterval(() => { /* ... */ }, 1000));
 - 9.AI向けの注意点: 参照優先順位、誤解しやすい点、更新時の注意を記載する。将来の実装提案は含めない。
 
 ### Obsidian API
+
 #### 公開API
+
 - `AIdocs/obsidian.d.ts`: 型定義（検索用索引として使用）
 - **使用規則**:
-  - 使用クラスの候補が定まっている場合のみ、プロパティやメソッドの確認のために参照。
-  - 通読・網羅的参照は原則禁止。そのように使う場合は承認を得ること。
-  - 参照箇所をログに記録すること
+    - 使用クラスの候補が定まっている場合のみ、プロパティやメソッドの確認のために参照。
+    - 通読・網羅的参照は原則禁止。そのように使う場合は承認を得ること。
+    - 参照箇所をログに記録すること
 
 #### 非公開/内部API
+
 - `AIdocs/types.d.ts`: 型定義
 - **使用規則**:
-  - 急な変更・廃止がありうることに注意
-  - できる限り公開APIを使い、安易に使用しない。
-  - 内部APIを使うときは計画段階で使用APIと目的を提案し、承認を得た場合のみ使用すること
-  - 参照箇所をログに記録すること
+    - 急な変更・廃止がありうることに注意
+    - できる限り公開APIを使い、安易に使用しない。
+    - 内部APIを使うときは計画段階で使用APIと目的を提案し、承認を得た場合のみ使用すること
+    - 参照箇所をログに記録すること

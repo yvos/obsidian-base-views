@@ -6,6 +6,7 @@ import { FieldMapper } from "./services/FieldMapper";
 import {
 	getTaskNotesRuntime,
 	hasTaskNotesRuntime,
+	TaskCalendarSyncServiceLike,
 	TaskNotesRuntimeLike,
 } from "./integrations/tasknotes/TaskNotesRuntimeBridge";
 import { registerBasesTaskList, unregisterBasesViews } from "./bases/registration";
@@ -23,6 +24,7 @@ export default class TaskNotesPlugin extends Plugin {
 	i18n: I18nService;
 	fieldMapper: FieldMapper;
 	emitter: Events | any;
+	taskCalendarSyncService: TaskCalendarSyncServiceLike | null = null;
 
 	private localEmitter = new Events();
 	private taskNotesRuntime: TaskNotesRuntimeLike | null = null;
@@ -198,6 +200,7 @@ export default class TaskNotesPlugin extends Plugin {
 		this.statusManager = runtime?.statusManager ?? null;
 		this.priorityManager = runtime?.priorityManager ?? null;
 		this.taskService = runtime?.taskService ?? null;
+		this.taskCalendarSyncService = runtime?.taskCalendarSyncService ?? null;
 		this.projectSubtasksService = runtime?.projectSubtasksService ?? null;
 		this.expandedProjectsService = runtime?.expandedProjectsService ?? null;
 		this.taskSelectionService = runtime?.taskSelectionService ?? null;
@@ -250,6 +253,14 @@ export default class TaskNotesPlugin extends Plugin {
 			throw new Error("TaskNotes runtime does not provide openTaskEditModal");
 		}
 		return runtime.openTaskEditModal(...args);
+	}
+
+	openTaskCreationModal(...args: unknown[]): unknown {
+		const runtime = this.runtimeOrError("openTaskCreationModal");
+		if (typeof runtime.openTaskCreationModal !== "function") {
+			throw new Error("TaskNotes runtime does not provide openTaskCreationModal");
+		}
+		return runtime.openTaskCreationModal(...args);
 	}
 
 	async applyProjectSubtaskFilter(...args: unknown[]): Promise<unknown> {

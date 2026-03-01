@@ -2831,6 +2831,7 @@ export const en: TranslationTree = {
 						unresolved: "Could not resolve: {entries}",
 						noEligibleTasks: "No matching tasks available",
 						updateFailed: "Failed to update dependencies",
+						openTaskEditFailed: "Failed to open TaskNotes edit modal",
 					},
 				},
 			organization: {
@@ -2850,6 +2851,7 @@ export const en: TranslationTree = {
 					subtaskSelectFailed: "Failed to open subtask selector",
 					noEligibleSubtasks: "No eligible tasks available to assign as subtasks",
 					currentTaskNotFound: "Current task file not found",
+					openTaskEditFailed: "Failed to open TaskNotes edit modal",
 				},
 			},
 			subtasks: {

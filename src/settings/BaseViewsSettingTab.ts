@@ -4,7 +4,9 @@ import TaskNotesPlugin from "../main";
 // Settings tab focused on Base Views-only features.
 // BaseViewsSettingTabの中核ロジックをまとめるクラス。
 export class BaseViewsSettingTab extends PluginSettingTab {
-	constructor(app: App, private plugin: TaskNotesPlugin) {
+	declare plugin: TaskNotesPlugin;
+
+	constructor(app: App, plugin: TaskNotesPlugin) {
 		super(app, plugin);
 	}
 
