@@ -1,5 +1,11 @@
 import { FieldMapping, StatusConfig, PriorityConfig, SavedView, WebhookConfig } from "../types";
-import type { FileFilterConfig } from "../suggest/FileSuggestHelper";
+
+export interface FileFilterConfig {
+	requiredTags?: string[];
+	includeFolders?: string[];
+	propertyKey?: string;
+	propertyValue?: string;
+}
 
 export interface UserFieldMapping {
 	enabled: boolean;
