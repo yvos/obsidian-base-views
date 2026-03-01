@@ -40,42 +40,6 @@ export const en: TranslationTree = {
 		},
 	},
 	views: {
-		agenda: {
-			title: "Agenda",
-			today: "Today",
-			overdue: "Overdue",
-			refreshCalendars: "Refresh calendars",
-			actions: {
-				previousPeriod: "Previous period",
-				nextPeriod: "Next period",
-				goToToday: "Go to today",
-				refreshCalendars: "Refresh calendar subscriptions",
-			},
-			loading: "Loading agenda...",
-			dayToggle: "Toggle day",
-			overdueToggle: "Toggle overdue section",
-			expandAllDays: "Expand All Days",
-			collapseAllDays: "Collapse All Days",
-			notices: {
-				calendarNotReady: "Calendar service not ready yet",
-				calendarRefreshed: "Calendar subscriptions refreshed",
-				refreshFailed: "Failed to refresh",
-			},
-			empty: {
-				noItemsScheduled: "No items scheduled",
-				noItemsFound: "No items found",
-				helpText: "Create tasks with due or scheduled dates, or add notes to see them here.",
-			},
-			contextMenu: {
-				showOverdueSection: "Show overdue section",
-				showNotes: "Show notes",
-				calendarSubscriptions: "Calendar subscriptions",
-			},
-			periods: {
-				thisWeek: "This week",
-			},
-			tipPrefix: "Tip: ",
-		},
 		taskList: {
 			title: "Tasks",
 			expandAllGroups: "Expand All Groups",
@@ -279,90 +243,6 @@ export const en: TranslationTree = {
 			},
 			columnTitle: "Untitled",
 		},
-		pomodoro: {
-			title: "Pomodoro",
-			status: {
-				focus: "Focus",
-				ready: "Ready to start",
-				paused: "Paused",
-				working: "Working",
-				shortBreak: "Short break",
-				longBreak: "Long break",
-				breakPrompt: "Great work! Time for a {length} break",
-				breakLength: {
-					short: "short",
-					long: "long",
-				},
-				breakComplete: "Break complete! Ready for the next pomodoro?",
-			},
-			buttons: {
-				start: "Start",
-				pause: "Pause",
-				stop: "Stop",
-				resume: "Resume",
-				startShortBreak: "Start Short Break",
-				startLongBreak: "Start Long Break",
-				skipBreak: "Skip break",
-				chooseTask: "Choose task...",
-				changeTask: "Change task...",
-				clearTask: "Clear task",
-				selectDifferentTask: "Select a different task",
-			},
-			notices: {
-				noTasks: "No unarchived tasks found. Create some tasks first.",
-				loadFailed: "Failed to load tasks",
-			},
-			statsLabel: "completed today",
-		},
-		pomodoroStats: {
-			title: "Pomodoro stats",
-			heading: "Pomodoro statistics",
-			refresh: "Refresh",
-			sections: {
-				overview: "Overview",
-				today: "Today",
-				week: "This week",
-				allTime: "All time",
-				recent: "Recent sessions",
-			},
-			overviewCards: {
-				todayPomos: {
-					label: "Today's Pomos",
-					change: {
-						more: "{count} more than yesterday",
-						less: "{count} fewer than yesterday",
-					},
-				},
-				totalPomos: {
-					label: "Total Pomos",
-				},
-				todayFocus: {
-					label: "Today's Focus",
-					change: {
-						more: "{duration} more than yesterday",
-						less: "{duration} less than yesterday",
-					},
-				},
-				totalFocus: {
-					label: "Total Focus Duration",
-				},
-			},
-			stats: {
-				pomodoros: "Pomodoros",
-				streak: "Streak",
-				minutes: "Minutes",
-				average: "Avg length",
-				completion: "Completion",
-			},
-			recents: {
-				empty: "No sessions recorded yet",
-				duration: "{minutes} min",
-				status: {
-					completed: "Completed",
-					interrupted: "Interrupted",
-				},
-			},
-		},
 		stats: {
 			title: "Statistics",
 			taskProjectStats: "Task & Project Statistics",
@@ -409,12 +289,6 @@ export const en: TranslationTree = {
 			notAvailable: "N/A",
 			noTasks: "No tasks found",
 			loading: "Loading...",
-		},
-		releaseNotes: {
-			title: "What's new in TaskNotes {version}",
-			header: "What's new in TaskNotes {version}",
-			viewAllLink: "View all release notes on GitHub →",
-			starMessage: "If you find TaskNotes useful, please consider giving it a star on GitHub",
 		},
 	},
 	settings: {
@@ -483,46 +357,6 @@ export const en: TranslationTree = {
 					description: "Text to trigger status suggestions (leave empty to disable)",
 				},
 			},
-			pomodoro: {
-				header: "Pomodoro Timer",
-				description:
-					"Configure work/break intervals for the Pomodoro timer.",
-				workDuration: {
-					name: "Work duration",
-					description: "Duration of work intervals in minutes",
-				},
-				shortBreak: {
-					name: "Short break duration",
-					description: "Duration of short breaks in minutes",
-				},
-				longBreak: {
-					name: "Long break duration",
-					description: "Duration of long breaks in minutes",
-				},
-				longBreakInterval: {
-					name: "Long break interval",
-					description: "Number of work sessions before a long break",
-				},
-				autoStartBreaks: {
-					name: "Auto-start breaks",
-					description: "Automatically start break timers after work sessions",
-				},
-				autoStartWork: {
-					name: "Auto-start work",
-					description: "Automatically start work sessions after breaks",
-				},
-				notifications: {
-					name: "Pomodoro notifications",
-					description: "Show notifications when Pomodoro sessions end",
-				},
-				mobileSidebar: {
-					name: "Mobile sidebar",
-					description: "Where to open the Pomodoro timer on mobile devices",
-					tab: "Note panel",
-					left: "Left sidebar",
-					right: "Right sidebar",
-				},
-			},
 			uiLanguage: {
 				header: "Interface Language",
 				description: "Change the language of TaskNotes menus, notices, and views.",
@@ -530,12 +364,6 @@ export const en: TranslationTree = {
 					name: "UI language",
 					description: "Select the language used for TaskNotes interface text",
 				},
-			},
-			pomodoroSound: {
-				enabledName: "Sound enabled",
-				enabledDesc: "Play sound when Pomodoro sessions end",
-				volumeName: "Sound volume",
-				volumeDesc: "Volume for Pomodoro sounds (0-100)",
 			},
 			dataStorage: {
 				name: "Pomodoro data storage",
@@ -579,17 +407,6 @@ export const en: TranslationTree = {
 				maintainOffsetName: "Maintain due date offset in recurring tasks",
 				maintainOffsetDesc:
 					"Keep the offset between due date and scheduled date when recurring tasks are completed",
-			},
-			timeblocking: {
-				header: "Timeblocking",
-				description:
-					"Configure timeblock functionality for lightweight scheduling in daily notes. Drag on calendar views to create events - select 'Timeblock' from the context menu.",
-				enableName: "Enable timeblocking",
-				enableDesc:
-					"Enable timeblocking feature for lightweight scheduling in daily notes. When enabled, 'Timeblock' option appears in the calendar drag context menu.",
-				showBlocksName: "Show timeblocks",
-				showBlocksDesc: "Display timeblocks from daily notes by default",
-				usage: "Usage: Drag on the calendar to create events. Select 'Timeblock' from the context menu (only visible when timeblocking is enabled). Drag to move existing timeblocks. Resize edges to adjust duration.",
 			},
 			performance: {
 				header: "Performance & Behavior",
@@ -834,19 +651,6 @@ export const en: TranslationTree = {
 					edit: "Edit task",
 					openNote: "Open note",
 					none: "No action",
-				},
-			},
-			releaseNotes: {
-				header: "Release Notes",
-				description: "Current version: {version}",
-				showOnUpdate: {
-					name: "Show release notes after update",
-					description: "Automatically open release notes when TaskNotes is updated to a new version",
-				},
-				viewButton: {
-					name: "View release notes",
-					description: "See what's new in the latest version of TaskNotes",
-					buttonText: "View release notes",
 				},
 			},
 		},
@@ -2125,18 +1929,6 @@ export const en: TranslationTree = {
 						label: "Time Stopped",
 						description: "When time tracking stops",
 					},
-					pomodoroStarted: {
-						label: "Pomodoro Started",
-						description: "When pomodoro sessions begin",
-					},
-					pomodoroCompleted: {
-						label: "Pomodoro Completed",
-						description: "When pomodoro sessions finish",
-					},
-					pomodoroInterrupted: {
-						label: "Pomodoro Interrupted",
-						description: "When pomodoro sessions are stopped",
-					},
 					recurringCompleted: {
 						label: "Recurring Instance Completed",
 						description: "When recurring task instances complete",
@@ -2249,19 +2041,8 @@ export const en: TranslationTree = {
 		icsFileNotFound: "File not found or invalid",
 		icsFileOpenFailed: "Failed to open file",
 		// Timeblock Info Modal notices
-		timeblockAttachmentExists: '"{fileName}" is already attached',
-		timeblockAttachmentAdded: 'Added "{fileName}" as attachment',
-		timeblockAttachmentRemoved: 'Removed "{fileName}" from attachments',
-		timeblockFileTypeNotSupported: 'Cannot open "{fileName}" - file type not supported',
-		timeblockTitleRequired: "Please enter a title for the timeblock",
-		timeblockUpdatedSuccess: 'Timeblock "{title}" updated successfully',
-		timeblockUpdateFailed: "Failed to update timeblock. Check console for details.",
-		timeblockDeletedSuccess: 'Timeblock "{title}" deleted successfully',
-		timeblockDeleteFailed: "Failed to delete timeblock. Check console for details.",
 		// Timeblock Creation Modal notices
-		timeblockRequiredFieldsMissing: "Please fill in all required fields",
 		// Agenda View notices
-		agendaLoadingFailed: "Error loading agenda. Please try refreshing.",
 		// Stats View notices
 		statsLoadingFailed: "Error loading project details.",
 	},
@@ -2270,10 +2051,7 @@ export const en: TranslationTree = {
 		openAdvancedCalendarView: "Open calendar view",
 		openTasksView: "Open tasks view",
 		openNotesView: "Open notes view",
-		openAgendaView: "Open agenda view",
-		openPomodoroView: "Open pomodoro timer",
 		openKanbanView: "Open kanban board",
-		openPomodoroStats: "Open pomodoro statistics",
 		openStatisticsView: "Open task & project statistics",
 		createNewTask: "Create new task",
 		convertCurrentNoteToTask: {
@@ -2288,14 +2066,10 @@ export const en: TranslationTree = {
 		createInlineTask: "Create new inline task",
 		quickActionsCurrentTask: "Quick actions for current task",
 		goToTodayNote: "Go to today's note",
-		startPomodoro: "Start pomodoro timer",
-		stopPomodoro: "Stop pomodoro timer",
-		pauseResumePomodoro: "Pause/resume pomodoro timer",
 		refreshCache: "Refresh cache",
 		exportAllTasksIcs: "Export all tasks as ICS file",
 		syncAllTasksGoogleCalendar: "Sync all tasks to Google Calendar",
 		syncCurrentTaskGoogleCalendar: "Sync current task to Google Calendar",
-		viewReleaseNotes: "View release notes",
 		startTimeTrackingWithSelector: "Start time tracking (select task)",
 		editTimeEntries: "Edit time entries (select task)",
 		createOrOpenTask: "Create or open task",
@@ -2338,50 +2112,6 @@ export const en: TranslationTree = {
 			createFromEventDesc: "Create a new note or task from this calendar event",
 			linkExistingLabel: "Link Existing",
 			linkExistingDesc: "Link an existing note to this calendar event",
-		},
-		timeblockInfo: {
-			editHeading: "Edit Timeblock",
-			dateTimeLabel: "Date & Time: ",
-			titleLabel: "Title",
-			titleDesc: "Title for your timeblock",
-			titlePlaceholder: "e.g., Deep work session",
-			descriptionLabel: "Description",
-			descriptionDesc: "Optional description for the timeblock",
-			descriptionPlaceholder: "Focus on new features, no interruptions",
-			colorLabel: "Color",
-			colorDesc: "Optional color for the timeblock",
-			colorPlaceholder: "#3b82f6",
-			attachmentsLabel: "Attachments",
-			attachmentsDesc: "Files or notes linked to this timeblock",
-			addAttachmentButton: "Add Attachment",
-			addAttachmentTooltip: "Select a file or note using fuzzy search",
-			deleteButton: "Delete Timeblock",
-			saveButton: "Save Changes",
-			deleteConfirmationTitle: "Delete Timeblock",
-		},
-		timeblockCreation: {
-			heading: "Create timeblock",
-			dateLabel: "Date: ",
-			titleLabel: "Title",
-			titleDesc: "Title for your timeblock",
-			titlePlaceholder: "e.g., Deep work session",
-			startTimeLabel: "Start time",
-			startTimeDesc: "When the timeblock starts",
-			startTimePlaceholder: "09:00",
-			endTimeLabel: "End time",
-			endTimeDesc: "When the timeblock ends",
-			endTimePlaceholder: "11:00",
-			descriptionLabel: "Description",
-			descriptionDesc: "Optional description for the timeblock",
-			descriptionPlaceholder: "Focus on new features, no interruptions",
-			colorLabel: "Color",
-			colorDesc: "Optional color for the timeblock",
-			colorPlaceholder: "#3b82f6",
-			attachmentsLabel: "Attachments",
-			attachmentsDesc: "Files or notes to link to this timeblock",
-			addAttachmentButton: "Add Attachment",
-			addAttachmentTooltip: "Select a file or note using fuzzy search",
-			createButton: "Create timeblock",
 		},
 		icsNoteCreation: {
 			heading: "Create from ICS Event",
@@ -2627,34 +2357,6 @@ export const en: TranslationTree = {
 			archiveAction: {
 				archived: "archived",
 				unarchived: "unarchived",
-			},
-		},
-		storageLocation: {
-			title: {
-				migrate: "Migrate pomodoro data?",
-				switch: "Switch to daily notes storage?",
-			},
-			message: {
-				migrate:
-					"This will migrate your existing pomodoro session data to daily notes frontmatter. The data will be grouped by date and stored in each daily note.",
-				switch: "Pomodoro session data will be stored in daily notes frontmatter instead of the plugin data file.",
-			},
-			whatThisMeans: "What this means:",
-			bullets: {
-				dailyNotesRequired: "Daily Notes core plugin must remain enabled",
-				storedInNotes: "Data will be stored in your daily notes frontmatter",
-				migrateData: "Existing plugin data will be migrated and then cleared",
-				futureSessions: "Future sessions will be saved to daily notes",
-				dataLongevity: "This provides better data longevity with your notes",
-			},
-			finalNote: {
-				migrate:
-					"⚠️ Make sure you have backups if needed. This change cannot be automatically undone.",
-				switch: "You can switch back to plugin storage at any time in the future.",
-			},
-			buttons: {
-				migrate: "Migrate data",
-				switch: "Switch storage",
 			},
 		},
 		dueDate: {
@@ -2952,22 +2654,6 @@ export const en: TranslationTree = {
 		},
 	},
 	services: {
-		pomodoro: {
-			notices: {
-				alreadyRunning: "A pomodoro is already running",
-				resumeCurrentSession: "Resume the current session instead of starting a new one",
-				timerAlreadyRunning: "A timer is already running",
-				resumeSessionInstead: "Resume the current session instead of starting a new one",
-				shortBreakStarted: "Short break started",
-				longBreakStarted: "Long break started",
-				paused: "Pomodoro paused",
-				resumed: "Pomodoro resumed",
-				stoppedAndReset: "Pomodoro stopped and reset",
-				migrationSuccess: "Successfully migrated {count} pomodoro sessions to daily notes.",
-				migrationFailure:
-					"Failed to migrate pomodoro data. Please try again or check the console for details.",
-			},
-		},
 		icsSubscription: {
 			notices: {
 				calendarNotFound:

@@ -40,42 +40,6 @@ export const ja: TranslationTree = {
 		},
 	},
 	views: {
-		agenda: {
-			title: "アジェンダ",
-			today: "今日",
-			overdue: "期限切れ",
-			refreshCalendars: "カレンダーを更新",
-			actions: {
-				previousPeriod: "前の期間",
-				nextPeriod: "次の期間",
-				goToToday: "今日に移動",
-				refreshCalendars: "カレンダー購読を更新",
-			},
-			loading: "アジェンダを読み込み中...",
-			dayToggle: "日の切り替え",
-			overdueToggle: "期限切れセクションの切り替え",
-			expandAllDays: "すべての日を展開",
-			collapseAllDays: "すべての日を折りたたみ",
-			notices: {
-				calendarNotReady: "カレンダーサービスはまだ準備できていません",
-				calendarRefreshed: "カレンダー購読が更新されました",
-				refreshFailed: "更新に失敗しました",
-			},
-			empty: {
-				noItemsScheduled: "予定されたアイテムがありません",
-				noItemsFound: "アイテムが見つかりませんでした",
-				helpText: "期限日または予定日のあるタスクを作成するか、ノートを追加してここに表示してください。",
-			},
-			contextMenu: {
-				showOverdueSection: "期限切れセクションを表示",
-				showNotes: "ノートを表示",
-				calendarSubscriptions: "カレンダー購読",
-			},
-			periods: {
-				thisWeek: "今週",
-			},
-			tipPrefix: "ヒント：",
-		},
 		taskList: {
 			title: "タスク",
 			expandAllGroups: "すべてのグループを展開",
@@ -281,90 +245,6 @@ export const ja: TranslationTree = {
 			},
 			columnTitle: "無題",
 		},
-		pomodoro: {
-			title: "ポモドーロ",
-			status: {
-				focus: "フォーカス",
-				ready: "開始準備完了",
-				paused: "一時停止",
-				working: "作業中",
-				shortBreak: "短い休憩",
-				longBreak: "長い休憩",
-				breakPrompt: "素晴らしい仕事です！{length}休憩の時間です",
-				breakLength: {
-					short: "短い",
-					long: "長い",
-				},
-				breakComplete: "休憩完了！次のポモドーロの準備はできましたか？",
-			},
-			buttons: {
-				start: "開始",
-				pause: "一時停止",
-				stop: "停止",
-				resume: "再開",
-				startShortBreak: "短い休憩を開始",
-				startLongBreak: "長い休憩を開始",
-				skipBreak: "休憩をスキップ",
-				chooseTask: "タスクを選択...",
-				changeTask: "タスクを変更...",
-				clearTask: "タスクをクリア",
-				selectDifferentTask: "別のタスクを選択",
-			},
-			notices: {
-				noTasks: "アーカイブされていないタスクが見つかりません。最初にタスクを作成してください。",
-				loadFailed: "タスクの読み込みに失敗しました",
-			},
-			statsLabel: "今日完了",
-		},
-		pomodoroStats: {
-			title: "ポモドーロ統計",
-			heading: "ポモドーロ統計",
-			refresh: "更新",
-			sections: {
-				overview: "概要",
-				today: "今日",
-				week: "今週",
-				allTime: "全期間",
-				recent: "最近のセッション",
-			},
-			overviewCards: {
-				todayPomos: {
-					label: "今日のポモ",
-					change: {
-						more: "昨日より{count}多い",
-						less: "昨日より{count}少ない",
-					},
-				},
-				totalPomos: {
-					label: "総ポモ数",
-				},
-				todayFocus: {
-					label: "今日のフォーカス",
-					change: {
-						more: "昨日より{duration}多い",
-						less: "昨日より{duration}少ない",
-					},
-				},
-				totalFocus: {
-					label: "総フォーカス時間",
-				},
-			},
-			stats: {
-				pomodoros: "ポモドーロ",
-				streak: "連続記録",
-				minutes: "分",
-				average: "平均長さ",
-				completion: "完了",
-			},
-			recents: {
-				empty: "まだセッションが記録されていません",
-				duration: "{minutes}分",
-				status: {
-					completed: "完了",
-					interrupted: "中断",
-				},
-			},
-		},
 		stats: {
 			title: "統計",
 			taskProjectStats: "タスクとプロジェクトの統計",
@@ -411,12 +291,6 @@ export const ja: TranslationTree = {
 			notAvailable: "N/A",
 			noTasks: "タスクが見つかりません",
 			loading: "読み込み中...",
-		},
-		releaseNotes: {
-			title: "TaskNotes {version} の新機能",
-			header: "TaskNotes {version} の新機能",
-			viewAllLink: "GitHubですべてのリリースノートを表示 →",
-			starMessage: "TaskNotesが役に立ったら、GitHubでスターをお願いします",
 		},
 	},
 	settings: {
@@ -479,45 +353,6 @@ export const ja: TranslationTree = {
 					description: "ステータス提案をトリガーするテキスト（無効にするには空白のままにする）",
 				},
 			},
-			pomodoro: {
-				header: "ポモドーロタイマー",
-				description: "ポモドーロタイマーの作業/休憩間隔を設定します。",
-				workDuration: {
-					name: "作業時間",
-					description: "作業間隔の時間（分）",
-				},
-				shortBreak: {
-					name: "短い休憩時間",
-					description: "短い休憩の時間（分）",
-				},
-				longBreak: {
-					name: "長い休憩時間",
-					description: "長い休憩の時間（分）",
-				},
-				longBreakInterval: {
-					name: "長い休憩間隔",
-					description: "長い休憩前の作業セッション数",
-				},
-				autoStartBreaks: {
-					name: "自動休憩開始",
-					description: "作業セッション後に休憩タイマーを自動開始",
-				},
-				autoStartWork: {
-					name: "自動作業開始",
-					description: "休憩後に作業セッションを自動開始",
-				},
-				notifications: {
-					name: "ポモドーロ通知",
-					description: "ポモドーロセッション終了時に通知を表示",
-				},
-				mobileSidebar: {
-					name: "モバイルサイドバー",
-					description: "モバイルデバイスでポモドーロタイマーを開く場所",
-					tab: "ノートパネル",
-					left: "左サイドバー",
-					right: "右サイドバー",
-				},
-			},
 			uiLanguage: {
 				header: "インターフェース言語",
 				description: "TaskNotesのメニュー、通知、ビューの言語を変更します。",
@@ -525,12 +360,6 @@ export const ja: TranslationTree = {
 					name: "UI言語",
 					description: "TaskNotesインターフェーステキストに使用する言語を選択",
 				},
-			},
-			pomodoroSound: {
-				enabledName: "サウンド有効",
-				enabledDesc: "ポモドーロセッション終了時にサウンドを再生",
-				volumeName: "サウンド音量",
-				volumeDesc: "ポモドーロサウンドの音量（0-100）",
 			},
 			dataStorage: {
 				name: "ポモドーロデータストレージ",
@@ -572,15 +401,6 @@ export const ja: TranslationTree = {
 			recurring: {
 				maintainOffsetName: "繰り返しタスクで期限日オフセットを維持",
 				maintainOffsetDesc: "繰り返しタスクが完了したときに期限日と予定日の間のオフセットを保持",
-			},
-			timeblocking: {
-				header: "タイムブロッキング",
-				description: "デイリーノートでの軽量スケジューリングのためのタイムブロック機能を設定します。カレンダービューでドラッグしてイベントを作成 - コンテキストメニューから'タイムブロック'を選択します。",
-				enableName: "タイムブロッキングを有効にする",
-				enableDesc: "デイリーノートでの軽量スケジューリングのためのタイムブロック機能を有効にする。有効にすると、カレンダーのドラッグコンテキストメニューに'タイムブロック'オプションが表示されます。",
-				showBlocksName: "タイムブロックを表示",
-				showBlocksDesc: "デイリーノートからのタイムブロックをデフォルトで表示",
-				usage: "使用方法：カレンダーでドラッグしてイベントを作成します。コンテキストメニューから'タイムブロック'を選択します（タイムブロッキングが有効な場合のみ表示されます）。ドラッグして既存のタイムブロックを移動します。端を調整して時間を変更します。",
 			},
 			performance: {
 				header: "パフォーマンスと動作",
@@ -816,19 +636,6 @@ export const ja: TranslationTree = {
 					edit: "タスクを編集",
 					openNote: "ノートを開く",
 					none: "アクションなし",
-				},
-			},
-			releaseNotes: {
-				header: "リリースノート",
-				description: "現在のバージョン：{version}",
-				showOnUpdate: {
-					name: "更新後にリリースノートを表示",
-					description: "TaskNotesが新しいバージョンに更新されたときに自動的にリリースノートを開く",
-				},
-				viewButton: {
-					name: "リリースノートを表示",
-					description: "TaskNotesの最新バージョンの新機能を確認する",
-					buttonText: "リリースノートを表示",
 				},
 			},
 		},
@@ -2079,18 +1886,6 @@ export const ja: TranslationTree = {
 						label: "時間停止",
 						description: "時間追跡が停止されたとき",
 					},
-					pomodoroStarted: {
-						label: "ポモドーロ開始",
-						description: "ポモドーロセッションが開始されたとき",
-					},
-					pomodoroCompleted: {
-						label: "ポモドーロ完了",
-						description: "ポモドーロセッションが終了したとき",
-					},
-					pomodoroInterrupted: {
-						label: "ポモドーロ中断",
-						description: "ポモドーロセッションが停止されたとき",
-					},
 					recurringCompleted: {
 						label: "繰り返しインスタンス完了",
 						description: "繰り返しタスクインスタンスが完了したとき",
@@ -2196,17 +1991,6 @@ export const ja: TranslationTree = {
 		icsRelatedItemsRefreshed: "関連ノートが更新されました",
 		icsFileNotFound: "ファイルが見つからないか無効です",
 		icsFileOpenFailed: "ファイルを開けませんでした",
-		timeblockAttachmentExists: "\"{fileName}\"は既に添付されています",
-		timeblockAttachmentAdded: "\"{fileName}\"を添付ファイルとして追加しました",
-		timeblockAttachmentRemoved: "\"{fileName}\"を添付ファイルから削除しました",
-		timeblockFileTypeNotSupported: "\"{fileName}\"を開けません - ファイルタイプがサポートされていません",
-		timeblockTitleRequired: "タイムブロックのタイトルを入力してください",
-		timeblockUpdatedSuccess: "タイムブロック\"{title}\"が正常に更新されました",
-		timeblockUpdateFailed: "タイムブロックの更新に失敗しました。詳細はコンソールを確認してください。",
-		timeblockDeletedSuccess: "タイムブロック\"{title}\"が正常に削除されました",
-		timeblockDeleteFailed: "タイムブロックの削除に失敗しました。詳細はコンソールを確認してください。",
-		timeblockRequiredFieldsMissing: "すべての必須フィールドを入力してください",
-		agendaLoadingFailed: "アジェンダの読み込みエラー。更新してみてください。",
 		statsLoadingFailed: "プロジェクト詳細の読み込みエラー。",
 	},
 	commands: {
@@ -2214,10 +1998,7 @@ export const ja: TranslationTree = {
 		openAdvancedCalendarView: "カレンダービューを開く",
 		openTasksView: "タスクビューを開く",
 		openNotesView: "ノートビューを開く",
-		openAgendaView: "アジェンダビューを開く",
-		openPomodoroView: "ポモドーロタイマーを開く",
 		openKanbanView: "かんばんボードを開く",
-		openPomodoroStats: "ポモドーロ統計を開く",
 		openStatisticsView: "タスクとプロジェクト統計を開く",
 		createNewTask: "新しいタスクを作成",
 		convertCurrentNoteToTask: {
@@ -2232,12 +2013,8 @@ export const ja: TranslationTree = {
 		createInlineTask: "新しいインラインタスクを作成",
 		quickActionsCurrentTask: "現在のタスクのクイックアクション",
 		goToTodayNote: "今日のノートに移動",
-		startPomodoro: "ポモドーロタイマーを開始",
-		stopPomodoro: "ポモドーロタイマーを停止",
-		pauseResumePomodoro: "ポモドーロタイマーを一時停止/再開",
 		refreshCache: "キャッシュを更新",
 		exportAllTasksIcs: "すべてのタスクをICSファイルとしてエクスポート",
-		viewReleaseNotes: "リリースノートを表示",
 		startTimeTrackingWithSelector: "時間追跡を開始（タスクを選択）",
 		editTimeEntries: "時間エントリを編集（タスクを選択）",
 		createOrOpenTask: "タスクを作成または開く",
@@ -2282,50 +2059,6 @@ export const ja: TranslationTree = {
 			createFromEventDesc: "このカレンダーイベントから新しいノートまたはタスクを作成",
 			linkExistingLabel: "既存をリンク",
 			linkExistingDesc: "既存のノートをこのカレンダーイベントにリンク",
-		},
-		timeblockInfo: {
-			editHeading: "タイムブロックを編集",
-			dateTimeLabel: "日時：",
-			titleLabel: "タイトル",
-			titleDesc: "タイムブロックのタイトル",
-			titlePlaceholder: "例：集中作業セッション",
-			descriptionLabel: "説明",
-			descriptionDesc: "タイムブロックのオプション説明",
-			descriptionPlaceholder: "新機能に集中、中断なし",
-			colorLabel: "色",
-			colorDesc: "タイムブロックのオプション色",
-			colorPlaceholder: "#3b82f6",
-			attachmentsLabel: "添付ファイル",
-			attachmentsDesc: "このタイムブロックにリンクされたファイルまたはノート",
-			addAttachmentButton: "添付ファイルを追加",
-			addAttachmentTooltip: "ファジー検索を使用してファイルまたはノートを選択",
-			deleteButton: "タイムブロックを削除",
-			saveButton: "変更を保存",
-			deleteConfirmationTitle: "タイムブロックを削除",
-		},
-		timeblockCreation: {
-			heading: "タイムブロックを作成",
-			dateLabel: "日付：",
-			titleLabel: "タイトル",
-			titleDesc: "タイムブロックのタイトル",
-			titlePlaceholder: "例：集中作業セッション",
-			startTimeLabel: "開始時刻",
-			startTimeDesc: "タイムブロックが開始される時刻",
-			startTimePlaceholder: "09:00",
-			endTimeLabel: "終了時刻",
-			endTimeDesc: "タイムブロックが終了する時刻",
-			endTimePlaceholder: "11:00",
-			descriptionLabel: "説明",
-			descriptionDesc: "タイムブロックのオプション説明",
-			descriptionPlaceholder: "新機能に集中、中断なし",
-			colorLabel: "色",
-			colorDesc: "タイムブロックのオプション色",
-			colorPlaceholder: "#3b82f6",
-			attachmentsLabel: "添付ファイル",
-			attachmentsDesc: "このタイムブロックにリンクするファイルまたはノート",
-			addAttachmentButton: "添付ファイルを追加",
-			addAttachmentTooltip: "ファジー検索を使用してファイルまたはノートを選択",
-			createButton: "タイムブロックを作成",
 		},
 		icsNoteCreation: {
 			heading: "ICSイベントから作成",
@@ -2570,32 +2303,6 @@ export const ja: TranslationTree = {
 			archiveAction: {
 				archived: "アーカイブ",
 				unarchived: "アーカイブ解除",
-			},
-		},
-		storageLocation: {
-			title: {
-				migrate: "ポモドーロデータを移行しますか？",
-				switch: "デイリーノートストレージに切り替えますか？",
-			},
-			message: {
-				migrate: "これにより、既存のポモドーロセッションデータがデイリーノートのフロントマターに移行されます。データは日付でグループ化され、各デイリーノートに保存されます。",
-				switch: "ポモドーロセッションデータは、プラグインデータファイルではなくデイリーノートのフロントマターに保存されます。",
-			},
-			whatThisMeans: "これが意味すること：",
-			bullets: {
-				dailyNotesRequired: "Daily Notesコアプラグインは有効のままである必要があります",
-				storedInNotes: "データはデイリーノートのフロントマターに保存されます",
-				migrateData: "既存のプラグインデータは移行され、その後クリアされます",
-				futureSessions: "今後のセッションはデイリーノートに保存されます",
-				dataLongevity: "これによりノートとのデータの永続性が向上します",
-			},
-			finalNote: {
-				migrate: "⚠️ 必要に応じてバックアップを取ってください。この変更は自動的に元に戻すことはできません。",
-				switch: "将来いつでもプラグインストレージに戻すことができます。",
-			},
-			buttons: {
-				migrate: "データを移行",
-				switch: "ストレージを切り替え",
 			},
 		},
 		dueDate: {
@@ -2893,21 +2600,6 @@ export const ja: TranslationTree = {
 		},
 	},
 	services: {
-		pomodoro: {
-			notices: {
-				alreadyRunning: "ポモドーロが既に実行中です",
-				resumeCurrentSession: "新しいセッションを開始する代わりに現在のセッションを再開してください",
-				timerAlreadyRunning: "タイマーが既に実行中です",
-				resumeSessionInstead: "新しいセッションを開始する代わりに現在のセッションを再開してください",
-				shortBreakStarted: "短い休憩を開始しました",
-				longBreakStarted: "長い休憩を開始しました",
-				paused: "ポモドーロが一時停止されました",
-				resumed: "ポモドーロが再開されました",
-				stoppedAndReset: "ポモドーロが停止およびリセットされました",
-				migrationSuccess: "{count}件のポモドーロセッションがデイリーノートに正常に移行されました。",
-				migrationFailure: "ポモドーロデータの移行に失敗しました。再試行するか、詳細についてはコンソールを確認してください。",
-			},
-		},
 		icsSubscription: {
 			notices: {
 				calendarNotFound: "カレンダー\"{name}\"が見つかりません（404）。ICS URLが正しく、カレンダーが公開アクセス可能であることを確認してください。",

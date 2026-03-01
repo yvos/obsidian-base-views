@@ -10,7 +10,6 @@ const CSS_FILES = [
     'styles/task-card-bem.css',
     'styles/modal-bem.css',
     'styles/reminder-modal.css',
-    'styles/task-selector-with-create-modal.css',
 
     // Views used by current Base Views features
     'styles/task-list-view.css',
@@ -34,7 +33,6 @@ const MAIN_CSS_TEMPLATE = `/* Base Views Plugin Styles */
    - styles/task-card-bem.css
    - styles/modal-bem.css
    - styles/reminder-modal.css
-   - styles/task-selector-with-create-modal.css
 
    Views:
    - styles/task-list-view.css

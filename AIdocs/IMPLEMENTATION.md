@@ -614,3 +614,39 @@
   - `src/services/NaturalLanguageParser.ts`
   - `src/services/TriggerConfigService.ts`
 - 本整理は「副作用最小」を前提とし、`view一覧` / `Table View (Custom)` / `Task List View (Custom)` の挙動変更は伴わない。
+
+## 11.14 2026-03-01 不要コード削除計画（PR3〜PR7）反映
+
+- `TaskContextMenu` の追加系導線は TaskNotes 編集モーダル委譲へ統一済み。
+  - `Add blocked by / Add blocking / Add to project / Add subtasks` は `openTaskEditModal(task)` を利用。
+  - `Create subtask` は `openTaskCreationModal({ projects: [...] })` 委譲を維持。
+- 以下モジュールは削除済み（委譲後に未使用化）:
+  - `src/modals/TaskSelectorWithCreateModal.ts`
+  - `src/modals/ProjectSelectModal.ts`
+  - `src/services/NaturalLanguageParser.ts`
+  - `src/services/TriggerConfigService.ts`
+  - `src/suggest/FileSuggestHelper.ts`
+  - `src/utils/projectMetadataResolver.ts`
+  - `src/utils/projectAutosuggestDisplayFieldsParser.ts`
+  - `src/utils/projectFilterUtils.ts`
+- `FileFilterConfig` は `src/types/settings.ts` 内へ移設し、`suggest` 依存を解消。
+- `styles/task-selector-with-create-modal.css` は削除済みで、`build-css.mjs` からも除外済み。
+- PR7の最終判断:
+  - **CalendarExportService は維持**（TaskContextMenu の Add to calendar 導線も維持）。
+  - 理由: TaskNotes runtime への単純委譲で等価機能を維持できないため、機能縮退を避ける方針を採用。
+
+注記:
+- 11.13 は 2026-02-23 時点の記録であり、`NaturalLanguageParser` / `TriggerConfigService` の継続利用記述は当時の状態を示す。
+- 2026-03-01 時点の最新状態は本 11.14 を優先する。
+
+## 11.15 2026-03-01 フェーズ2-2（i18n未使用キー整理）
+
+- `src/i18n/resources/en.ts` / `src/i18n/resources/ja.ts` から、現行3機能で未参照となったカテゴリのキーを削除。
+  - `views.agenda`
+  - `views.pomodoro` / `views.pomodoroStats`
+  - `views.releaseNotes`
+  - `settings.features.pomodoro` / `settings.features.pomodoroSound` / `settings.features.timeblocking`
+  - `settings.integrations.releaseNotes`
+  - `notices` / `commands` / `modals` / `services` の timeblock / pomodoro / releaseNotes 関連未使用キー
+- 目的は「不要機能削除後に残った翻訳資産の整合化」であり、挙動追加は行っていない。
+- i18n欠損時は既存の fallback（キー文字列返却）があるため、実行時致命エラーには直結しない設計だが、`typecheck` 通過を前提に静的整合は維持している。
