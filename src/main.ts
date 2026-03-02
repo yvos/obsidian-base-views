@@ -1,4 +1,4 @@
-﻿import { Events, Notice, Plugin } from "obsidian";
+﻿import { Command, Events, Notice, Plugin } from "obsidian";
 import { BaseViewsSettings } from "./types/settings";
 import { createI18nService, I18nService } from "./i18n";
 import { FieldMapper } from "./services/FieldMapper";
@@ -17,6 +17,10 @@ import { registerBasesTaskList, unregisterBasesViews } from "./bases/registratio
 import { BasesViewListSidebarService } from "./bases/BasesViewListSidebarService";
 import { BaseViewsSettingTab } from "./settings/BaseViewsSettingTab";
 
+const COMMAND_ID_TOGGLE_ACTIVE_BASE_VIEW_LIST = "toggle-active-base-view-list";
+const COMMAND_ID_OPEN_NEXT_BASE_VIEW = "open-next-base-view";
+const COMMAND_ID_OPEN_PREVIOUS_BASE_VIEW = "open-previous-base-view";
+
 // BaseViewsPluginの中核ロジックをまとめるクラス。
 export default class BaseViewsPlugin extends Plugin {
 	// Allow legacy modules (TaskCard, Base views) to access runtime-delegated members.
@@ -33,6 +37,9 @@ export default class BaseViewsPlugin extends Plugin {
 	private basesRegistered = false;
 	private registeredCustomViewConfig: string | null = null;
 	private basesViewListSidebarService: BasesViewListSidebarService | null = null;
+	private toggleActiveBaseViewListCommand: Command | null = null;
+	private openNextBaseViewCommand: Command | null = null;
+	private openPreviousBaseViewCommand: Command | null = null;
 	async onload() {
 		await this.loadSettings();
 
@@ -43,6 +50,7 @@ export default class BaseViewsPlugin extends Plugin {
 		this.fieldMapper = new FieldMapper(this.settings.fieldMapping);
 		this.emitter = this.localEmitter;
 		this.syncTaskRuntimeBindings();
+		this.registerBaseViewCommands();
 
 		this.addSettingTab(new BaseViewsSettingTab(this.app, this));
 
@@ -66,6 +74,10 @@ export default class BaseViewsPlugin extends Plugin {
 			this.basesRegistered = false;
 			this.registeredCustomViewConfig = null;
 		}
+
+		this.toggleActiveBaseViewListCommand = null;
+		this.openNextBaseViewCommand = null;
+		this.openPreviousBaseViewCommand = null;
 	}
 
 	async loadSettings() {
@@ -79,9 +91,82 @@ export default class BaseViewsPlugin extends Plugin {
 		this.settings.uiLanguage = normalizeBaseViewsUILanguage(this.settings.uiLanguage);
 		await this.saveData(this.settings);
 		this.i18n?.setLocale(this.settings.uiLanguage ?? "en");
+		this.updateBaseViewCommandLabels();
 		await this.syncBasesFeatureBindings();
 		this.emitSettingsChanged();
 		this.syncTaskRuntimeBindings();
+	}
+
+	private registerBaseViewCommands(): void {
+		this.toggleActiveBaseViewListCommand = this.addCommand({
+			id: COMMAND_ID_TOGGLE_ACTIVE_BASE_VIEW_LIST,
+			name: this.getToggleActiveBaseViewListCommandName(),
+			callback: () => {
+				void this.toggleActiveBaseViewListFromCommand();
+			},
+		});
+
+		this.openNextBaseViewCommand = this.addCommand({
+			id: COMMAND_ID_OPEN_NEXT_BASE_VIEW,
+			name: this.getOpenNextBaseViewCommandName(),
+			callback: () => {
+				void this.openAdjacentBaseViewFromCommand("next");
+			},
+		});
+
+		this.openPreviousBaseViewCommand = this.addCommand({
+			id: COMMAND_ID_OPEN_PREVIOUS_BASE_VIEW,
+			name: this.getOpenPreviousBaseViewCommandName(),
+			callback: () => {
+				void this.openAdjacentBaseViewFromCommand("previous");
+			},
+		});
+	}
+
+	private updateBaseViewCommandLabels(): void {
+		if (this.toggleActiveBaseViewListCommand) {
+			this.toggleActiveBaseViewListCommand.name = this.getToggleActiveBaseViewListCommandName();
+		}
+		if (this.openNextBaseViewCommand) {
+			this.openNextBaseViewCommand.name = this.getOpenNextBaseViewCommandName();
+		}
+		if (this.openPreviousBaseViewCommand) {
+			this.openPreviousBaseViewCommand.name = this.getOpenPreviousBaseViewCommandName();
+		}
+	}
+
+	private getToggleActiveBaseViewListCommandName(): string {
+		return this.translateWithFallback("commands.toggleBaseViewList", "Toggle view list");
+	}
+
+	private getOpenNextBaseViewCommandName(): string {
+		return this.translateWithFallback("commands.openNextBaseView", "Open next view");
+	}
+
+	private getOpenPreviousBaseViewCommandName(): string {
+		return this.translateWithFallback("commands.openPreviousBaseView", "Open previous view");
+	}
+
+	private getViewListServiceForCommands(): BasesViewListSidebarService {
+		if (!this.basesViewListSidebarService) {
+			this.basesViewListSidebarService = new BasesViewListSidebarService(this);
+		}
+		return this.basesViewListSidebarService;
+	}
+
+	private async toggleActiveBaseViewListFromCommand(): Promise<void> {
+		if (!this.settings.enableBasesViewListSidebar) return;
+		if (!this.basesViewListSidebarService) return;
+		await this.basesViewListSidebarService.toggleViewListForActiveBaseLeaf();
+	}
+
+	private async openAdjacentBaseViewFromCommand(direction: "next" | "previous"): Promise<void> {
+		const service = this.getViewListServiceForCommands();
+		if (direction === "next") {
+			await service.openNextViewForActiveBaseLeaf();
+			return;
+		}
+		await service.openPreviousViewForActiveBaseLeaf();
 	}
 
 	private getCustomViewFeatureConfigKey(): string {
@@ -282,4 +367,3 @@ export default class BaseViewsPlugin extends Plugin {
 		return `${Math.round(value)}m`;
 	}
 }
-

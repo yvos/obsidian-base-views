@@ -680,3 +680,26 @@
   - `npm run build-css`: 成功
   - `npm run typecheck`: 成功
   - `npx jest --testPathPatterns=unit --runInBand`: 成功（17/17 suites, 144/144 tests）
+
+## 11.17 2026-03-02 Bases View操作コマンド追加
+
+- `src/main.ts` に3つのコマンドを追加。
+  - `toggle-active-base-view-list`
+  - `open-next-base-view`
+  - `open-previous-base-view`
+- コマンド名は `commands.*` i18nキーで解決し、`saveSettings()` で `i18n.setLocale()` 後に `Command.name` を更新することで再起動不要の即時反映に対応。
+- `src/bases/BasesViewListSidebarService.ts` に以下の公開APIを追加。
+  - `toggleViewListForActiveBaseLeaf()`
+  - `openNextViewForActiveBaseLeaf()`
+  - `openPreviousViewForActiveBaseLeaf()`
+- コマンドAPIの挙動:
+  - 対象はアクティブleafが `.base` の `bases` view の場合のみ。
+  - viewが1件以下の場合は no-op。
+  - toggleは「×ボタン」「一覧非表示時の list-plus ボタン」と同等の一時配置切替を行う。
+  - next/previousは現在viewを基準に循環移動（末尾→先頭、先頭→末尾）。
+  - `enableBasesViewListSidebar` が OFF でも next/previous は動作し、toggleは無効。
+- `switchView()` は `running` 非依存で実行可能に変更し、refresh scheduling のみ `running` 時に限定。
+- テスト更新:
+  - `tests/unit/bases/BasesViewListSidebarService.test.ts` に公開APIのユースケースを追加。
+  - `tests/unit/main/baseViewCommands.test.ts` を追加し、JA/EN登録名と設定変更時の即時反映を検証。
+  - `jest.config.js` に `tests/unit/main/**/*.test.ts` を追加。

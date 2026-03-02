@@ -5,7 +5,8 @@ module.exports = {
   testMatch: [
     '**/tests/unit/services/**/*.test.ts',
     '**/tests/unit/bases/**/*.test.ts',
-    '**/tests/unit/integrations/**/*.test.ts'
+    '**/tests/unit/integrations/**/*.test.ts',
+    '**/tests/unit/main/**/*.test.ts'
   ],
   transform: {
     '^.+\\.ts$': 'ts-jest',

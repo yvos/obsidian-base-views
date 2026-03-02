@@ -230,6 +230,64 @@ export class BasesViewListSidebarService {
 		this.yamlStore.clearCache();
 	}
 
+	async toggleViewListForActiveBaseLeaf(): Promise<boolean> {
+		const leaf = this.getActiveTargetBaseLeaf();
+		if (!leaf) return false;
+
+		const file = this.getLeafFile(leaf);
+		if (!file) return false;
+
+		const viewEntries = await this.getViewEntries(leaf, false);
+		if (viewEntries.length <= 1) return false;
+
+		const resolvedPrefs = await this.resolveViewListPrefs(leaf, file);
+		const layoutResolution = this.resolveEffectiveLayout(leaf, resolvedPrefs.placement);
+
+		if (layoutResolution.hiddenReason === "none") {
+			this.openViewListFromTrigger(leaf, file.path, resolvedPrefs.paneContext);
+			return true;
+		}
+
+		if (layoutResolution.hiddenReason === "narrow-hide") {
+			return false;
+		}
+
+		this.setTemporaryPlacement(leaf, file.path, "none");
+		if (this.running) {
+			this.scheduleRefresh(0);
+		}
+		return true;
+	}
+
+	async openNextViewForActiveBaseLeaf(): Promise<boolean> {
+		return this.openAdjacentViewForActiveBaseLeaf(1);
+	}
+
+	async openPreviousViewForActiveBaseLeaf(): Promise<boolean> {
+		return this.openAdjacentViewForActiveBaseLeaf(-1);
+	}
+
+	private async openAdjacentViewForActiveBaseLeaf(step: 1 | -1): Promise<boolean> {
+		const leaf = this.getActiveTargetBaseLeaf();
+		if (!leaf) return false;
+
+		const viewEntries = await this.getViewEntries(leaf, false);
+		if (viewEntries.length <= 1) return false;
+
+		const currentViewName = this.getCurrentViewName(leaf);
+		if (!currentViewName) return false;
+
+		const currentIndex = viewEntries.findIndex((entry) => entry.name === currentViewName);
+		if (currentIndex < 0) return false;
+
+		const nextIndex = (currentIndex + step + viewEntries.length) % viewEntries.length;
+		const nextViewName = viewEntries[nextIndex]?.name ?? null;
+		if (!nextViewName || nextViewName === currentViewName) return false;
+
+		await this.switchView(leaf, nextViewName);
+		return true;
+	}
+
 	private bindEvents(): void {
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.workspaceRefs.push(
@@ -793,6 +851,13 @@ export class BasesViewListSidebarService {
 
 	private getController(leaf: WorkspaceLeaf): BasesControllerLike | null {
 		return this.getLeafView(leaf)?.controller ?? null;
+	}
+
+	private getActiveTargetBaseLeaf(): WorkspaceLeaf | null {
+		const activeLeaf = this.plugin.app.workspace.activeLeaf;
+		if (!activeLeaf) return null;
+		if (!this.isTargetBaseLeaf(activeLeaf)) return null;
+		return activeLeaf;
 	}
 
 	private findBasesViewEl(leaf: WorkspaceLeaf): HTMLElement | null {
@@ -2397,8 +2462,6 @@ export class BasesViewListSidebarService {
 
 	private async switchView(leaf: WorkspaceLeaf, viewName: string): Promise<void> {
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
-		if (!this.running) return;
-
 		const controller = this.getController(leaf);
 		const currentViewName = this.getCurrentViewName(leaf);
 		if (currentViewName === viewName) return;
@@ -2406,7 +2469,9 @@ export class BasesViewListSidebarService {
 		if (typeof controller?.selectView === "function") {
 			try {
 				controller.selectView(viewName);
-				this.scheduleRefresh(80);
+				if (this.running) {
+					this.scheduleRefresh(80);
+				}
 				return;
 			} catch (error) {
 				console.debug("[BaseViews][Bases] selectView failed, falling back to openLinkText", error);
@@ -2429,7 +2494,9 @@ export class BasesViewListSidebarService {
 			console.error("[BaseViews][Bases] Failed to switch base view", error);
 		}
 
-		this.scheduleRefresh(120);
+		if (this.running) {
+			this.scheduleRefresh(120);
+		}
 	}
 
 	private getCurrentViewName(leaf: WorkspaceLeaf): string | null {

@@ -4,15 +4,21 @@ Base Views は、Obsidian の `.base` ファイル向けにビュー操作を強
 
 ## 主な機能
 
-- `.base` ファイルの View list sidebar（ビュー一覧サイドバー）
-- `Table View (Custom)`
-- `Task List View (Custom)`
-- 本プラグインは TaskNotes プラグインの fork をベースにしています。
-- `Table View (Custom)` と `Task List View (Custom)` は、TaskNotes の Bases カスタムビュー（Task List View）をベースに拡張しています。
+※本プラグインは TaskNotes プラグインの fork をベースにしています。以下の`Table View (Custom)` と `Task List View (Custom)` は、TaskNotes の Bases カスタムビュー（Task List View）をベースに拡張しています。
+- `.base` ファイルの Viewを常に一覧表示（View一覧。Base Viewsのプラグイン名はこれを表しているつもりです）
+- `Table View (Custom)` Basesオリジナルのテーブルビューに、複数の値を持つプロパティでGroupingした際、それぞれの値のグループにファイルが表示される機能を追加したもの。また、TaskNotesプラグインのカスタムビューTask List Viewの機能である、2段階のグルーピングを移植しています。
+- `Task List View (Custom)` TaskNotes プラグインのカスタムビュー Task List Viewに、同じく複数の値を持つプロパティでGroupingした際のunnest機能を追加したもの。
+
+## 注意事項
+
+- 実験的プラグインです。挙動や設定項目は今後変更される可能性があります。Obsidian側の変更により機能しなくなる可能性があります。
+- Obsidian の Bases 機能に依存します。
+- Task List View（Custom）は TaskNotes プラグインがインストールされ、有効である時にのみフル機能になります。 TaskNotes プラグインを使用していない場合は、設定から Task List View(Custom)をオフにすることを推奨します。
+- View一覧からbaseファイルの個別の設定を変更したとき、一部設定がbaseファイルのformulaに書き込まれます。また、viewごとのdescriptionを設定すると、各viewのセクションにBasesの仕様にないdescriptionプロパティとして書き込まれます。
 
 ## インストール（Obsidian BRAT）
 
-このプラグインは現在 Community Plugins への申請予定はなく、BRAT 経由の導入を想定しています。
+Obsidian BRAT プラグインを用いて導入してください。
 
 1. BRAT をインストールして有効化します。
 1. BRAT の設定画面で **Add beta plugin** を選択します。
@@ -21,7 +27,7 @@ Base Views は、Obsidian の `.base` ファイル向けにビュー操作を強
 
 ## 使い方
 
-### View list sidebar
+### View 一覧
 
 - `.base` ファイルでビュー一覧をクリックしてビューを切り替えできます。
 - 配置（left / top / none）、フォントサイズ、アイコン表示、狭幅時挙動を設定できます。
@@ -44,17 +50,17 @@ Base Views は、Obsidian の `.base` ファイル向けにビュー操作を強
 ## 設定項目（概要）
 
 - Feature switches
-  - Enable view list sidebar
-  - Enable Table View (Custom)
-  - Enable Task List View (Custom)
+    - Enable view list sidebar
+    - Enable Table View (Custom)
+    - Enable Task List View (Custom)
 - Interface language（en / ja）
 - View list sidebar settings
-  - 配置、サイドペイン配置、フォントサイズ、説明表示、アイコン表示
-  - Top overflow（wrap / scroll）
-  - 狭幅時挙動、しきい値、ネイティブツールバーの表示制御
+    - 配置、サイドペイン配置、フォントサイズ、説明表示、アイコン表示
+    - Top overflow（wrap / scroll）
+    - 狭幅時挙動、しきい値、ネイティブツールバーの表示制御
 - Custom views settings
-  - Table View (Custom) の Iconic アイコン表示
-  - グルーピング時のプロパティ名表示
+    - Table View (Custom) の Iconic アイコン表示
+    - グルーピング時のプロパティ名表示
 
 ## プライバシー / データ取り扱い
 
@@ -62,12 +68,6 @@ Base Views は、Obsidian の `.base` ファイル向けにビュー操作を強
 - Base Views 本体は、ユーザーデータの収集・送信・テレメトリを目的とした処理を行いません。
 - ただし `Task List View (Custom)` で TaskNotes ランタイム連携を使う場合、TaskNotes 側で有効化された機能の挙動は TaskNotes のポリシーに従います。
 - 詳細は [PRIVACY.md](PRIVACY.md) を参照してください（適用範囲は今後明確化予定）。
-
-## 注意事項
-
-- 実験的プラグインです。挙動や設定項目は今後変更される可能性があります。
-- Obsidian の Bases 機能に依存します。
-- 一部機能は TaskNotes ランタイム有効時にのみフル機能になります。
 
 ## クレジット
 

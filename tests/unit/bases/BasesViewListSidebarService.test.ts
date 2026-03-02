@@ -726,6 +726,223 @@ describe("BasesViewListSidebarService", () => {
 		);
 	});
 
+	it("toggles view list off for active base leaf when currently visible", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
+
+		const changed = await service.toggleViewListForActiveBaseLeaf();
+		await flushTimersAndPromises(3);
+
+		expect(changed).toBe(true);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).not.toBeNull();
+	});
+
+	it("toggles view list on for active base leaf when placement is none", async () => {
+		plugin.settings.basesViewListPlacement = "none";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+
+		const changed = await service.toggleViewListForActiveBaseLeaf();
+		await flushTimersAndPromises(3);
+
+		expect(changed).toBe(true);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
+	});
+
+	it("does nothing when toggling active base view list with only one view", async () => {
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [{ name: "Table", type: "table" }],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const changed = await service.toggleViewListForActiveBaseLeaf();
+		await flushTimersAndPromises();
+
+		expect(changed).toBe(false);
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).toBeNull();
+	});
+
+	it("opens next view for active base leaf", async () => {
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			currentViewName: "Table",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+						{ name: "List", type: "list" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const changed = await service.openNextViewForActiveBaseLeaf();
+
+		expect(changed).toBe(true);
+		expect(selectView).toHaveBeenCalledWith("Cards");
+	});
+
+	it("loops to first view when opening next from last view", async () => {
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			currentViewName: "List",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+						{ name: "List", type: "list" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const changed = await service.openNextViewForActiveBaseLeaf();
+
+		expect(changed).toBe(true);
+		expect(selectView).toHaveBeenCalledWith("Table");
+	});
+
+	it("loops to last view when opening previous from first view", async () => {
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			currentViewName: "Table",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+						{ name: "List", type: "list" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const changed = await service.openPreviousViewForActiveBaseLeaf();
+
+		expect(changed).toBe(true);
+		expect(selectView).toHaveBeenCalledWith("List");
+	});
+
+	it("does nothing for next/previous commands when active leaf is not a base file", async () => {
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			filePath: "Guides/test.md",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const nextChanged = await service.openNextViewForActiveBaseLeaf();
+		const prevChanged = await service.openPreviousViewForActiveBaseLeaf();
+
+		expect(nextChanged).toBe(false);
+		expect(prevChanged).toBe(false);
+		expect(selectView).not.toHaveBeenCalled();
+	});
+
+	it("opens next view even when service is not started", async () => {
+		plugin.settings.enableBasesViewListSidebar = false;
+		const selectView = jest.fn();
+		const setup = createBaseLeaf({
+			currentViewName: "Table",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+				selectView,
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+		(workspace as any).activeLeaf = setup.leaf;
+
+		const changed = await service.openNextViewForActiveBaseLeaf();
+
+		expect(changed).toBe(true);
+		expect(selectView).toHaveBeenCalledWith("Cards");
+	});
+
 	it("renders per-view item menu button", async () => {
 		const setup = createBaseLeaf({
 			controller: {
