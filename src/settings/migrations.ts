@@ -1,5 +1,6 @@
 import type { BaseViewsSettings } from "../types/settings";
 import { DEFAULT_SETTINGS } from "./defaults";
+import { normalizeRgbColorHistory } from "../bases/viewColorUtils";
 
 type LegacyBaseViewsSettings = Partial<BaseViewsSettings> & {
 	basesViewListShowNativeToolbar?: boolean;
@@ -57,6 +58,10 @@ export function migrateBaseViewsSettings(
 	}
 
 	settings.uiLanguage = normalizeBaseViewsUILanguage(settings.uiLanguage);
+	settings.basesViewColorRgbHistory = normalizeRgbColorHistory(
+		loaded.basesViewColorRgbHistory,
+		5
+	);
 	settings.enableBases = hasAnyBaseViewsFeatureEnabled(settings);
 	return settings;
 }

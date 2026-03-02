@@ -1,10 +1,15 @@
 ﻿import { Menu, Notice, TFile, parseYaml } from "obsidian";
 import { BasesViewListSidebarService } from "../../../src/bases/BasesViewListSidebarService";
 import { openNativeViewSettingsAtAnchor } from "../../../src/integrations/bases/nativeViewSettingsBridge";
+import { showRgbColorInputModal } from "../../../src/modals/RgbColorInputModal";
 import { showTextInputModal } from "../../../src/modals/TextInputModal";
 
 jest.mock("../../../src/modals/TextInputModal", () => ({
 	showTextInputModal: jest.fn(),
+}));
+
+jest.mock("../../../src/modals/RgbColorInputModal", () => ({
+	showRgbColorInputModal: jest.fn(),
 }));
 
 jest.mock("../../../src/integrations/bases/nativeViewSettingsBridge", () => ({
@@ -246,6 +251,7 @@ describe("BasesViewListSidebarService", () => {
 				basesViewListTopOverflowMode: "wrap",
 				basesViewListNarrowBehavior: "top",
 				basesViewListNarrowThresholdPx: 800,
+				basesViewColorRgbHistory: [],
 			},
 			app: {
 				workspace,
@@ -313,6 +319,28 @@ describe("BasesViewListSidebarService", () => {
 								"Edit description",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.duplicateView":
 								"Duplicate view",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.red":
+								"Color: Red",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.orange":
+								"Color: Orange",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.yellow":
+								"Color: Yellow",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.green":
+								"Color: Green",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.cyan":
+								"Color: Cyan",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.blue":
+								"Color: Blue",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.purple":
+								"Color: Purple",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.pink":
+								"Color: Pink",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorRgbInput":
+								"Color: Enter RGB...",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorHistory":
+								"Color: {color}",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorClear":
+								"Color: None",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeDefault":
 								"Font size: Default",
 						"settings.integrations.basesIntegration.viewListSidebar.contextMenu.fontSizeSmall":
@@ -345,6 +373,18 @@ describe("BasesViewListSidebarService", () => {
 							"Save",
 						"settings.integrations.basesIntegration.viewListSidebar.editDescriptionModal.cancel":
 							"Cancel",
+						"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.title":
+							"Set RGB color: {viewName}",
+						"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.confirm":
+							"OK",
+						"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.cancel":
+							"Cancel",
+						"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.red":
+							"R",
+						"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.green":
+							"G",
+						"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.blue":
+							"B",
 					};
 					const template = translations[key] ?? key;
 					if (!params) return template;
@@ -357,6 +397,7 @@ describe("BasesViewListSidebarService", () => {
 		};
 
 		(showTextInputModal as jest.Mock).mockResolvedValue(null);
+		(showRgbColorInputModal as jest.Mock).mockResolvedValue(null);
 
 		service = new BasesViewListSidebarService(plugin);
 	});
@@ -1794,6 +1835,134 @@ describe("BasesViewListSidebarService", () => {
 
 		expect(duplicateViewSpy).toHaveBeenCalledWith(setup.leaf.view.file, "Table");
 		expect(redrawViewListSpy).toHaveBeenCalledWith(setup.leaf);
+	});
+
+	it("updates view bg-color with preset from row context menu", async () => {
+		const updateViewBgColorSpy = jest
+			.spyOn((service as any).yamlStore, "updateViewBgColor")
+			.mockResolvedValue(true);
+		const redrawViewListSpy = jest
+			.spyOn(service as any, "redrawViewList")
+			.mockResolvedValue(undefined);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item");
+		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuInstance = getLastMenuInstance();
+		const colorItem = getMenuItemByTitle(menuInstance, "Color: Red");
+		const onClickHandler = colorItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(updateViewBgColorSpy).toHaveBeenCalledWith(setup.leaf.view.file, "Table", "red");
+		expect(redrawViewListSpy).toHaveBeenCalledWith(setup.leaf);
+	});
+
+	it("updates view bg-color from RGB modal and remembers global history", async () => {
+		const updateViewBgColorSpy = jest
+			.spyOn((service as any).yamlStore, "updateViewBgColor")
+			.mockResolvedValue(true);
+		const redrawViewListSpy = jest
+			.spyOn(service as any, "redrawViewList")
+			.mockResolvedValue(undefined);
+		(showRgbColorInputModal as jest.Mock).mockResolvedValue("rgb(1,2,3)");
+		const baselineSaveCalls = plugin.saveSettings.mock.calls.length;
+
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const firstItem = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item");
+		firstItem?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await flushTimersAndPromises();
+
+		const menuInstance = getLastMenuInstance();
+		const rgbItem = getMenuItemByTitle(menuInstance, "Color: Enter RGB...");
+		const onClickHandler = rgbItem?.onClick?.mock?.calls?.[0]?.[0];
+		expect(typeof onClickHandler).toBe("function");
+
+		await onClickHandler();
+		await flushTimersAndPromises(3);
+
+		expect(showRgbColorInputModal).toHaveBeenCalledWith(
+			plugin.app,
+			expect.objectContaining({
+				title: "Set RGB color: Table",
+				confirmText: "OK",
+				cancelText: "Cancel",
+				redLabel: "R",
+				greenLabel: "G",
+				blueLabel: "B",
+				initialValue: null,
+			})
+		);
+		expect(updateViewBgColorSpy).toHaveBeenCalledWith(
+			setup.leaf.view.file,
+			"Table",
+			"rgb(1,2,3)"
+		);
+		expect(redrawViewListSpy).toHaveBeenCalledWith(setup.leaf);
+		expect(plugin.settings.basesViewColorRgbHistory).toEqual(["rgb(1,2,3)"]);
+		expect(plugin.saveSettings.mock.calls.length).toBeGreaterThan(baselineSaveCalls);
+	});
+
+	it("applies active-row color class when active view has valid bg-color", async () => {
+		const setup = createBaseLeaf({
+			currentViewName: "Table",
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table", "bg-color": "red" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		const activeRow = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item-row.is-active");
+		expect(activeRow).not.toBeNull();
+		expect(activeRow?.classList.contains("bv-bases-view-list__item-row--active-color")).toBe(true);
+
+		const activeButton = activeRow?.querySelector<HTMLElement>(".bv-bases-view-list__item.is-active");
+		const activeBg = activeButton?.style.getPropertyValue("--bv-active-view-row-bg") ?? "";
+		const activeFg = activeButton?.style.getPropertyValue("--bv-active-view-row-fg") ?? "";
+		expect(activeBg).toContain("rgb(");
+		expect(activeFg).toContain("rgb(");
 	});
 
 	it("reorders views by drag and redraws list", async () => {

@@ -45,6 +45,17 @@
 	height: 100%;
 }
 
+:root {
+	--bv-view-color-red: var(--color-red);
+	--bv-view-color-orange: var(--color-orange);
+	--bv-view-color-yellow: var(--color-yellow);
+	--bv-view-color-green: var(--color-green);
+	--bv-view-color-cyan: var(--color-cyan);
+	--bv-view-color-blue: var(--color-blue);
+	--bv-view-color-purple: var(--color-purple);
+	--bv-view-color-pink: var(--color-pink);
+}
+
 .bv-bases-view-list-top-layout {
 	padding: var(--size-2-2) var(--size-4-2);
 	border-bottom: 1px solid var(--background-modifier-border);
@@ -373,6 +384,30 @@ button.bv-bases-view-list__item {
 	opacity: 0.86;
 }
 
+.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active {
+	background: var(--bv-active-view-row-bg, var(--interactive-accent));
+	border-color: color-mix(
+		in srgb,
+		var(--bv-active-view-row-bg, var(--interactive-accent)) 82%,
+		var(--background-modifier-border)
+	);
+	color: var(--bv-active-view-row-fg, var(--text-normal));
+}
+
+.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active .bv-bases-view-list__item-name {
+	display: inline-block;
+	max-width: 100%;
+	padding: 0 6px;
+	border-radius: var(--radius-s);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active .bv-bases-view-list__item-icon,
+.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active .bv-bases-view-list__item-property {
+	color: var(--bv-active-view-row-fg, var(--text-normal));
+}
+
 button.bv-bases-view-list__item-menu {
 	position: absolute;
 	top: 50%;
@@ -428,6 +463,11 @@ button.bv-bases-view-list__item-menu {
 	opacity: 1;
 	color: var(--text-on-accent);
 	background: transparent !important;
+}
+
+.bv-bases-view-list__item-row--active-color.is-active .bv-bases-view-list__item-menu,
+.bv-bases-view-list__item-row--active-color.is-active .bv-bases-view-list__item-menu:hover {
+	color: var(--bv-active-view-row-fg, var(--text-normal));
 }
 
 .bv-bases-view-list__resizer {
@@ -508,6 +548,19 @@ button.bv-bases-view-list__item-menu {
     gap: var(--tn-spacing-xs);
     width: 100%;
     padding: var(--tn-spacing-sm);
+}
+
+.tn-bases-tasknotes-list.bv-custom-view-has-bg .tn-bases-items-container {
+	background: var(--bv-custom-view-bg);
+	color: var(--bv-custom-view-fg);
+	border: 1px solid
+		color-mix(
+			in srgb,
+			var(--bv-custom-view-fg) 18%,
+			var(--background-modifier-border)
+		);
+	border-radius: var(--radius-m);
+	padding: var(--tn-spacing-xs);
 }
 
 /* Task Group Section (matches TaskListView structure) */
@@ -711,6 +764,12 @@ button.bv-bases-view-list__item-menu {
     overflow-x: auto;
     min-height: 0;
     padding: var(--tn-spacing-sm);
+}
+
+.bv-tasknotesCustomTable.bv-custom-view-has-bg .bv-bases-table-scroll {
+	background: var(--bv-custom-view-bg);
+	color: var(--bv-custom-view-fg);
+	border-radius: var(--radius-m);
 }
 
 .bv-tasknotesCustomTable .bv-bases-table-group {

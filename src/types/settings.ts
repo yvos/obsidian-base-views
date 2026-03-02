@@ -225,6 +225,7 @@ export interface BaseViewsSettings {
 	basesViewListTopOverflowMode: "wrap" | "scroll"; // Top layout overflow behavior
 	basesViewListNarrowBehavior: "none" | "top" | "hide"; // Behavior when pane width is narrow
 	basesViewListNarrowThresholdPx: number; // Narrow pane threshold in px
+	basesViewColorRgbHistory: string[]; // Global history for RGB input in Base view color menu (max 5)
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': string;

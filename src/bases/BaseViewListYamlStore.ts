@@ -1,10 +1,12 @@
 ﻿import { TFile, parseYaml, stringifyYaml } from "obsidian";
 import BaseViewsPlugin from "../main";
+import { normalizeViewBgColorValue } from "./viewColorUtils";
 
 // `.base` 内の `views[]` 要素から抽出したビュー情報を表す。
 export interface BaseViewRecord {
 	name: string;
 	type: string | null;
+	bgColor: string | null;
 	raw: Record<string, unknown>;
 }
 
@@ -162,13 +164,37 @@ export class BaseViewListYamlStore {
 				const name = this.normalizeName(record.name);
 				if (!name) continue;
 				const type = this.normalizeType(record.type);
-				result.push({ name, type, raw: record });
+				const bgColor = this.normalizeBgColor(record["bg-color"]);
+				result.push({ name, type, bgColor, raw: record });
 			}
 
 			return result;
 		} catch {
 			return [];
 		}
+	}
+
+	// 指定ビューの `bg-color` を `.base views[]` から取得する。
+	async getViewBgColor(file: TFile, viewName: string): Promise<string | null> {
+		const targetName = this.normalizeName(viewName);
+		if (!targetName) return null;
+
+		try {
+			const root = await this.readRoot(file);
+			const views = Array.isArray(root.views) ? root.views : [];
+
+			for (const view of views) {
+				const record = this.asRecord(view);
+				if (!record) continue;
+				const name = this.normalizeName(record.name);
+				if (name !== targetName) continue;
+				return this.normalizeBgColor(record["bg-color"]);
+			}
+		} catch {
+			return null;
+		}
+
+		return null;
 	}
 
 	// 指定ビューのdescriptionを `.base views[]` へ書き戻す。
@@ -214,6 +240,51 @@ export class BaseViewListYamlStore {
 			return true;
 		} catch (error) {
 			console.warn("[BaseViews][Bases] Failed to update view description", error);
+			return false;
+		}
+	}
+
+	// 指定ビューの `bg-color` を `.base views[]` へ書き戻す。
+	async updateViewBgColor(
+		file: TFile,
+		viewName: string,
+		bgColor: string | null
+	): Promise<boolean> {
+		const targetName = this.normalizeName(viewName);
+		if (!targetName) return false;
+		const normalizedNext = this.normalizeBgColor(bgColor);
+
+		try {
+			const root = await this.readRoot(file);
+			const views = Array.isArray(root.views) ? root.views : null;
+			if (!views) return false;
+
+			let changed = false;
+
+			for (const view of views) {
+				const record = this.asRecord(view);
+				if (!record) continue;
+				const name = this.normalizeName(record.name);
+				if (name !== targetName) continue;
+
+				const current = this.normalizeBgColor(record["bg-color"]);
+				if (normalizedNext == null) {
+					if (typeof record["bg-color"] !== "undefined") {
+						delete record["bg-color"];
+						changed = true;
+					}
+				} else if (current !== normalizedNext) {
+					record["bg-color"] = normalizedNext;
+					changed = true;
+				}
+				break;
+			}
+
+			if (!changed) return false;
+			await this.writeRoot(file, root);
+			return true;
+		} catch (error) {
+			console.warn("[BaseViews][Bases] Failed to update view bg-color", error);
 			return false;
 		}
 	}
@@ -413,6 +484,11 @@ export class BaseViewListYamlStore {
 		if (typeof value !== "string") return null;
 		const text = value.trim();
 		return text.length > 0 ? text : null;
+	}
+
+	// `.base views[].bg-color` の保存値を仕様に沿って正規化する。
+	private normalizeBgColor(value: unknown): string | null {
+		return normalizeViewBgColorValue(value);
 	}
 
 	// 真偽値保存文字列を boolean | null へ変換する。

@@ -390,6 +390,7 @@ export const DEFAULT_SETTINGS: BaseViewsSettings = {
 	basesViewListTopOverflowMode: "wrap",
 	basesViewListNarrowBehavior: "top",
 	basesViewListNarrowThresholdPx: 800,
+	basesViewColorRgbHistory: [],
 	// Command-to-file mappings for view commands (v4)
 	commandFileMapping: {
 		'open-calendar-view': 'TaskNotes/Views/mini-calendar-default.base',

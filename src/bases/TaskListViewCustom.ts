@@ -27,6 +27,14 @@ import {
 	type DuplicateNavigationIndex,
 } from "./customTableDuplicateNavigation";
 import { openTaskNotesFile } from "../integrations/tasknotes/TaskNotesRuntimeBridge";
+import {
+	normalizeViewBgColorValue,
+	pickReadableTextColor,
+	resolveThemeMode,
+	resolveViewColorToRgb,
+	tintCustomViewBackgroundColor,
+	toCssRgb,
+} from "./viewColorUtils";
 
 // Bases上でTaskNotesタスクのみをカード一覧表示するTask Listビュー本体。
 export class TaskListViewCustom extends BasesViewBase {
@@ -56,6 +64,8 @@ export class TaskListViewCustom extends BasesViewBase {
 	private rowOrderToVirtualIndex = new Map<number, number>();
 	private basesController: any = null;
 	private hasShownReadOnlyNotice = false;
+	private viewSwitchObserver: MutationObserver | null = null;
+	private lastObservedViewName: string | null = null;
 
 	/**
 	 * Threshold for enabling virtual scrolling in task list view.
@@ -127,7 +137,8 @@ export class TaskListViewCustom extends BasesViewBase {
 			const allowControllerGroupByFallback = grouped === "grouped";
 			const primaryGroupBy = this.getPrimaryGroupByPropertyId(allowControllerGroupByFallback) ?? "";
 			const primaryGroupDirection = this.getPrimaryGroupByDirection(allowControllerGroupByFallback);
-			return `${order}|${sort}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}`;
+			const activeViewName = this.getCurrentControllerViewName() ?? "";
+			return `${order}|${sort}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}|${activeViewName}`;
 		} catch {
 			return "";
 		}
@@ -178,6 +189,119 @@ export class TaskListViewCustom extends BasesViewBase {
 		return trimmed.length > 0 ? trimmed : null;
 	}
 
+	private getCurrentControllerViewName(): string | null {
+		const controller = this.basesController;
+		const rawViewName = controller?.viewName;
+		if (typeof rawViewName === "string" && rawViewName.trim().length > 0) {
+			return rawViewName.trim();
+		}
+
+		const labelEl = this.containerEl
+			.closest(".bases-view")
+			?.parentElement
+			?.querySelector<HTMLElement>(".bases-toolbar-views-menu .text-button-label");
+		const text = labelEl?.textContent?.trim();
+		return text || null;
+	}
+
+	private getCurrentControllerViewDefinition(): any | null {
+		const controller = this.basesController;
+		const currentViewName = this.getCurrentControllerViewName();
+		if (!currentViewName) return null;
+
+		const views = controller?.query?.views;
+		if (!Array.isArray(views)) return null;
+
+		for (const view of views) {
+			if (!view || typeof view !== "object") continue;
+			const name = typeof view.name === "string" ? view.name.trim() : "";
+			if (name === currentViewName) {
+				return view;
+			}
+		}
+		return null;
+	}
+
+	private extractCurrentViewBgColor(): string | null {
+		const view = this.getCurrentControllerViewDefinition();
+		if (!view || typeof view !== "object") return null;
+
+		let rawValue: unknown;
+		if (Object.prototype.hasOwnProperty.call(view, "bg-color")) {
+			rawValue = (view as Record<string, unknown>)["bg-color"];
+		}
+		const getter = (view as { get?: (key: string) => unknown }).get;
+		if (typeof rawValue === "undefined" && typeof getter === "function") {
+			try {
+				rawValue = getter.call(view, "bg-color");
+			} catch {
+				// Ignore getter errors from internal API objects.
+			}
+		}
+
+		return normalizeViewBgColorValue(rawValue);
+	}
+
+	private applyActiveViewBgColor(): void {
+		if (!this.rootElement) return;
+
+		const rawBgColor = this.extractCurrentViewBgColor();
+		const doc = this.containerEl.ownerDocument;
+		const baseColor = resolveViewColorToRgb(rawBgColor, {
+			doc,
+			scopeEl: this.rootElement,
+		});
+		if (!baseColor) {
+			this.clearActiveViewBgColor();
+			return;
+		}
+
+		const mode = resolveThemeMode(doc);
+		const backgroundColor = tintCustomViewBackgroundColor(baseColor, mode);
+		const textColor = pickReadableTextColor(backgroundColor);
+
+		this.rootElement.classList.add("bv-custom-view-has-bg");
+		this.rootElement.style.setProperty("--bv-custom-view-bg", toCssRgb(backgroundColor));
+		this.rootElement.style.setProperty("--bv-custom-view-fg", toCssRgb(textColor));
+	}
+
+	private clearActiveViewBgColor(): void {
+		if (!this.rootElement) return;
+		this.rootElement.classList.remove("bv-custom-view-has-bg");
+		this.rootElement.style.removeProperty("--bv-custom-view-bg");
+		this.rootElement.style.removeProperty("--bv-custom-view-fg");
+	}
+
+	private setupViewSwitchObserver(): void {
+		this.viewSwitchObserver?.disconnect();
+		this.viewSwitchObserver = null;
+
+		const labelEl = this.containerEl
+			.closest(".bases-view")
+			?.parentElement
+			?.querySelector<HTMLElement>(".bases-toolbar-views-menu .text-button-label");
+		if (!labelEl) return;
+
+		this.lastObservedViewName = this.getCurrentControllerViewName();
+		this.viewSwitchObserver = new MutationObserver(() => {
+			const currentViewName = this.getCurrentControllerViewName();
+			if (currentViewName === this.lastObservedViewName) return;
+			this.lastObservedViewName = currentViewName;
+			this.debouncedRefresh();
+		});
+		this.viewSwitchObserver.observe(labelEl, {
+			characterData: true,
+			childList: true,
+			subtree: true,
+		});
+
+		this.register(() => {
+			this.viewSwitchObserver?.disconnect();
+			this.viewSwitchObserver = null;
+			this.lastObservedViewName = null;
+		});
+	}
+
 	protected setupContainer(): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		super.setupContainer();
@@ -200,6 +324,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		itemsContainer.style.cssText = "margin-top: 12px; flex: 1; max-height: 100vh; overflow-y: auto; position: relative;";
 		this.rootElement?.appendChild(itemsContainer);
 		this.itemsContainer = itemsContainer;
+		this.setupViewSwitchObserver();
 		this.registerContainerListeners();
 	}
 
@@ -211,6 +336,7 @@ export class TaskListViewCustom extends BasesViewBase {
 		if (this.config) {
 			this.readViewOptions();
 		}
+		this.applyActiveViewBgColor();
 
 		try {
 			// Skip rendering if we have no data yet (prevents flickering during data updates)
@@ -1171,6 +1297,10 @@ export class TaskListViewCustom extends BasesViewBase {
 		// We just need to clean up view-specific state
 		// 例外発生を考慮した処理フローをまとめ、失敗時の後始末を保証する。
 		this.unregisterContainerListeners();
+		this.viewSwitchObserver?.disconnect();
+		this.viewSwitchObserver = null;
+		this.lastObservedViewName = null;
+		this.clearActiveViewBgColor();
 		this.destroyVirtualScroller();
 
 		this.currentTaskElements.clear();

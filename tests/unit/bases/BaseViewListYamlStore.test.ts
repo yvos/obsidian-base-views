@@ -103,6 +103,60 @@ describe("BaseViewListYamlStore", () => {
 		expect(typeof parsed.views[0].description).toBe("undefined");
 	});
 
+	it("reads and normalizes bg-color values from views", async () => {
+		yamlText =
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"    bg-color: red",
+				"  - type: cards",
+				"    name: Cards",
+				"    bg-color: rgb( 10, 20 ,30 )",
+				"  - type: list",
+				"    name: List",
+				"    bg-color: invalid-value",
+			].join("\n")
+		;
+
+		const views = await store.getViews(file);
+		expect(views.map((view) => [view.name, view.bgColor])).toEqual([
+			["Table", "red"],
+			["Cards", "rgb(10,20,30)"],
+			["List", null],
+		]);
+		expect(await store.getViewBgColor(file, "Table")).toBe("red");
+		expect(await store.getViewBgColor(file, "Cards")).toBe("rgb(10,20,30)");
+		expect(await store.getViewBgColor(file, "List")).toBeNull();
+	});
+
+	it("writes, normalizes, and clears bg-color for a target view", async () => {
+		yamlText =
+			[
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		;
+
+		let updated = await store.updateViewBgColor(file, "Table", " RGB( 1 , 2,3 ) ");
+		expect(updated).toBe(true);
+		let parsed = parseYaml(modify.mock.calls[0][1] as string) as any;
+		expect(parsed.views[0]["bg-color"]).toBe("rgb(1,2,3)");
+
+		yamlText = modify.mock.calls[0][1] as string;
+		updated = await store.updateViewBgColor(file, "Table", "invalid");
+		expect(updated).toBe(true);
+		parsed = parseYaml(modify.mock.calls[1][1] as string) as any;
+		expect(parsed.views[0]["bg-color"]).toBeUndefined();
+
+		yamlText = modify.mock.calls[1][1] as string;
+		updated = await store.updateViewBgColor(file, "Table", null);
+		expect(updated).toBe(false);
+	});
+
 	it("reorders views by provided names", async () => {
 		yamlText =
 			[

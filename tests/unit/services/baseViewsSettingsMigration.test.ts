@@ -70,4 +70,26 @@ describe("baseViewsSettings migration", () => {
 			})
 		).toBe(true);
 	});
+
+	it("normalizes RGB history and drops invalid entries", () => {
+		const migrated = migrateBaseViewsSettings({
+			basesViewColorRgbHistory: [
+				"rgb(1, 2, 3)",
+				"red",
+				"rgb(1,2,3)",
+				"rgb(999,0,0)",
+				"RGB(4,5,6)",
+				"rgb(7,8,9)",
+				"rgb(10,11,12)",
+				"rgb(13,14,15)",
+			],
+		} as any);
+		expect(migrated.basesViewColorRgbHistory).toEqual([
+			"rgb(1,2,3)",
+			"rgb(4,5,6)",
+			"rgb(7,8,9)",
+			"rgb(10,11,12)",
+			"rgb(13,14,15)",
+		]);
+	});
 });

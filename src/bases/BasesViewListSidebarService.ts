@@ -1,6 +1,7 @@
 ﻿import { EventRef, Menu, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import BaseViewsPlugin from "../main";
 import { openNativeViewSettingsAtAnchor } from "../integrations/bases/nativeViewSettingsBridge";
+import { showRgbColorInputModal } from "../modals/RgbColorInputModal";
 import { showTextInputModal } from "../modals/TextInputModal";
 import {
 	BaseViewListFormulaPrefs,
@@ -8,6 +9,18 @@ import {
 	ViewListFormulaContext,
 	ViewListFormulaPlacement,
 } from "./BaseViewListYamlStore";
+import {
+	ThemeMode,
+	VIEW_COLOR_PRESET_IDS,
+	ViewColorPresetId,
+	normalizeRgbColorHistory,
+	normalizeViewBgColorValue,
+	pickReadableTextColor,
+	resolveThemeMode,
+	resolveViewColorToRgb,
+	tintViewListActiveBackgroundColor,
+	toCssRgb,
+} from "./viewColorUtils";
 
 // view一覧の配置設定値を表す。
 type LayoutPlacement = "left" | "top" | "none";
@@ -55,6 +68,7 @@ interface BasesLeafViewLike {
 interface ViewEntry {
 	name: string;
 	type: string | null;
+	bgColor: string | null;
 	icon: string;
 	propertyText: string | null;
 	descriptionText: string | null;
@@ -92,6 +106,7 @@ interface ResizeDragState {
 interface PartialViewEntry {
 	name?: unknown;
 	type?: unknown;
+	bgColor?: unknown;
 	propertyText?: string | null;
 	descriptionText?: string | null;
 }
@@ -138,6 +153,7 @@ const CSS_BODY = "bv-bases-view-list-body";
 const CSS_ITEM = "bv-bases-view-list__item";
 const CSS_ITEM_ROW = "bv-bases-view-list__item-row";
 const CSS_ITEM_ACTIVE = "is-active";
+const CSS_ITEM_ACTIVE_COLOR = "bv-bases-view-list__item-row--active-color";
 const CSS_ITEM_DRAGGING = "bv-bases-view-list__item-row--dragging";
 const CSS_ITEM_DROP_BEFORE = "bv-bases-view-list__item-row--drop-before";
 const CSS_ITEM_DROP_AFTER = "bv-bases-view-list__item-row--drop-after";
@@ -177,6 +193,18 @@ const KNOWN_VIEW_ICONS: Record<string, string> = {
 	tasknotesKanban: "layout-columns",
 	tasknotesCalendar: "calendar",
 	tasknotesMiniCalendar: "calendar-days",
+};
+
+const VIEW_COLOR_HISTORY_LIMIT = 5;
+const VIEW_COLOR_PRESET_LABELS: Record<ViewColorPresetId, string> = {
+	red: "Red",
+	orange: "Orange",
+	yellow: "Yellow",
+	green: "Green",
+	cyan: "Cyan",
+	blue: "Blue",
+	purple: "Purple",
+	pink: "Pink",
 };
 
 // `.base` 画面にview一覧サイドバーを注入・同期するサービス本体。
@@ -1406,8 +1434,119 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
+		this.addViewColorContextMenuItems(menu, leaf, entry);
+		menu.addSeparator();
 		this.addViewListContextMenuItems(menu, leaf, currentPlacement, prefs, forceTopScroll);
 		menu.showAtMouseEvent(event);
+	}
+
+	private addViewColorContextMenuItems(menu: Menu, leaf: WorkspaceLeaf, entry: ViewEntry): void {
+		const file = this.getLeafFile(leaf);
+		if (!file) return;
+
+		const currentColor = normalizeViewBgColorValue(entry.bgColor);
+
+		for (const presetId of VIEW_COLOR_PRESET_IDS) {
+			const label = this.getContextMenuColorPresetLabel(presetId);
+			menu.addItem((item) => {
+				item.setTitle(currentColor === presetId ? `✓ ${label}` : label);
+				item.onClick(() => {
+					void this.applyViewColorFromContextMenu(leaf, file, entry.name, presetId);
+				});
+			});
+		}
+
+		menu.addItem((item) => {
+			item.setTitle(this.getContextMenuColorRgbInputLabel());
+			item.onClick(() => {
+				void this.openRgbColorInputFromContextMenu(leaf, file, entry);
+			});
+		});
+
+		const history = normalizeRgbColorHistory(
+			this.plugin.settings.basesViewColorRgbHistory,
+			VIEW_COLOR_HISTORY_LIMIT
+		);
+		for (const rgbColor of history) {
+			const label = this.getContextMenuColorHistoryLabel(rgbColor);
+			menu.addItem((item) => {
+				item.setTitle(currentColor === rgbColor ? `✓ ${label}` : label);
+				item.onClick(() => {
+					void this.applyViewColorFromContextMenu(leaf, file, entry.name, rgbColor);
+				});
+			});
+		}
+
+		menu.addItem((item) => {
+			const label = this.getContextMenuColorClearLabel();
+			item.setTitle(currentColor == null ? `✓ ${label}` : label);
+			item.onClick(() => {
+				void this.applyViewColorFromContextMenu(leaf, file, entry.name, null);
+			});
+		});
+	}
+
+	private async openRgbColorInputFromContextMenu(
+		leaf: WorkspaceLeaf,
+		file: TFile,
+		entry: ViewEntry
+	): Promise<void> {
+		const currentColor = normalizeViewBgColorValue(entry.bgColor);
+		const initialValue = typeof currentColor === "string" && currentColor.startsWith("rgb(")
+			? currentColor
+			: null;
+		const nextColor = await showRgbColorInputModal(this.plugin.app, {
+			title: this.getRgbColorModalTitle(entry.name),
+			confirmText: this.getRgbColorModalConfirmLabel(),
+			cancelText: this.getRgbColorModalCancelLabel(),
+			redLabel: this.getRgbColorModalRedLabel(),
+			greenLabel: this.getRgbColorModalGreenLabel(),
+			blueLabel: this.getRgbColorModalBlueLabel(),
+			initialValue,
+		});
+		if (nextColor == null) return;
+
+		await this.applyViewColorFromContextMenu(leaf, file, entry.name, nextColor);
+	}
+
+	private async applyViewColorFromContextMenu(
+		leaf: WorkspaceLeaf,
+		file: TFile,
+		viewName: string,
+		colorValue: string | null
+	): Promise<void> {
+		const normalizedColor = normalizeViewBgColorValue(colorValue);
+		const changed = await this.yamlStore.updateViewBgColor(file, viewName, normalizedColor);
+
+		if (typeof normalizedColor === "string" && normalizedColor.startsWith("rgb(")) {
+			await this.rememberRgbColorHistory(normalizedColor);
+		}
+
+		if (changed) {
+			await this.redrawViewList(leaf);
+			return;
+		}
+
+		this.scheduleRefresh(0);
+	}
+
+	private async rememberRgbColorHistory(rgbColor: string): Promise<void> {
+		const currentHistory = normalizeRgbColorHistory(
+			this.plugin.settings.basesViewColorRgbHistory,
+			VIEW_COLOR_HISTORY_LIMIT
+		);
+		const nextHistory = normalizeRgbColorHistory(
+			[rgbColor, ...currentHistory],
+			VIEW_COLOR_HISTORY_LIMIT
+		);
+		if (
+			nextHistory.length === currentHistory.length &&
+			nextHistory.every((value, index) => value === currentHistory[index])
+		) {
+			return;
+		}
+		this.plugin.settings.basesViewColorRgbHistory = nextHistory;
+		await this.persistSettings();
 	}
 
 	private async openNativeViewSettingsFromItemMenu(
@@ -1804,6 +1943,79 @@ export class BasesViewListSidebarService {
 		return this.translateWithFallback(
 			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.duplicateView",
 			"Duplicate view"
+		);
+	}
+
+	private getContextMenuColorPresetLabel(presetId: ViewColorPresetId): string {
+		const fallbackLabel = `Color: ${VIEW_COLOR_PRESET_LABELS[presetId]}`;
+		return this.translateWithFallback(
+			`settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.${presetId}`,
+			fallbackLabel
+		);
+	}
+
+	private getContextMenuColorRgbInputLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorRgbInput",
+			"Color: Enter RGB..."
+		);
+	}
+
+	private getContextMenuColorHistoryLabel(rgbColor: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorHistory",
+			`Color: ${rgbColor}`,
+			{ color: rgbColor }
+		);
+	}
+
+	private getContextMenuColorClearLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorClear",
+			"Color: None"
+		);
+	}
+
+	private getRgbColorModalTitle(viewName: string): string {
+		return this.translateWithFallbackWithParams(
+			"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.title",
+			`Set RGB color: ${viewName}`,
+			{ viewName }
+		);
+	}
+
+	private getRgbColorModalConfirmLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.confirm",
+			"OK"
+		);
+	}
+
+	private getRgbColorModalCancelLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.cancel",
+			"Cancel"
+		);
+	}
+
+	private getRgbColorModalRedLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.red",
+			"R"
+		);
+	}
+
+	private getRgbColorModalGreenLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.green",
+			"G"
+		);
+	}
+
+	private getRgbColorModalBlueLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.rgbColorModal.blue",
+			"B"
 		);
 	}
 
@@ -2269,10 +2481,12 @@ export class BasesViewListSidebarService {
 			}
 			button.appendChild(contentEl);
 
-			if (currentViewName && currentViewName === entry.name) {
+			const isActive = !!currentViewName && currentViewName === entry.name;
+			if (isActive) {
 				rowEl.classList.add(CSS_ITEM_ACTIVE);
 				button.classList.add(CSS_ITEM_ACTIVE);
 			}
+			this.applyActiveViewRowColorStyles(rowEl, button, entry.bgColor, isActive, doc, listEl);
 
 			button.addEventListener("pointerdown", (evt) => {
 				if (evt.button !== 0) return;
@@ -2385,6 +2599,44 @@ export class BasesViewListSidebarService {
 			rowEl.appendChild(itemMenuButtonEl);
 			listEl.appendChild(rowEl);
 		}
+	}
+
+	private applyActiveViewRowColorStyles(
+		rowEl: HTMLElement,
+		buttonEl: HTMLElement,
+		rawBgColor: string | null,
+		isActive: boolean,
+		doc: Document,
+		scopeEl: HTMLElement
+	): void {
+		rowEl.classList.remove(CSS_ITEM_ACTIVE_COLOR);
+		buttonEl.style.removeProperty("--bv-active-view-row-bg");
+		buttonEl.style.removeProperty("--bv-active-view-row-fg");
+
+		if (!isActive) return;
+
+		const colorSet = this.resolveActiveViewRowColorSet(rawBgColor, doc, scopeEl);
+		if (!colorSet) return;
+
+		rowEl.classList.add(CSS_ITEM_ACTIVE_COLOR);
+		buttonEl.style.setProperty("--bv-active-view-row-bg", colorSet.backgroundCss);
+		buttonEl.style.setProperty("--bv-active-view-row-fg", colorSet.foregroundCss);
+	}
+
+	private resolveActiveViewRowColorSet(
+		rawBgColor: string | null,
+		doc: Document,
+		scopeEl: HTMLElement
+	): { backgroundCss: string; foregroundCss: string } | null {
+		const baseColor = resolveViewColorToRgb(rawBgColor, { doc, scopeEl });
+		if (!baseColor) return null;
+		const themeMode: ThemeMode = resolveThemeMode(doc);
+		const background = tintViewListActiveBackgroundColor(baseColor, themeMode);
+		const foreground = pickReadableTextColor(background);
+		return {
+			backgroundCss: toCssRgb(background),
+			foregroundCss: toCssRgb(foreground),
+		};
 	}
 
 	private applyAutoShrinkWidthIfEligible(
@@ -2524,7 +2776,8 @@ export class BasesViewListSidebarService {
 			const needsYamlProperty =
 				showProperty && fromController.some((entry) => !entry.propertyText);
 			const needsYamlDescription = fromController.some((entry) => !entry.descriptionText);
-			if (!needsYamlProperty && !needsYamlDescription) {
+			const needsYamlBgColor = fromController.some((entry) => !entry.bgColor);
+			if (!needsYamlProperty && !needsYamlDescription && !needsYamlBgColor) {
 				return fromController;
 			}
 
@@ -2537,6 +2790,7 @@ export class BasesViewListSidebarService {
 				return {
 					...entry,
 					type: entry.type ?? fallback.type,
+					bgColor: entry.bgColor ?? fallback.bgColor,
 					propertyText: entry.propertyText ?? fallback.propertyText,
 					descriptionText: entry.descriptionText ?? fallback.descriptionText,
 				};
@@ -2579,6 +2833,7 @@ export class BasesViewListSidebarService {
 			return {
 				name: row.name,
 				type: row.type,
+				bgColor: row.bgColor,
 				propertyText: this.extractDescriptionText(view),
 				descriptionText: this.extractDescriptionText(view),
 			};
@@ -2591,6 +2846,7 @@ export class BasesViewListSidebarService {
 			string,
 			{
 				type: string | null;
+				bgColor: string | null;
 				propertyText: string | null;
 				descriptionText: string | null;
 			}
@@ -2601,6 +2857,7 @@ export class BasesViewListSidebarService {
 			string,
 			{
 				type: string | null;
+				bgColor: string | null;
 				propertyText: string | null;
 				descriptionText: string | null;
 			}
@@ -2612,6 +2869,7 @@ export class BasesViewListSidebarService {
 			const view = row.raw as BasesSubViewLike;
 			map.set(row.name, {
 				type: row.type,
+				bgColor: row.bgColor,
 				propertyText: this.extractDescriptionText(view),
 				descriptionText: this.extractDescriptionText(view),
 			});
@@ -2627,6 +2885,7 @@ export class BasesViewListSidebarService {
 			const fromQuery = controller.query.views.map((view): PartialViewEntry => ({
 				name: typeof view?.name === "string" ? view.name : "",
 				type: typeof view?.type === "string" ? view.type : null,
+				bgColor: this.extractViewBgColor(view),
 				propertyText: this.extractDescriptionText(view),
 				descriptionText: this.extractDescriptionText(view),
 			}));
@@ -2646,6 +2905,7 @@ export class BasesViewListSidebarService {
 							.map((name) => ({
 								name,
 								type: null,
+								bgColor: null,
 								propertyText: null,
 								descriptionText: null,
 							}))
@@ -2678,6 +2938,7 @@ export class BasesViewListSidebarService {
 			normalized.push({
 				name,
 				type,
+				bgColor: normalizeViewBgColorValue(entry.bgColor),
 				icon: this.resolveViewIcon(type),
 				propertyText: this.normalizePropertyText(entry.propertyText),
 				descriptionText: this.normalizePropertyText(entry.descriptionText),
@@ -2703,6 +2964,24 @@ export class BasesViewListSidebarService {
 		}
 
 		return this.normalizePropertyValue(rawValue);
+	}
+
+	private extractViewBgColor(view: BasesSubViewLike): string | null {
+		let rawValue: unknown;
+
+		if (Object.prototype.hasOwnProperty.call(view, "bg-color")) {
+			rawValue = view["bg-color"];
+		}
+
+		if (typeof rawValue === "undefined" && typeof view.get === "function") {
+			try {
+				rawValue = view.get("bg-color");
+			} catch {
+				// Ignore getter errors from internal API objects.
+			}
+		}
+
+		return normalizeViewBgColorValue(rawValue);
 	}
 
 	private normalizePropertyText(value: unknown): string | null {

@@ -39,6 +39,14 @@ import {
 } from "./customTableDuplicateNavigation";
 import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
 import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
+import {
+	normalizeViewBgColorValue,
+	pickReadableTextColor,
+	resolveThemeMode,
+	resolveViewColorToRgb,
+	tintCustomViewBackgroundColor,
+	toCssRgb,
+} from "./viewColorUtils";
 
 // Custom Tableの行高設定で利用する選択肢を表す。
 type RowHeightOption = "veryShort" | "short" | "medium" | "tall" | "extraTall";
@@ -162,6 +170,8 @@ export class CustomTableView extends BasesViewBase {
 	private unnestMultiValueGroup = true;
 	private showIconicIconInNameColumn = true;
 	private showGroupingPropertyName = false;
+	private viewSwitchObserver: MutationObserver | null = null;
+	private lastObservedViewName: string | null = null;
 
 	private readonly DEFAULT_COLUMN_WIDTH = DEFAULT_TABLE_COLUMN_WIDTH;
 	private readonly MIN_COLUMN_WIDTH = MIN_TABLE_COLUMN_WIDTH;
@@ -194,6 +204,12 @@ export class CustomTableView extends BasesViewBase {
 		this.register(() => {
 			this.clearJumpTargetHighlight();
 			this.stopJumpHighlightTimers();
+		});
+		this.register(() => {
+			this.viewSwitchObserver?.disconnect();
+			this.viewSwitchObserver = null;
+			this.lastObservedViewName = null;
+			this.clearActiveViewBgColor();
 		});
 	}
 
@@ -251,7 +267,8 @@ export class CustomTableView extends BasesViewBase {
 			const showGroupProperty = String(
 				this.plugin.settings?.customTableShowGroupingPropertyName ?? false
 			);
-			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}|${iconic}|${showGroupProperty}`;
+			const activeViewName = this.getCurrentControllerViewName() ?? "";
+			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}|${iconic}|${showGroupProperty}|${activeViewName}`;
 		} catch {
 			return "";
 		}
@@ -269,6 +286,114 @@ export class CustomTableView extends BasesViewBase {
 		this.tableScrollEl.className = "bv-bases-table-scroll";
 		this.registerDomEvent(this.tableScrollEl, "pointerover", this.handleTablePointerOver);
 		this.rootElement.appendChild(this.tableScrollEl);
+		this.setupViewSwitchObserver();
+	}
+
+	private getCurrentControllerViewName(): string | null {
+		const controller = this.basesController;
+		const rawViewName = controller?.viewName;
+		if (typeof rawViewName === "string" && rawViewName.trim().length > 0) {
+			return rawViewName.trim();
+		}
+
+		const labelEl = this.containerEl
+			.closest(".bases-view")
+			?.parentElement
+			?.querySelector<HTMLElement>(".bases-toolbar-views-menu .text-button-label");
+		const text = labelEl?.textContent?.trim();
+		return text || null;
+	}
+
+	private getCurrentControllerViewDefinition(): any | null {
+		const controller = this.basesController;
+		const currentViewName = this.getCurrentControllerViewName();
+		if (!currentViewName) return null;
+
+		const views = controller?.query?.views;
+		if (!Array.isArray(views)) return null;
+
+		for (const view of views) {
+			if (!view || typeof view !== "object") continue;
+			const name = typeof view.name === "string" ? view.name.trim() : "";
+			if (name === currentViewName) {
+				return view;
+			}
+		}
+		return null;
+	}
+
+	private extractCurrentViewBgColor(): string | null {
+		const view = this.getCurrentControllerViewDefinition();
+		if (!view || typeof view !== "object") return null;
+
+		let rawValue: unknown;
+		if (Object.prototype.hasOwnProperty.call(view, "bg-color")) {
+			rawValue = (view as Record<string, unknown>)["bg-color"];
+		}
+		const getter = (view as { get?: (key: string) => unknown }).get;
+		if (typeof rawValue === "undefined" && typeof getter === "function") {
+			try {
+				rawValue = getter.call(view, "bg-color");
+			} catch {
+				// Ignore getter errors from internal API objects.
+			}
+		}
+
+		return normalizeViewBgColorValue(rawValue);
+	}
+
+	private applyActiveViewBgColor(): void {
+		if (!this.rootElement) return;
+
+		const rawBgColor = this.extractCurrentViewBgColor();
+		const doc = this.containerEl.ownerDocument;
+		const baseColor = resolveViewColorToRgb(rawBgColor, {
+			doc,
+			scopeEl: this.rootElement,
+		});
+		if (!baseColor) {
+			this.clearActiveViewBgColor();
+			return;
+		}
+
+		const mode = resolveThemeMode(doc);
+		const backgroundColor = tintCustomViewBackgroundColor(baseColor, mode);
+		const textColor = pickReadableTextColor(backgroundColor);
+
+		this.rootElement.classList.add("bv-custom-view-has-bg");
+		this.rootElement.style.setProperty("--bv-custom-view-bg", toCssRgb(backgroundColor));
+		this.rootElement.style.setProperty("--bv-custom-view-fg", toCssRgb(textColor));
+	}
+
+	private clearActiveViewBgColor(): void {
+		if (!this.rootElement) return;
+		this.rootElement.classList.remove("bv-custom-view-has-bg");
+		this.rootElement.style.removeProperty("--bv-custom-view-bg");
+		this.rootElement.style.removeProperty("--bv-custom-view-fg");
+	}
+
+	private setupViewSwitchObserver(): void {
+		this.viewSwitchObserver?.disconnect();
+		this.viewSwitchObserver = null;
+
+		const labelEl = this.containerEl
+			.closest(".bases-view")
+			?.parentElement
+			?.querySelector<HTMLElement>(".bases-toolbar-views-menu .text-button-label");
+		if (!labelEl) return;
+
+		this.lastObservedViewName = this.getCurrentControllerViewName();
+		this.viewSwitchObserver = new MutationObserver(() => {
+			const currentViewName = this.getCurrentControllerViewName();
+			if (currentViewName === this.lastObservedViewName) return;
+			this.lastObservedViewName = currentViewName;
+			this.debouncedRefresh();
+		});
+		this.viewSwitchObserver.observe(labelEl, {
+			characterData: true,
+			childList: true,
+			subtree: true,
+		});
 	}
 
 	private readViewOptions(): void {
@@ -360,6 +485,7 @@ export class CustomTableView extends BasesViewBase {
 			this.readViewOptions();
 		}
 
+		this.applyActiveViewBgColor();
 		this.applyRowHeightClass();
 		this.resetRowNavigationState();
 
