@@ -1,31 +1,7 @@
 # Base Views for Obsidian
 
-Base Views is an Obsidian plugin focused on three Bases-related features:
+English README is not ready yet and will be translated later.
 
-- View list sidebar for `.base` files
-- `Table View (Custom)`
-- `Task List View (Custom)`
+Please see the Japanese README for now:
 
-## Notes
-
-- `Task List View (Custom)` is designed to work with the original TaskNotes plugin runtime.
-- This plugin keeps i18n support and language switching from settings.
-
-## Development
-
-```bash
-npm install
-npm run dev
-```
-
-## Build
-
-```bash
-npm run build
-```
-
-## Release artifacts
-
-- `main.js`
-- `manifest.json`
-- `styles.css`
+- [README.ja.md](README.ja.md)
