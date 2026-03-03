@@ -20,7 +20,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": [],
-	"author": "",
+	"author": "iiz",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/jest": "^30.0.0",

@@ -8,7 +8,7 @@
 # npm
 node_modules
 
-# Environment variables (contains OAuth client IDs)
+# Environment variables
 .env
 
 # Don't include the compiled main.js file in the repo.
@@ -19,9 +19,6 @@ main.js
 # It's built from source files in styles/ directory during CI/build process.
 styles.css
 
-# Don't include the auto-generated release notes import file
-src/releaseNotes.ts
-
 # Exclude sourcemaps
 *.map
 
@@ -31,8 +28,6 @@ data.json
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 ._*
-obsidian-developer-docs/
-.claude
 
 # Exclude video files
 *.mp4
@@ -42,44 +37,15 @@ obsidian-developer-docs/
 *.webm
 *.flv
 *.wmv
-CLAUDE.md
+
+# Test output
 coverage
-
-# Documentation planning files
-documentation-images-needed.md
-plans
-
-# Project planning files
-project
-webhook*.log
-
-
-# Exclude local test vaults and e2e cache artifacts
-external/tasknotes-e2e/.e2e/
-C/
-.copy-files.local
-
-# E2E testing - unpacked Obsidian and test results
-.obsidian-unpacked/
-test-results/
-# E2E vault plugin symlinks (point to build output)
-tasknotes-e2e-vault/.obsidian/plugins/tasknotes/main.js
-tasknotes-e2e-vault/.obsidian/plugins/tasknotes/manifest.json
-tasknotes-e2e-vault/.obsidian/plugins/tasknotes/styles.css
-.augment
-# Test output files
 jest-out.txt
-BASES_API_DOCUMENTATION.md
-BASES_API_EXPLORATION.md
-BASES_API_MIGRATION.md
-OBSIDIAN-SERVER-README.md
-obsidian-help
-obsidian-api
-.clump
-tasknotes-e2e-vault/.obsidian/workspace.json
-.obsidian-config-e2e
-# Generated calendar files
-tasknotes-e2e-vault/*.ics
+test-results/
 
 # AI coding related documents
 AIdocs/
+.claude
+.augment
+.clump
+CLAUDE.md
