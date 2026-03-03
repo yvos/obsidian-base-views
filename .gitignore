@@ -43,6 +43,9 @@ coverage
 jest-out.txt
 test-results/
 
+# Cursor IDE
+.cursor/
+
 # AI coding related documents
 AIdocs/
 .claude
