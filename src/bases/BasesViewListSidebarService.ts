@@ -18,6 +18,7 @@ import {
 	pickReadableTextColor,
 	resolveThemeMode,
 	resolveViewColorToRgb,
+	tintCustomViewBackgroundColor,
 	tintViewListActiveBackgroundColor,
 	toCssRgb,
 } from "./viewColorUtils";
@@ -146,14 +147,16 @@ const CSS_LAYOUT = "bv-bases-view-list-layout";
 const CSS_LAYOUT_TOP = "bv-bases-view-list-top-layout";
 const CSS_LIST = "bv-bases-view-list";
 const CSS_LIST_TOP = "bv-bases-view-list--top";
+const CSS_LIST_ACTIVE_COLOR = "bv-bases-view-list--active-color";
 const CSS_LIST_TOP_WRAP = "bv-bases-view-list--top-wrap";
 const CSS_LIST_TOP_SCROLL = "bv-bases-view-list--top-scroll";
 const CSS_LIST_ICONS_OFF = "bv-bases-view-list--icons-off";
+const CSS_LAYOUT_TOP_ACTIVE_COLOR = "bv-bases-view-list-top-layout--active-color";
 const CSS_BODY = "bv-bases-view-list-body";
 const CSS_ITEM = "bv-bases-view-list__item";
 const CSS_ITEM_ROW = "bv-bases-view-list__item-row";
 const CSS_ITEM_ACTIVE = "is-active";
-const CSS_ITEM_ACTIVE_COLOR = "bv-bases-view-list__item-row--active-color";
+const CSS_ITEM_VIEW_COLOR = "bv-bases-view-list__item-row--view-color";
 const CSS_ITEM_DRAGGING = "bv-bases-view-list__item-row--dragging";
 const CSS_ITEM_DROP_BEFORE = "bv-bases-view-list__item-row--drop-before";
 const CSS_ITEM_DROP_AFTER = "bv-bases-view-list__item-row--drop-after";
@@ -1434,9 +1437,9 @@ export class BasesViewListSidebarService {
 			});
 		});
 		menu.addSeparator();
-		this.addViewColorContextMenuItems(menu, leaf, entry);
-		menu.addSeparator();
 		this.addViewListContextMenuItems(menu, leaf, currentPlacement, prefs, forceTopScroll);
+		menu.addSeparator();
+		this.addViewColorContextMenuItems(menu, leaf, entry);
 		menu.showAtMouseEvent(event);
 	}
 
@@ -1445,43 +1448,49 @@ export class BasesViewListSidebarService {
 		if (!file) return;
 
 		const currentColor = normalizeViewBgColorValue(entry.bgColor);
+		menu.addItem((item) => {
+			item.setTitle(this.getContextMenuColorMenuLabel());
+			const submenuFactory = (item as unknown as { setSubmenu?: () => Menu }).setSubmenu;
+			const submenu = typeof submenuFactory === "function" ? submenuFactory.call(item) : null;
+			const targetMenu = submenu ?? menu;
 
-		for (const presetId of VIEW_COLOR_PRESET_IDS) {
-			const label = this.getContextMenuColorPresetLabel(presetId);
-			menu.addItem((item) => {
-				item.setTitle(currentColor === presetId ? `✓ ${label}` : label);
-				item.onClick(() => {
-					void this.applyViewColorFromContextMenu(leaf, file, entry.name, presetId);
+			for (const presetId of VIEW_COLOR_PRESET_IDS) {
+				const label = this.getContextMenuColorPresetLabel(presetId);
+				targetMenu.addItem((subItem: any) => {
+					subItem.setTitle(currentColor === presetId ? `✓ ${label}` : label);
+					subItem.onClick(() => {
+						void this.applyViewColorFromContextMenu(leaf, file, entry.name, presetId);
+					});
+				});
+			}
+
+			targetMenu.addItem((subItem: any) => {
+				subItem.setTitle(this.getContextMenuColorRgbInputLabel());
+				subItem.onClick(() => {
+					void this.openRgbColorInputFromContextMenu(leaf, file, entry);
 				});
 			});
-		}
 
-		menu.addItem((item) => {
-			item.setTitle(this.getContextMenuColorRgbInputLabel());
-			item.onClick(() => {
-				void this.openRgbColorInputFromContextMenu(leaf, file, entry);
-			});
-		});
-
-		const history = normalizeRgbColorHistory(
-			this.plugin.settings.basesViewColorRgbHistory,
-			VIEW_COLOR_HISTORY_LIMIT
-		);
-		for (const rgbColor of history) {
-			const label = this.getContextMenuColorHistoryLabel(rgbColor);
-			menu.addItem((item) => {
-				item.setTitle(currentColor === rgbColor ? `✓ ${label}` : label);
-				item.onClick(() => {
-					void this.applyViewColorFromContextMenu(leaf, file, entry.name, rgbColor);
+			const history = normalizeRgbColorHistory(
+				this.plugin.settings.basesViewColorRgbHistory,
+				VIEW_COLOR_HISTORY_LIMIT
+			);
+			for (const rgbColor of history) {
+				const label = this.getContextMenuColorHistoryLabel(rgbColor);
+				targetMenu.addItem((subItem: any) => {
+					subItem.setTitle(currentColor === rgbColor ? `✓ ${label}` : label);
+					subItem.onClick(() => {
+						void this.applyViewColorFromContextMenu(leaf, file, entry.name, rgbColor);
+					});
 				});
-			});
-		}
+			}
 
-		menu.addItem((item) => {
-			const label = this.getContextMenuColorClearLabel();
-			item.setTitle(currentColor == null ? `✓ ${label}` : label);
-			item.onClick(() => {
-				void this.applyViewColorFromContextMenu(leaf, file, entry.name, null);
+			targetMenu.addItem((subItem: any) => {
+				const label = this.getContextMenuColorClearLabel();
+				subItem.setTitle(currentColor == null ? `✓ ${label}` : label);
+				subItem.onClick(() => {
+					void this.applyViewColorFromContextMenu(leaf, file, entry.name, null);
+				});
 			});
 		});
 	}
@@ -1946,6 +1955,13 @@ export class BasesViewListSidebarService {
 		);
 	}
 
+	private getContextMenuColorMenuLabel(): string {
+		return this.translateWithFallback(
+			"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorMenu",
+			"Color"
+		);
+	}
+
 	private getContextMenuColorPresetLabel(presetId: ViewColorPresetId): string {
 		const fallbackLabel = `Color: ${VIEW_COLOR_PRESET_LABELS[presetId]}`;
 		return this.translateWithFallback(
@@ -2399,9 +2415,15 @@ export class BasesViewListSidebarService {
 		const shouldShowIcons = this.shouldShowIcons();
 		const shouldForcePropertyLineInTop = state.placement === "top" && shouldShowProperty;
 		const isTopPlacement = state.placement === "top";
+		const activeEntry =
+			typeof currentViewName === "string" && currentViewName.length > 0
+				? viewEntries.find((entry) => entry.name === currentViewName) ?? null
+				: null;
 		const rowElements: HTMLElement[] = [];
 		let armedDragViewName: string | null = null;
 		let draggingViewName: string | null = null;
+
+		this.applyViewListBackgroundColorStyles(state, activeEntry?.bgColor ?? null, doc, listEl);
 
 		const clearDropIndicators = (): void => {
 			for (const row of rowElements) {
@@ -2486,7 +2508,7 @@ export class BasesViewListSidebarService {
 				rowEl.classList.add(CSS_ITEM_ACTIVE);
 				button.classList.add(CSS_ITEM_ACTIVE);
 			}
-			this.applyActiveViewRowColorStyles(rowEl, button, entry.bgColor, isActive, doc, listEl);
+			this.applyViewRowColorStyles(rowEl, button, entry.bgColor, isActive, doc, listEl);
 
 			button.addEventListener("pointerdown", (evt) => {
 				if (evt.button !== 0) return;
@@ -2601,7 +2623,7 @@ export class BasesViewListSidebarService {
 		}
 	}
 
-	private applyActiveViewRowColorStyles(
+	private applyViewRowColorStyles(
 		rowEl: HTMLElement,
 		buttonEl: HTMLElement,
 		rawBgColor: string | null,
@@ -2609,21 +2631,56 @@ export class BasesViewListSidebarService {
 		doc: Document,
 		scopeEl: HTMLElement
 	): void {
-		rowEl.classList.remove(CSS_ITEM_ACTIVE_COLOR);
-		buttonEl.style.removeProperty("--bv-active-view-row-bg");
-		buttonEl.style.removeProperty("--bv-active-view-row-fg");
+		rowEl.classList.remove(CSS_ITEM_VIEW_COLOR);
+		buttonEl.style.removeProperty("--bv-view-row-bg");
+		buttonEl.style.removeProperty("--bv-view-row-fg");
 
-		if (!isActive) return;
+		if (isActive) return;
 
-		const colorSet = this.resolveActiveViewRowColorSet(rawBgColor, doc, scopeEl);
+		const colorSet = this.resolveViewRowColorSet(rawBgColor, doc, scopeEl);
 		if (!colorSet) return;
 
-		rowEl.classList.add(CSS_ITEM_ACTIVE_COLOR);
-		buttonEl.style.setProperty("--bv-active-view-row-bg", colorSet.backgroundCss);
-		buttonEl.style.setProperty("--bv-active-view-row-fg", colorSet.foregroundCss);
+		rowEl.classList.add(CSS_ITEM_VIEW_COLOR);
+		buttonEl.style.setProperty("--bv-view-row-bg", colorSet.backgroundCss);
+		buttonEl.style.setProperty("--bv-view-row-fg", colorSet.foregroundCss);
 	}
 
-	private resolveActiveViewRowColorSet(
+	private applyViewListBackgroundColorStyles(
+		state: ManagedLeafState,
+		rawBgColor: string | null,
+		doc: Document,
+		scopeEl: HTMLElement
+	): void {
+		const { listEl, layoutEl, placement } = state;
+		listEl.classList.remove(CSS_LIST_ACTIVE_COLOR);
+		listEl.style.removeProperty("--bv-active-view-list-bg");
+		layoutEl.classList.remove(CSS_LAYOUT_TOP_ACTIVE_COLOR);
+		layoutEl.style.removeProperty("--bv-active-view-list-bg");
+
+		const backgroundCss = this.resolveViewListBackgroundCss(rawBgColor, doc, scopeEl);
+		if (!backgroundCss) return;
+
+		listEl.classList.add(CSS_LIST_ACTIVE_COLOR);
+		listEl.style.setProperty("--bv-active-view-list-bg", backgroundCss);
+		if (placement === "top") {
+			layoutEl.classList.add(CSS_LAYOUT_TOP_ACTIVE_COLOR);
+			layoutEl.style.setProperty("--bv-active-view-list-bg", backgroundCss);
+		}
+	}
+
+	private resolveViewListBackgroundCss(
+		rawBgColor: string | null,
+		doc: Document,
+		scopeEl: HTMLElement
+	): string | null {
+		const baseColor = resolveViewColorToRgb(rawBgColor, { doc, scopeEl });
+		if (!baseColor) return null;
+		const themeMode: ThemeMode = resolveThemeMode(doc);
+		const background = tintCustomViewBackgroundColor(baseColor, themeMode);
+		return toCssRgb(background);
+	}
+
+	private resolveViewRowColorSet(
 		rawBgColor: string | null,
 		doc: Document,
 		scopeEl: HTMLElement

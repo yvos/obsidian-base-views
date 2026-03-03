@@ -1412,6 +1412,7 @@ export const ja: TranslationTree = {
 							hideNativeToolbar: "ネイティブツールバーを非表示",
 							editDescription: "descriptionの編集",
 							duplicateView: "ビューを複製",
+							colorMenu: "色を設定",
 							colorPreset: {
 								red: "色: 赤",
 								orange: "色: オレンジ",

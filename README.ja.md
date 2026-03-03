@@ -50,6 +50,7 @@ Obsidian BRAT プラグインを用いて導入してください。
 ## 設定項目（概要）
 
 - Feature switches
+    - 各主要機能のオンオフ
     - Enable view list sidebar
     - Enable Table View (Custom)
     - Enable Task List View (Custom)
@@ -67,7 +68,6 @@ Obsidian BRAT プラグインを用いて導入してください。
 - Base Views の機能（ビュー一覧表示、カスタムビュー描画、設定保存）は、基本的にローカルの Obsidian Vault 内で完結します。
 - Base Views 本体は、ユーザーデータの収集・送信・テレメトリを目的とした処理を行いません。
 - ただし `Task List View (Custom)` で TaskNotes ランタイム連携を使う場合、TaskNotes 側で有効化された機能の挙動は TaskNotes のポリシーに従います。
-- 詳細は [PRIVACY.md](PRIVACY.md) を参照してください（適用範囲は今後明確化予定）。
 
 ## クレジット
 

@@ -71,6 +71,10 @@
 	min-height: 0;
 }
 
+.bv-bases-view-list--active-color {
+	background: var(--bv-active-view-list-bg, transparent);
+}
+
 .bv-bases-view-list--top {
 	display: flex;
 	flex-direction: row;
@@ -78,6 +82,10 @@
 	gap: var(--size-2-2);
 	padding: 0;
 	border-right: none;
+}
+
+.bv-bases-view-list-top-layout--active-color {
+	background: var(--bv-active-view-list-bg, transparent);
 }
 
 .bv-bases-view-list--top-wrap {
@@ -368,6 +376,12 @@ button.bv-bases-view-list__item {
 	padding-right: calc(var(--size-2-2) + 22px + var(--size-2-1));
 }
 
+.bv-bases-view-list--active-color
+	.bv-bases-view-list__item-row:not(.bv-bases-view-list__item-row--view-color)
+	.bv-bases-view-list__item:not(.is-active) {
+	background: var(--background-primary);
+}
+
 .bv-bases-view-list__item-row:hover .bv-bases-view-list__item:not(.is-active),
 .bv-bases-view-list__item:hover {
 	background: var(--background-modifier-hover);
@@ -384,28 +398,23 @@ button.bv-bases-view-list__item {
 	opacity: 0.86;
 }
 
-.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active {
-	background: var(--bv-active-view-row-bg, var(--interactive-accent));
+.bv-bases-view-list__item-row--view-color .bv-bases-view-list__item:not(.is-active) {
+	background: var(--bv-view-row-bg, transparent);
 	border-color: color-mix(
 		in srgb,
-		var(--bv-active-view-row-bg, var(--interactive-accent)) 82%,
+		var(--bv-view-row-bg, var(--background-modifier-hover)) 82%,
 		var(--background-modifier-border)
 	);
-	color: var(--bv-active-view-row-fg, var(--text-normal));
+	color: var(--bv-view-row-fg, var(--text-normal));
 }
 
-.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active .bv-bases-view-list__item-name {
-	display: inline-block;
-	max-width: 100%;
-	padding: 0 6px;
-	border-radius: var(--radius-s);
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
-.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active .bv-bases-view-list__item-icon,
-.bv-bases-view-list__item-row--active-color .bv-bases-view-list__item.is-active .bv-bases-view-list__item-property {
-	color: var(--bv-active-view-row-fg, var(--text-normal));
+.bv-bases-view-list__item-row--view-color
+	.bv-bases-view-list__item:not(.is-active)
+	.bv-bases-view-list__item-icon,
+.bv-bases-view-list__item-row--view-color
+	.bv-bases-view-list__item:not(.is-active)
+	.bv-bases-view-list__item-property {
+	color: var(--bv-view-row-fg, var(--text-normal));
 }
 
 button.bv-bases-view-list__item-menu {
@@ -463,11 +472,6 @@ button.bv-bases-view-list__item-menu {
 	opacity: 1;
 	color: var(--text-on-accent);
 	background: transparent !important;
-}
-
-.bv-bases-view-list__item-row--active-color.is-active .bv-bases-view-list__item-menu,
-.bv-bases-view-list__item-row--active-color.is-active .bv-bases-view-list__item-menu:hover {
-	color: var(--bv-active-view-row-fg, var(--text-normal));
 }
 
 .bv-bases-view-list__resizer {

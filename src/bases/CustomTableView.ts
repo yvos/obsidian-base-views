@@ -39,6 +39,7 @@ import {
 } from "./customTableDuplicateNavigation";
 import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
 import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
+import { BaseViewListYamlStore } from "./BaseViewListYamlStore";
 import {
 	normalizeViewBgColorValue,
 	pickReadableTextColor,
@@ -172,6 +173,7 @@ export class CustomTableView extends BasesViewBase {
 	private showGroupingPropertyName = false;
 	private viewSwitchObserver: MutationObserver | null = null;
 	private lastObservedViewName: string | null = null;
+	private viewYamlStore: BaseViewListYamlStore;
 
 	private readonly DEFAULT_COLUMN_WIDTH = DEFAULT_TABLE_COLUMN_WIDTH;
 	private readonly MIN_COLUMN_WIDTH = MIN_TABLE_COLUMN_WIDTH;
@@ -193,6 +195,7 @@ export class CustomTableView extends BasesViewBase {
 		super(controller, containerEl, plugin);
 		(this.dataAdapter as any).basesView = this;
 		this.basesController = controller;
+		this.viewYamlStore = new BaseViewListYamlStore(plugin);
 	}
 
 	onload(): void {
@@ -342,10 +345,51 @@ export class CustomTableView extends BasesViewBase {
 		return normalizeViewBgColorValue(rawValue);
 	}
 
-	private applyActiveViewBgColor(): void {
+	private getCurrentBaseFile(): TFile | null {
+		const controllerFile = this.basesController?.file;
+		if (controllerFile instanceof TFile) {
+			return controllerFile;
+		}
+
+		const app = this.app || this.plugin.app;
+		const leaves = app.workspace.getLeavesOfType("bases");
+		for (const leaf of leaves) {
+			const leafView = leaf?.view as {
+				containerEl?: unknown;
+				file?: unknown;
+			};
+			const leafContainerEl = leafView?.containerEl;
+			if (!(leafContainerEl instanceof HTMLElement)) continue;
+			if (
+				leafContainerEl === this.containerEl ||
+				leafContainerEl.contains(this.containerEl)
+			) {
+				return leafView.file instanceof TFile ? leafView.file : null;
+			}
+		}
+
+		return null;
+	}
+
+	private async resolveCurrentViewBgColor(): Promise<string | null> {
+		const fromController = this.extractCurrentViewBgColor();
+		if (fromController) return fromController;
+
+		const file = this.getCurrentBaseFile();
+		const viewName = this.getCurrentControllerViewName();
+		if (!(file instanceof TFile) || !viewName) return null;
+
+		try {
+			return await this.viewYamlStore.getViewBgColor(file, viewName);
+		} catch {
+			return null;
+		}
+	}
+
+	private async applyActiveViewBgColor(): Promise<void> {
 		if (!this.rootElement) return;
 
-		const rawBgColor = this.extractCurrentViewBgColor();
+		const rawBgColor = await this.resolveCurrentViewBgColor();
 		const doc = this.containerEl.ownerDocument;
 		const baseColor = resolveViewColorToRgb(rawBgColor, {
 			doc,
@@ -485,7 +529,7 @@ export class CustomTableView extends BasesViewBase {
 			this.readViewOptions();
 		}
 
-		this.applyActiveViewBgColor();
+		await this.applyActiveViewBgColor();
 		this.applyRowHeightClass();
 		this.resetRowNavigationState();
 

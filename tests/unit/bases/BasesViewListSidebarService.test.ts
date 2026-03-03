@@ -153,8 +153,21 @@ function getLastMenuInstance(): any {
 	return lastResult?.value;
 }
 
+function collectMenuItems(menu: any): any[] {
+	if (!menu || !Array.isArray(menu.items)) return [];
+	const collected: any[] = [];
+	for (const item of menu.items) {
+		collected.push(item);
+		const submenu = item?.submenu;
+		if (submenu && Array.isArray(submenu.items)) {
+			collected.push(...collectMenuItems(submenu));
+		}
+	}
+	return collected;
+}
+
 function getMenuItemByTitle(menu: any, expectedTitle: string): any {
-	return menu.items.find((item: any) => {
+	return collectMenuItems(menu).find((item: any) => {
 		const title = item?.setTitle?.mock?.calls?.[0]?.[0];
 		if (typeof title !== "string") return false;
 		const normalized = title.replace(/^[^A-Za-z0-9(]+/, "").trim();
@@ -319,6 +332,8 @@ describe("BasesViewListSidebarService", () => {
 								"Edit description",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.duplicateView":
 								"Duplicate view",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorMenu":
+								"Color",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.red":
 								"Color: Red",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.orange":
@@ -1865,6 +1880,11 @@ describe("BasesViewListSidebarService", () => {
 		await flushTimersAndPromises();
 
 		const menuInstance = getLastMenuInstance();
+		const topLevelItems = menuInstance.items.filter((item: any) => item?.type !== "separator");
+		const lastTopLevelItem = topLevelItems[topLevelItems.length - 1];
+		const lastTopLevelTitle = lastTopLevelItem?.setTitle?.mock?.calls?.[0]?.[0];
+		expect(lastTopLevelTitle).toBe("Color");
+		expect(getMenuItemByTitle(menuInstance, "Color")).toBeTruthy();
 		const colorItem = getMenuItemByTitle(menuInstance, "Color: Red");
 		const onClickHandler = colorItem?.onClick?.mock?.calls?.[0]?.[0];
 		expect(typeof onClickHandler).toBe("function");
@@ -1936,14 +1956,14 @@ describe("BasesViewListSidebarService", () => {
 		expect(plugin.saveSettings.mock.calls.length).toBeGreaterThan(baselineSaveCalls);
 	});
 
-	it("applies active-row color class when active view has valid bg-color", async () => {
+	it("applies per-view row colors and active-list background color from bg-color", async () => {
 		const setup = createBaseLeaf({
 			currentViewName: "Table",
 			controller: {
 				query: {
 					views: [
 						{ name: "Table", type: "table", "bg-color": "red" },
-						{ name: "Cards", type: "cards" },
+						{ name: "Cards", type: "cards", "bg-color": "rgb(12,34,56)" },
 					],
 				},
 			},
@@ -1954,15 +1974,27 @@ describe("BasesViewListSidebarService", () => {
 		service.start();
 		await flushTimersAndPromises();
 
-		const activeRow = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list__item-row.is-active");
-		expect(activeRow).not.toBeNull();
-		expect(activeRow?.classList.contains("bv-bases-view-list__item-row--active-color")).toBe(true);
+		const tableRow = setup.rootEl.querySelector<HTMLElement>(
+			'.bv-bases-view-list__item-row[data-view-name="Table"]'
+		);
+		const cardsRow = setup.rootEl.querySelector<HTMLElement>(
+			'.bv-bases-view-list__item-row[data-view-name="Cards"]'
+		);
+		expect(tableRow).not.toBeNull();
+		expect(cardsRow).not.toBeNull();
+		expect(tableRow?.classList.contains("is-active")).toBe(true);
+		expect(tableRow?.classList.contains("bv-bases-view-list__item-row--view-color")).toBe(false);
+		expect(cardsRow?.classList.contains("bv-bases-view-list__item-row--view-color")).toBe(true);
 
-		const activeButton = activeRow?.querySelector<HTMLElement>(".bv-bases-view-list__item.is-active");
-		const activeBg = activeButton?.style.getPropertyValue("--bv-active-view-row-bg") ?? "";
-		const activeFg = activeButton?.style.getPropertyValue("--bv-active-view-row-fg") ?? "";
-		expect(activeBg).toContain("rgb(");
-		expect(activeFg).toContain("rgb(");
+		const cardsButton = cardsRow?.querySelector<HTMLElement>(".bv-bases-view-list__item");
+		const cardsBg = cardsButton?.style.getPropertyValue("--bv-view-row-bg") ?? "";
+		const cardsFg = cardsButton?.style.getPropertyValue("--bv-view-row-fg") ?? "";
+		expect(cardsBg).toContain("rgb(");
+		expect(cardsFg).toContain("rgb(");
+
+		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
+		expect(listEl?.classList.contains("bv-bases-view-list--active-color")).toBe(true);
+		expect(listEl?.style.getPropertyValue("--bv-active-view-list-bg") ?? "").toContain("rgb(");
 	});
 
 	it("reorders views by drag and redraws list", async () => {

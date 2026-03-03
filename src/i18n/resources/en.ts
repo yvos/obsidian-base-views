@@ -1445,6 +1445,7 @@ export const en: TranslationTree = {
 							hideNativeToolbar: "Hide native toolbar",
 							editDescription: "Edit description",
 							duplicateView: "Duplicate view",
+							colorMenu: "Color",
 							colorPreset: {
 								red: "Color: Red",
 								orange: "Color: Orange",

@@ -947,24 +947,34 @@ export const Notice = jest.fn().mockImplementation((message: string, timeout?: n
 });
 
 // Menu mock class
-export const Menu = jest.fn().mockImplementation(() => ({
-  items: [],
-  addItem: jest.fn().mockImplementation(function(this: any, callback: (item: any) => void) {
-    const mockItem = {
-      setTitle: jest.fn().mockReturnThis(),
-      setIcon: jest.fn().mockReturnThis(),
-      onClick: jest.fn().mockReturnThis(),
-      setSection: jest.fn().mockReturnThis(),
-    };
-    callback(mockItem);
-    this.items.push(mockItem);
-  }),
-  addSeparator: jest.fn().mockImplementation(function(this: any) {
-    this.items.push({ type: 'separator' });
-  }),
-  showAtMouseEvent: jest.fn(),
-  showAtPosition: jest.fn(),
-}));
+function createMockMenu(): any {
+  return {
+    items: [],
+    addItem: jest.fn().mockImplementation(function(this: any, callback: (item: any) => void) {
+      const mockItem: any = {
+        setTitle: jest.fn().mockReturnThis(),
+        setIcon: jest.fn().mockReturnThis(),
+        onClick: jest.fn().mockReturnThis(),
+        setSection: jest.fn().mockReturnThis(),
+        setSubmenu: jest.fn().mockImplementation(function(this: any) {
+          if (!this.submenu) {
+            this.submenu = createMockMenu();
+          }
+          return this.submenu;
+        }),
+      };
+      callback(mockItem);
+      this.items.push(mockItem);
+    }),
+    addSeparator: jest.fn().mockImplementation(function(this: any) {
+      this.items.push({ type: 'separator' });
+    }),
+    showAtMouseEvent: jest.fn(),
+    showAtPosition: jest.fn(),
+  };
+}
+
+export const Menu = jest.fn().mockImplementation(() => createMockMenu());
 
 // Mock parseFrontMatterAliases function
 export function parseFrontMatterAliases(frontmatter: any): string[] | null {
