@@ -71,6 +71,16 @@ describe("baseViewsSettings migration", () => {
 		).toBe(true);
 	});
 
+	it("drops unknown legacy keys during migration", () => {
+		const migrated = migrateBaseViewsSettings({
+			enableBasesViewListSidebar: true,
+			enableBasesCustomTableView: true,
+			enableBasesTaskListCustomView: true,
+			obsoleteSettingsKey: "legacy-value",
+		} as any);
+		expect((migrated as any).obsoleteSettingsKey).toBeUndefined();
+	});
+
 	it("normalizes RGB history and drops invalid entries", () => {
 		const migrated = migrateBaseViewsSettings({
 			basesViewColorRgbHistory: [

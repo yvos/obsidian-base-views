@@ -703,3 +703,21 @@
   - `tests/unit/bases/BasesViewListSidebarService.test.ts` に公開APIのユースケースを追加。
   - `tests/unit/main/baseViewCommands.test.ts` を追加し、JA/EN登録名と設定変更時の即時反映を検証。
   - `jest.config.js` に `tests/unit/main/**/*.test.ts` を追加。
+
+## 11.18 2026-03-03 settings型と既定値の縮小（未使用キー削減）
+
+- `src/types/settings.ts` の `BaseViewsSettings` を、現行3機能で参照されるキーに縮小。
+  - 旧機能由来で未参照だったトップレベル設定キー（NLP/Pomodoro/API/Webhook/OAuth/ICS など）を削除。
+  - `CalendarViewSettings` は `timeFormat` のみを保持する最小構成へ整理。
+- `src/settings/defaults.ts` の `DEFAULT_SETTINGS` を縮小後の型に合わせて整理。
+  - 未使用だった `DEFAULT_TASK_CREATION_DEFAULTS` / `DEFAULT_ICS_INTEGRATION_SETTINGS` / `DEFAULT_GOOGLE_CALENDAR_EXPORT` / `DEFAULT_PROJECT_AUTOSUGGEST` / `DEFAULT_NLP_TRIGGERS` を削除。
+- `src/settings/migrations.ts` に allowlist 正規化（`pickKnownSettings`）を追加。
+  - migration時に `DEFAULT_SETTINGS` で定義されたキーのみを取り込み、旧設定データ中の不要キーをランタイム設定から除外。
+  - 互換処理（`enableBases` 集約、`basesViewListShowNativeToolbar` 旧キー移行）は維持。
+- テスト更新:
+  - `tests/unit/services/baseViewsSettingsMigration.test.ts` に未知キー除外テストを追加。
+- 検証結果（2026-03-03 実施）
+  - `npm run typecheck`: 成功
+  - `npm run test -- --runInBand tests/unit/services/baseViewsSettingsMigration.test.ts`: 成功
+  - `npm run test -- --runInBand tests/unit/main/baseViewCommands.test.ts`: 成功
+  - `npm run test -- --runInBand tests/unit/bases/BasesViewListSidebarService.test.ts`: 成功

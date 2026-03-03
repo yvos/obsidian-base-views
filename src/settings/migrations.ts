@@ -4,9 +4,21 @@ import { normalizeRgbColorHistory } from "../bases/viewColorUtils";
 
 type LegacyBaseViewsSettings = Partial<BaseViewsSettings> & {
 	basesViewListShowNativeToolbar?: boolean;
+	[key: string]: unknown;
 };
 
 const SUPPORTED_UI_LANGUAGES = new Set(["en", "ja"]);
+const SETTINGS_ALLOWLIST = Object.keys(DEFAULT_SETTINGS) as Array<keyof BaseViewsSettings>;
+
+function pickKnownSettings(loaded: LegacyBaseViewsSettings): Partial<BaseViewsSettings> {
+	const picked: Partial<BaseViewsSettings> = {};
+	for (const key of SETTINGS_ALLOWLIST) {
+		if (Object.prototype.hasOwnProperty.call(loaded, key)) {
+			(picked as Record<string, unknown>)[key] = loaded[key];
+		}
+	}
+	return picked;
+}
 
 export function normalizeBaseViewsUILanguage(language: unknown): string {
 	if (typeof language === "string" && SUPPORTED_UI_LANGUAGES.has(language)) {
@@ -32,7 +44,11 @@ export function migrateBaseViewsSettings(
 	loadedData: Partial<BaseViewsSettings> | null
 ): BaseViewsSettings {
 	const loaded = (loadedData ?? {}) as LegacyBaseViewsSettings;
-	const settings = Object.assign({}, DEFAULT_SETTINGS, loaded) as BaseViewsSettings;
+	const settings = Object.assign(
+		{},
+		DEFAULT_SETTINGS,
+		pickKnownSettings(loaded)
+	) as BaseViewsSettings;
 
 	// Legacy migration: when only the old global switch exists, fan out to the 3 feature toggles.
 	const legacyEnableBases =

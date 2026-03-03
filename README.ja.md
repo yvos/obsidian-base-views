@@ -2,6 +2,8 @@
 
 Base Views は、Obsidian の `.base` ファイル向けにビュー操作を強化する実験的プラグインです。
 
+![Base Views プラグインのスクリーンショット](assets/readme/BaseViewScreenshot.png)
+
 ## 主な機能
 
 ※本プラグインは TaskNotes プラグインの fork をベースにしています。以下の`Table View (Custom)` と `Task List View (Custom)` は、TaskNotes の Bases カスタムビュー（Task List View）をベースに拡張しています。
@@ -22,11 +24,11 @@ Obsidian BRAT プラグインを用いて導入してください。
 
 1. BRAT をインストールして有効化します。
 1. BRAT の設定画面で **Add beta plugin** を選択します。
-1. リポジトリを指定します（例: `https://github.com/<owner>/<repo>` または `<owner>/<repo>`）。
+1. リポジトリを指定します（https://github.com/iiz00/obsidian-base-views）。
 1. 追加後、**Settings → Community plugins** で **Base Views** を有効化します。
 
 ## 使い方
-
+設定のトップで、以下の3つの機能をオンオフできるので、使わない機能はオフにしてください。
 ### View 一覧
 
 - `.base` ファイルでビュー一覧をクリックしてビューを切り替えできます。
@@ -77,4 +79,4 @@ Obsidian BRAT プラグインを用いて導入してください。
 ## ライセンス
 
 - MIT
-- TaskNotes 由来部分も MIT ライセンスに従います。
+
