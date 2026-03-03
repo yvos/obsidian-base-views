@@ -46,6 +46,7 @@
 }
 
 :root {
+	--bv-view-color-black: #000000;
 	--bv-view-color-red: var(--color-red);
 	--bv-view-color-orange: var(--color-orange);
 	--bv-view-color-yellow: var(--color-yellow);

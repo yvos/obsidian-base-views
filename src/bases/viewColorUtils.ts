@@ -1,5 +1,6 @@
 // view色設定で利用するプリセットID定義。
 export const VIEW_COLOR_PRESET_IDS = [
+	"black",
 	"red",
 	"orange",
 	"yellow",
@@ -25,6 +26,7 @@ export interface ResolveViewColorOptions {
 }
 
 const VIEW_COLOR_PRESET_FALLBACK_HEX: Record<ViewColorPresetId, string> = {
+	black: "#000000",
 	red: "#ef4444",
 	orange: "#f97316",
 	yellow: "#eab308",

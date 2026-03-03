@@ -1414,6 +1414,7 @@ export const ja: TranslationTree = {
 							duplicateView: "ビューを複製",
 							colorMenu: "色を設定",
 							colorPreset: {
+								black: "色: 黒",
 								red: "色: 赤",
 								orange: "色: オレンジ",
 								yellow: "色: 黄",

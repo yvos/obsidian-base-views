@@ -334,6 +334,8 @@ describe("BasesViewListSidebarService", () => {
 								"Duplicate view",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorMenu":
 								"Color",
+							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.black":
+								"Color: Black",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.red":
 								"Color: Red",
 							"settings.integrations.basesIntegration.viewListSidebar.contextMenu.colorPreset.orange":
@@ -1989,12 +1991,14 @@ describe("BasesViewListSidebarService", () => {
 		const cardsButton = cardsRow?.querySelector<HTMLElement>(".bv-bases-view-list__item");
 		const cardsBg = cardsButton?.style.getPropertyValue("--bv-view-row-bg") ?? "";
 		const cardsFg = cardsButton?.style.getPropertyValue("--bv-view-row-fg") ?? "";
-		expect(cardsBg).toContain("rgb(");
+		expect(cardsBg).toBe("rgb(12,34,56)");
 		expect(cardsFg).toContain("rgb(");
 
 		const listEl = setup.rootEl.querySelector<HTMLElement>(".bv-bases-view-list");
 		expect(listEl?.classList.contains("bv-bases-view-list--active-color")).toBe(true);
-		expect(listEl?.style.getPropertyValue("--bv-active-view-list-bg") ?? "").toContain("rgb(");
+		const listBg = listEl?.style.getPropertyValue("--bv-active-view-list-bg") ?? "";
+		expect(listBg).toContain("rgb(");
+		expect(listBg).not.toBe("rgb(239,68,68)");
 	});
 
 	it("reorders views by drag and redraws list", async () => {

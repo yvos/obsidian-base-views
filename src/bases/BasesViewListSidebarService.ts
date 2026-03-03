@@ -13,6 +13,7 @@ import {
 	ThemeMode,
 	VIEW_COLOR_PRESET_IDS,
 	ViewColorPresetId,
+	isRgbViewColorValue,
 	normalizeRgbColorHistory,
 	normalizeViewBgColorValue,
 	pickReadableTextColor,
@@ -200,6 +201,7 @@ const KNOWN_VIEW_ICONS: Record<string, string> = {
 
 const VIEW_COLOR_HISTORY_LIMIT = 5;
 const VIEW_COLOR_PRESET_LABELS: Record<ViewColorPresetId, string> = {
+	black: "Black",
 	red: "Red",
 	orange: "Orange",
 	yellow: "Yellow",
@@ -2685,10 +2687,15 @@ export class BasesViewListSidebarService {
 		doc: Document,
 		scopeEl: HTMLElement
 	): { backgroundCss: string; foregroundCss: string } | null {
-		const baseColor = resolveViewColorToRgb(rawBgColor, { doc, scopeEl });
+		const normalized = normalizeViewBgColorValue(rawBgColor);
+		if (!normalized) return null;
+
+		const baseColor = resolveViewColorToRgb(normalized, { doc, scopeEl });
 		if (!baseColor) return null;
 		const themeMode: ThemeMode = resolveThemeMode(doc);
-		const background = tintViewListActiveBackgroundColor(baseColor, themeMode);
+		const background = isRgbViewColorValue(normalized)
+			? baseColor
+			: tintViewListActiveBackgroundColor(baseColor, themeMode);
 		const foreground = pickReadableTextColor(background);
 		return {
 			backgroundCss: toCssRgb(background),

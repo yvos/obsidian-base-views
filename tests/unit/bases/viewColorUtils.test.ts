@@ -10,6 +10,7 @@ import {
 
 describe("viewColorUtils", () => {
 	it("normalizes preset and rgb values", () => {
+		expect(normalizeViewBgColorValue(" black ")).toBe("black");
 		expect(normalizeViewBgColorValue(" Red ")).toBe("red");
 		expect(normalizeViewBgColorValue("RGB( 1, 2 ,3)")).toBe("rgb(1,2,3)");
 		expect(normalizeViewBgColorValue("rgb(256,0,0)")).toBeNull();

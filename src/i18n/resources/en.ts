@@ -1447,6 +1447,7 @@ export const en: TranslationTree = {
 							duplicateView: "Duplicate view",
 							colorMenu: "Color",
 							colorPreset: {
+								black: "Color: Black",
 								red: "Color: Red",
 								orange: "Color: Orange",
 								yellow: "Color: Yellow",
