@@ -1,5 +1,7 @@
 # Base Views for Obsidian (Experimental)
 
+[日本語版 README はこちら (README.ja.md)](README.ja.md)
+
 Base Views is an experimental plugin that enhances view operations for Obsidian `.base` files.
 
 ![Base Views plugin screenshot](assets/readme/BaseViewScreenshot.png)
