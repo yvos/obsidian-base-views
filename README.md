@@ -70,6 +70,31 @@ At the top of settings, you can toggle these three features. Turn off any featur
     - Show Iconic icons in `Table View (Custom)`
     - Show grouping property names
 
+## View list placement settings and persistence
+
+The view list placement (`left` / `top` / `none`) can be configured through three different paths, each with different persistence behavior.
+
+### 1. Plugin settings (global defaults)
+
+- The default placement configured in **Settings → Base Views**.
+- Applied to all `.base` files.
+- Used as a fallback when no per-base setting exists.
+
+### 2. Temporary settings (per-session)
+
+- Changed via the view list context menu (`Show on left` / `Show on top`), the "Open view list" toolbar icon, the close button, etc.
+- Held in memory only — resets when the tab is closed or the plugin is reloaded.
+
+### 3. Per-base embedded settings (persistent)
+
+- Selecting `Always show on left for this base` (or similar) from the view list context menu writes the setting into the `.base` file's formulas.
+- Because it is saved to the file, it persists across restarts.
+- Selecting the same item again removes the setting, falling back to the plugin defaults.
+
+### Priority order
+
+When multiple settings exist, the priority is: **temporary setting → per-base embedded setting → plugin setting**.
+
 ## Privacy / data handling
 
 - Base Views features (view list display, custom view rendering, settings persistence) are designed to run locally in your Obsidian vault.
