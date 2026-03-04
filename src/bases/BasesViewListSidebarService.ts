@@ -26,6 +26,8 @@ import {
 
 // view一覧の配置設定値を表す。
 type LayoutPlacement = "left" | "top" | "none";
+// プラグイン設定で指定可能な配置値（formulaOnlyを含む）を表す。
+type ConfiguredPlacement = LayoutPlacement | "formulaOnly";
 // 実際に描画可能な配置（left/top）を表す。
 type RenderPlacement = "left" | "top";
 // view一覧フォントサイズ設定値を表す。
@@ -662,15 +664,19 @@ export class BasesViewListSidebarService {
 		return this.plugin.settings.enableBasesViewListSidebar !== false;
 	}
 
-	private getDefaultPlacement(): LayoutPlacement {
+	private getDefaultPlacement(): ConfiguredPlacement {
 		const value = this.plugin.settings.basesViewListPlacement;
-		if (value === "left" || value === "top" || value === "none") return value;
+		if (value === "left" || value === "top" || value === "none" || value === "formulaOnly") {
+			return value;
+		}
 		return "left";
 	}
 
-	private getDefaultSidePanePlacement(): LayoutPlacement {
+	private getDefaultSidePanePlacement(): ConfiguredPlacement {
 		const value = this.plugin.settings.basesViewListSidePanePlacement;
-		if (value === "left" || value === "top" || value === "none") return value;
+		if (value === "left" || value === "top" || value === "none" || value === "formulaOnly") {
+			return value;
+		}
 		return "top";
 	}
 
@@ -736,9 +742,11 @@ export class BasesViewListSidebarService {
 	): LayoutPlacement {
 		const fromFormula = this.getFormulaPositionForContext(prefs, context);
 		if (fromFormula) return fromFormula;
-		return context === "sidePane"
-			? this.getDefaultSidePanePlacement()
-			: this.getDefaultPlacement();
+
+		const configuredPlacement =
+			context === "sidePane" ? this.getDefaultSidePanePlacement() : this.getDefaultPlacement();
+		if (configuredPlacement === "formulaOnly") return "none";
+		return configuredPlacement;
 	}
 
 	private getTemporaryPlacement(leaf: WorkspaceLeaf, filePath: string): LayoutPlacement | null {

@@ -37,7 +37,7 @@ At the top of settings, you can toggle these three features. Turn off any featur
 ### View list
 
 - In `.base` files, click items in the view list to switch views.
-- You can configure placement (`left` / `top` / `none`), font size, icon visibility, and narrow-width behavior.
+- You can configure placement (`left` / `top` / `none` / `formulaOnly`), font size, icon visibility, and narrow-width behavior.
 - This is especially useful for `.base` files with multiple views.
 
 ### Task List View (Custom)
@@ -63,7 +63,7 @@ At the top of settings, you can toggle these three features. Turn off any featur
     - Enable Task List View (Custom)
 - Interface language (`en` / `ja`)
 - View list sidebar settings
-    - Placement, side pane placement, font size, description visibility, icon visibility
+    - Placement (`left` / `top` / `none` / `formulaOnly`), side pane placement (`left` / `top` / `none` / `formulaOnly`), font size, description visibility, icon visibility
     - Top overflow (`wrap` / `scroll`)
     - Narrow-width behavior, threshold, native toolbar visibility control
 - Custom views settings
@@ -84,4 +84,3 @@ At the top of settings, you can toggle these three features. Turn off any featur
 ## License
 
 - MIT
-

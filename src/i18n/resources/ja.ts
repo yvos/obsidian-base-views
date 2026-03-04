@@ -1345,6 +1345,7 @@ export const ja: TranslationTree = {
 								left: "左側",
 								top: "上部",
 								none: "表示しない",
+								formulaOnly: "このbaseに表示設定が保存されているときのみ",
 							},
 						},
 						sidePanePlacement: {
@@ -1355,6 +1356,7 @@ export const ja: TranslationTree = {
 								left: "左側",
 								top: "上部",
 								none: "表示しない",
+								formulaOnly: "このbaseに表示設定が保存されているときのみ",
 							},
 						},
 						fontSize: {

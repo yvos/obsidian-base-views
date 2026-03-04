@@ -181,9 +181,20 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 							"None"
 						)
 					)
+					.addOption(
+						"formulaOnly",
+						this.t(
+							"settings.integrations.basesIntegration.viewListSidebar.placement.options.formulaOnly",
+							"Only when this base has a saved view-list setting"
+						)
+					)
 					.setValue(this.plugin.settings.basesViewListPlacement)
 					.onChange(async (value) => {
-						this.plugin.settings.basesViewListPlacement = value as "left" | "top" | "none";
+						this.plugin.settings.basesViewListPlacement = value as
+							| "left"
+							| "top"
+							| "none"
+							| "formulaOnly";
 						await this.plugin.saveSettings();
 					})
 			);
@@ -224,10 +235,17 @@ export class BaseViewsSettingTab extends PluginSettingTab {
 							"None"
 						)
 					)
+					.addOption(
+						"formulaOnly",
+						this.t(
+							"settings.integrations.basesIntegration.viewListSidebar.sidePanePlacement.options.formulaOnly",
+							"Only when this base has a saved view-list setting"
+						)
+					)
 					.setValue(this.plugin.settings.basesViewListSidePanePlacement)
 					.onChange(async (value) => {
 						this.plugin.settings.basesViewListSidePanePlacement =
-							value as "left" | "top" | "none";
+							(value as "left" | "top" | "none" | "formulaOnly");
 						await this.plugin.saveSettings();
 					})
 			);

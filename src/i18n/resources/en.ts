@@ -1376,6 +1376,7 @@ export const en: TranslationTree = {
 								left: "Left side",
 								top: "Top",
 								none: "Hidden",
+								formulaOnly: "Only when this base has a saved view-list setting",
 							},
 						},
 						sidePanePlacement: {
@@ -1386,6 +1387,7 @@ export const en: TranslationTree = {
 								left: "Left side",
 								top: "Top",
 								none: "Hidden",
+								formulaOnly: "Only when this base has a saved view-list setting",
 							},
 						},
 						fontSize: {

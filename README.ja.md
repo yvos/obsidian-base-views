@@ -31,7 +31,7 @@ Obsidian BRAT プラグインを用いて導入してください。
 ### View 一覧
 
 - `.base` ファイルでビュー一覧をクリックしてビューを切り替えできます。
-- 配置（left / top / none）、フォントサイズ、アイコン表示、狭幅時挙動を設定できます。
+- 配置（left / top / none / formulaOnly）、フォントサイズ、アイコン表示、狭幅時挙動を設定できます。
 - ビューが複数ある `.base` ファイルでのみ有効になります。
 
 ### Table View (Custom)
@@ -56,7 +56,7 @@ Obsidian BRAT プラグインを用いて導入してください。
     - Enable Task List View (Custom)
 - Interface language（en / ja）
 - View list sidebar settings
-    - 配置、サイドペイン配置、フォントサイズ、説明表示、アイコン表示
+    - 配置（left / top / none / formulaOnly）、サイドペイン配置（left / top / none / formulaOnly）、フォントサイズ、説明表示、アイコン表示
     - Top overflow（wrap / scroll）
     - 狭幅時挙動、しきい値、ネイティブツールバーの表示制御
 - Custom views settings

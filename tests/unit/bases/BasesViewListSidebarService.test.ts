@@ -1213,6 +1213,199 @@ describe("BasesViewListSidebarService", () => {
 		expect(setup.rootEl.classList.contains("bv-bases-native-toolbar-hidden")).toBe(false);
 	});
 
+	it("treats formulaOnly as hidden when no main-pane formula exists", async () => {
+		plugin.settings.basesViewListPlacement = "formulaOnly";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).not.toBeNull();
+	});
+
+	it("shows left layout when main-pane formula exists under formulaOnly", async () => {
+		plugin.settings.basesViewListPlacement = "formulaOnly";
+		vaultCachedRead.mockResolvedValue(
+			[
+				"formulas:",
+				"  bvViewListPosition: left",
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).toBeNull();
+	});
+
+	it("stays hidden when main-pane formula is none under formulaOnly", async () => {
+		plugin.settings.basesViewListPlacement = "formulaOnly";
+		vaultCachedRead.mockResolvedValue(
+			[
+				"formulas:",
+				"  bvViewListPosition: none",
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).not.toBeNull();
+	});
+
+	it("hides side-pane list when only main-pane formula exists under side formulaOnly", async () => {
+		plugin.settings.basesViewListPlacement = "left";
+		plugin.settings.basesViewListSidePanePlacement = "formulaOnly";
+		vaultCachedRead.mockResolvedValue(
+			[
+				"formulas:",
+				"  bvViewListPosition: left",
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			sidePane: true,
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).not.toBeNull();
+	});
+
+	it("shows top layout when side-pane formula exists under side formulaOnly", async () => {
+		plugin.settings.basesViewListPlacement = "left";
+		plugin.settings.basesViewListSidePanePlacement = "formulaOnly";
+		vaultCachedRead.mockResolvedValue(
+			[
+				"formulas:",
+				"  bvViewListSidePanePosition: top",
+				"views:",
+				"  - type: table",
+				"    name: Table",
+				"  - type: cards",
+				"    name: Cards",
+			].join("\n")
+		);
+		const setup = createBaseLeaf({
+			sidePane: true,
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-top-layout")).not.toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-open-trigger")).toBeNull();
+	});
+
+	it("opens list temporarily from trigger when formulaOnly is hidden", async () => {
+		plugin.settings.basesViewListPlacement = "formulaOnly";
+		const setup = createBaseLeaf({
+			controller: {
+				query: {
+					views: [
+						{ name: "Table", type: "table" },
+						{ name: "Cards", type: "cards" },
+					],
+				},
+			},
+		});
+		mountedRoots.push(setup.hostEl);
+		workspace.leaves = [setup.leaf];
+
+		service.start();
+		await flushTimersAndPromises();
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).toBeNull();
+		const triggerButton = setup.rootEl.querySelector<HTMLButtonElement>(
+			".bv-bases-view-list-open-trigger button"
+		);
+		expect(triggerButton).not.toBeNull();
+
+		triggerButton?.click();
+		await flushTimersAndPromises(3);
+
+		expect(setup.rootEl.querySelector(".bv-bases-view-list-layout")).not.toBeNull();
+	});
+
 	it("shows toolbar open trigger when placement is none and opens list on click", async () => {
 		plugin.settings.basesViewListPlacement = "none";
 		const setup = createBaseLeaf({

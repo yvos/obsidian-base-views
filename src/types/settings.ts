@@ -50,8 +50,8 @@ export interface BaseViewsSettings {
 	customTableShowGroupingPropertyName: boolean; // Show grouped headers as "property: value" in Custom Table view
 	enableBasesViewListSidebar: boolean; // Show Base view list sidebar for .base files
 
-	basesViewListPlacement: "left" | "top" | "none"; // Default placement for main pane
-	basesViewListSidePanePlacement: "left" | "top" | "none"; // Default placement for side pane
+	basesViewListPlacement: "left" | "top" | "none" | "formulaOnly"; // Default placement for main pane
+	basesViewListSidePanePlacement: "left" | "top" | "none" | "formulaOnly"; // Default placement for side pane
 	basesViewListFontSize: "m" | "s" | "xs"; // Font size for view rows
 	basesViewListShowProperty: boolean; // Show description text under view name
 	basesViewListHideNativeToolbar: boolean; // Hide/show native Bases header+toolbar when list is visible
