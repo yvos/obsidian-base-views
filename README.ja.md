@@ -2,13 +2,15 @@
 
 Base Views は、Obsidian の `.base` ファイル向けにビュー操作を強化する実験的プラグインです。
 
+![Base Views plugin screenshot](assets/readme/BaseViewScreenshot.png)
+
 ## 主な機能
 
 ※本プラグインは TaskNotes プラグインの fork をベースにしています。以下の`Table View (Custom)` と `Task List View (Custom)` は、TaskNotes の Bases カスタムビュー（Task List View）をベースに拡張しています。
 
 - `.base` ファイルの Viewを常に一覧表示（View一覧。Base Viewsのプラグイン名はこれを表しているつもりです）
-- `Table View (Custom)` Basesオリジナルのテーブルビューに、複数の値を持つプロパティでGroupingした際、それぞれの値のグループにファイルが表示される機能を追加したもの。また、TaskNotesプラグインのカスタムビューTask List Viewの機能である、2段階のグルーピングを移植しています。
-- `Task List View (Custom)` TaskNotes プラグインのカスタムビュー Task List Viewに、同じく複数の値を持つプロパティでGroupingした際のunnest機能を追加したもの。
+- `Table View (Custom)` Basesオリジナルのテーブルビューを模したものに、複数の値を持つプロパティでGroupingした際、それぞれの値のグループにファイルが表示される機能を追加したもの。また、TaskNotesプラグインのカスタムビューTask List Viewの機能である、2段階のグルーピングを移植しています。
+- `Task List View (Custom)` TaskNotes プラグインのカスタムビュー Task List Viewをベースに、同じく複数の値を持つプロパティでGroupingした際のunnest機能を追加したもの。
 
 ## 注意事項
 
@@ -28,6 +30,8 @@ Obsidian BRAT プラグインを用いて導入してください。
 
 ## 使い方
 
+設定画面の上部でこれら 3 つの機能を個別にオン/オフできます。使用しない機能はオフにすることをお勧めします。
+
 ### View 一覧
 
 - `.base` ファイルでビュー一覧をクリックしてビューを切り替えできます。
@@ -37,6 +41,7 @@ Obsidian BRAT プラグインを用いて導入してください。
 ### Table View (Custom)
 
 - Bases のビュータイプとして `Table View (Custom)` を選択できます。BasesオリジナルのTable Viewの動作を模したものです。
+- 行の高さ（`Row height`）の設定、列のリサイズ、列のサマリー（`sum` / `avg` / `earliest` など）をサポートします。
 - リスト型のプロパティを元にGroup byを設定した場合、それぞれの項目に表示されます。
 - viewの設定から、2段階目のGroup byを設定できます(TaskNotesプラグインの機能です)
 - `Iconic` プラグインがある場合、ファイル名列にアイコンを表示できます（設定でON/OFF）。
@@ -51,6 +56,7 @@ Obsidian BRAT プラグインを用いて導入してください。
 ## 設定項目（概要）
 
 - Feature switches
+    - 各機能のオン/オフ切り替え
     - Enable view list sidebar
     - Enable Table View (Custom)
     - Enable Task List View (Custom)
@@ -97,7 +103,7 @@ View 一覧の表示位置（left / top / none）は、以下の 3 つの経路�
 
 ## クレジット
 
-- Based on TaskNotes: https://github.com/calluma/tasknotes
+- Based on TaskNotes: https://github.com/callumalpass/tasknotes
 - このプラグインには、TaskNotes をベースにした改変コードが含まれます。
 
 ## ライセンス

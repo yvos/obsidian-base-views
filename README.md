@@ -11,15 +11,15 @@ Base Views is an experimental plugin that enhances view operations for Obsidian 
 This plugin is based on a fork of TaskNotes. `Table View (Custom)` and `Task List View (Custom)` extend TaskNotes' Bases custom view (Task List View).
 
 - Always show a view list for `.base` files (this is what the plugin name "Base Views" is intended to represent).
-- `Table View (Custom)`: extends the original Bases table view by adding unnest behavior for grouping on multi-value properties, and also ports TaskNotes' two-level grouping feature.
-- `Task List View (Custom)`: extends TaskNotes' Task List custom view with the same unnest behavior for grouping on multi-value properties.
+- `Table View (Custom)`: a view modeled after the original Bases table view, with added unnest behavior for grouping on multi-value properties and TaskNotes' two-level grouping feature ported in.
+- `Task List View (Custom)`: based on TaskNotes' Task List custom view, with added unnest behavior for grouping on multi-value properties.
 
 ## Notes
 
-- This is an experimental plugin. Behavior and settings may change in the future, and compatibility may break due to Obsidian-side changes.
+- This is an experimental plugin. Bugs may remain. Behavior and settings may change in the future, and compatibility may break due to Obsidian-side changes.
 - It depends on Obsidian's Bases feature.
 - `Task List View (Custom)` is fully functional only when the TaskNotes plugin is installed and enabled. If you do not use TaskNotes, turning off `Task List View (Custom)` in settings is recommended.
-- When you change per-base settings from the view list, some values are written into the base file's `formulas`. Also, if you set a per-view description, it is written as a `description` property in each view section (a property outside official Bases specs).
+- When you change per-base settings from the view list, some values are written into the base file's `formulas`. Also, if you set a per-view description or color, they are written as `description` / `bg-color` properties in each view section (properties outside official Bases specs).
 
 ## Installation (Obsidian BRAT)
 
@@ -38,7 +38,14 @@ At the top of settings, you can toggle these three features. Turn off any featur
 
 - In `.base` files, click items in the view list to switch views.
 - You can configure placement (`left` / `top` / `none` / `formulaOnly`), font size, icon visibility, and narrow-width behavior.
-- This is especially useful for `.base` files with multiple views.
+- This is only active for `.base` files with multiple views.
+
+### Table View (Custom)
+
+- You can select `Table View (Custom)` as a Bases view type. This is modeled after the original Bases Table View behavior.
+- You can configure row height (`Row height`), sub-grouping, and unnest.
+- Supports column resizing, column summaries (`sum` / `avg` / `earliest`, etc.), and grouped display.
+- If the `Iconic` plugin is installed, icons can be shown in the file name column (toggleable in settings).
 
 ### Task List View (Custom)
 
@@ -46,13 +53,6 @@ At the top of settings, you can toggle these three features. Turn off any featur
 - You can configure `Sub-group by` and `Unnest multi-value groups`.
 - If TaskNotes runtime is available, editing actions are enabled.
 - If TaskNotes runtime is unavailable, it is rendered as read-only.
-
-### Table View (Custom)
-
-- You can select `Table View (Custom)` as a Bases view type.
-- You can configure row height (`Row height`), sub-grouping, and unnest.
-- Supports column resizing, column summaries (`sum` / `avg` / `earliest`, etc.), and grouped display.
-- If the `Iconic` plugin is installed, icons can be shown in the file name column (toggleable in settings).
 
 ## Settings (overview)
 
@@ -100,10 +100,11 @@ When multiple settings exist, the priority is: **temporary setting → per-base 
 - Base Views features (view list display, custom view rendering, settings persistence) are designed to run locally in your Obsidian vault.
 - Base Views itself does not collect, transmit, or use telemetry for user data.
 - However, if you use TaskNotes runtime integration in `Task List View (Custom)`, behavior of TaskNotes-enabled features follows TaskNotes policies.
+- For details, see [PRIVACY.md](PRIVACY.md) (scope to be clarified in a future update).
 
 ## Credits
 
-- Based on TaskNotes: https://github.com/calluma/tasknotes
+- Based on TaskNotes: https://github.com/callumalpass/tasknotes
 - This plugin contains modified code based on TaskNotes.
 
 ## License
