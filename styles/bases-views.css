@@ -955,6 +955,15 @@ button.bv-bases-view-list__item-menu {
     cursor: var(--cursor-link, pointer);
 }
 
+.bv-tasknotesCustomTable.bv-bases-table-style-native .metadata-input.mod-date {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    outline: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
 .bv-tasknotesCustomTable .bv-bases-table-file-link-wrap {
     display: inline-flex;
     align-items: center;
