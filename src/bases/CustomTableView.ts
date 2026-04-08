@@ -50,17 +50,20 @@ import {
 } from "./viewColorUtils";
 
 // Custom Tableの行高設定で利用する選択肢を表す。
-type RowHeightOption = "veryShort" | "short" | "medium" | "tall" | "extraTall";
+type RowHeightOption = "auto" | "veryShort" | "short" | "medium" | "tall" | "extraTall";
+type TableStyleOption = "custom" | "native";
 // Custom Tableの仮想化モード状態を表す。
 type VirtualMode = "none" | "ungrouped" | "grouped";
 
 const VALID_ROW_HEIGHTS: RowHeightOption[] = [
+	"auto",
 	"veryShort",
 	"short",
 	"medium",
 	"tall",
 	"extraTall",
 ];
+const VALID_TABLE_STYLES: TableStyleOption[] = ["custom", "native"];
 const LUCIDE_PREFIX = "lucide-";
 
 // Custom Table描画で扱う最小限のentry参照型を表す。
@@ -143,6 +146,7 @@ export class CustomTableView extends BasesViewBase {
 
 	private tableScrollEl: HTMLElement | null = null;
 	private rowHeight: RowHeightOption = "medium";
+	private tableStyle: TableStyleOption = "custom";
 	private tableSummaries: Record<string, TableSummaryKey> = {};
 	private columnSize: ColumnSizeMap = {};
 	private configLoaded = false;
@@ -258,6 +262,7 @@ export class CustomTableView extends BasesViewBase {
 			const order = JSON.stringify(this.config?.getOrder?.() ?? []);
 			const sort = JSON.stringify(this.config?.getSort?.() ?? []);
 			const rowHeight = String(this.config?.get?.("rowHeight") ?? "medium");
+			const tableStyle = String(this.config?.get?.("tableStyle") ?? "custom");
 			const summaries = JSON.stringify(this.config?.get?.("tableSummaries") ?? {});
 			const columnSize = JSON.stringify(this.config?.get?.("columnSize") ?? {});
 			const subGroup = String(this.config?.getAsPropertyId?.("subGroup") ?? "");
@@ -271,7 +276,7 @@ export class CustomTableView extends BasesViewBase {
 				this.plugin.settings?.customTableShowGroupingPropertyName ?? false
 			);
 			const activeViewName = this.getCurrentControllerViewName() ?? "";
-			return `${order}|${sort}|${rowHeight}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}|${iconic}|${showGroupProperty}|${activeViewName}`;
+			return `${order}|${sort}|${rowHeight}|${tableStyle}|${summaries}|${columnSize}|${subGroup}|${unnest}|${primaryGroupBy}|${primaryGroupDirection}|${grouped}|${iconic}|${showGroupProperty}|${activeViewName}`;
 		} catch {
 			return "";
 		}
@@ -452,6 +457,16 @@ export class CustomTableView extends BasesViewBase {
 				this.rowHeight = "medium";
 			}
 
+			const tableStyleValue = this.config.get("tableStyle");
+			if (
+				typeof tableStyleValue === "string" &&
+				VALID_TABLE_STYLES.includes(tableStyleValue as TableStyleOption)
+			) {
+				this.tableStyle = tableStyleValue as TableStyleOption;
+			} else {
+				this.tableStyle = "custom";
+			}
+
 			const summariesValue = this.config.get("tableSummaries");
 			if (summariesValue && typeof summariesValue === "object") {
 				const next: Record<string, TableSummaryKey> = {};
@@ -487,6 +502,7 @@ export class CustomTableView extends BasesViewBase {
 		} catch (error) {
 			console.warn("[BaseViews][CustomTableView] Failed to read view options:", error);
 			this.rowHeight = "medium";
+			this.tableStyle = "custom";
 			this.tableSummaries = {};
 			this.columnSize = {};
 			this.subGroupPropertyId = null;
@@ -502,6 +518,14 @@ export class CustomTableView extends BasesViewBase {
 			this.rootElement.classList.remove(`bv-bases-table-row-height-${option}`);
 		}
 		this.rootElement.classList.add(`bv-bases-table-row-height-${this.rowHeight}`);
+	}
+
+	private applyTableStyleClass(): void {
+		if (!this.rootElement) return;
+		for (const option of VALID_TABLE_STYLES) {
+			this.rootElement.classList.remove(`bv-bases-table-style-${option}`);
+		}
+		this.rootElement.classList.add(`bv-bases-table-style-${this.tableStyle}`);
 	}
 
 	private getVisibleColumns(): string[] {
@@ -531,6 +555,7 @@ export class CustomTableView extends BasesViewBase {
 
 		await this.applyActiveViewBgColor();
 		this.applyRowHeightClass();
+		this.applyTableStyleClass();
 		this.resetRowNavigationState();
 
 		const columns = this.getVisibleColumns();
@@ -572,7 +597,7 @@ export class CustomTableView extends BasesViewBase {
 			const shouldVirtual = shouldUseGroupedVirtualization(
 				enhancedItems.length,
 				this.VIRTUAL_THRESHOLD_GROUPED
-			);
+			) && this.rowHeight !== "auto";
 
 			if (shouldVirtual) {
 				await this.renderNestedGroupedVirtual(enhancedItems, columns, allEntries);
@@ -593,7 +618,7 @@ export class CustomTableView extends BasesViewBase {
 		const shouldVirtual = shouldUseUngroupedVirtualization(
 			entries.length,
 			this.VIRTUAL_THRESHOLD_UNGROUPED
-		);
+		) && this.rowHeight !== "auto";
 
 		if (shouldVirtual) {
 			await this.renderUngroupedVirtual(entries, columns);
@@ -2053,10 +2078,11 @@ export class CustomTableView extends BasesViewBase {
 			}
 		}
 
-		const linkEl = this.containerEl.ownerDocument.createElement("a");
+		const linkEl = this.containerEl.ownerDocument.createElement("span");
 		linkEl.className = "bv-bases-table-file-link internal-link";
 		linkEl.setText(fileName);
-		linkEl.href = "#";
+		linkEl.setAttribute("role", "link");
+		linkEl.tabIndex = 0;
 		linkEl.setAttribute("data-href", filePath);
 
 		linkEl.addEventListener("click", (evt) => {
@@ -2071,6 +2097,13 @@ export class CustomTableView extends BasesViewBase {
 			evt.preventDefault();
 			evt.stopPropagation();
 			void (this.app || this.plugin.app).workspace.openLinkText(filePath, "", true);
+		});
+
+		linkEl.addEventListener("keydown", (evt) => {
+			if (evt.key !== "Enter" && evt.key !== " ") return;
+			evt.preventDefault();
+			const modEvent = evt.metaKey || evt.ctrlKey;
+			void (this.app || this.plugin.app).workspace.openLinkText(filePath, "", modEvent);
 		});
 
 		linkEl.addEventListener("contextmenu", (evt) => {
@@ -2378,6 +2411,3 @@ export function buildCustomTableViewFactory(plugin: BaseViewsPlugin) {
 		return new CustomTableView(controller, containerEl, plugin);
 	};
 }
-
-
-

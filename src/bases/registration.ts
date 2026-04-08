@@ -15,6 +15,20 @@ const SUB_GROUP_FILE_PROPERTIES = new Set([
 	"file.tags",
 ]);
 
+const ROW_HEIGHT_OPTIONS: Record<string, string> = {
+	auto: "Auto",
+	veryShort: "Very short",
+	short: "Short",
+	medium: "Medium",
+	tall: "Tall",
+	extraTall: "Extra tall",
+};
+
+const TABLE_STYLE_OPTIONS: Record<string, string> = {
+	custom: "Custom",
+	native: "Match native table",
+};
+
 function isSubGroupProperty(prop: string): boolean {
 	return (
 		prop.startsWith("note.") ||
@@ -85,13 +99,14 @@ export async function registerBasesTaskList(plugin: BaseViewsPlugin): Promise<vo
 							key: "rowHeight",
 							displayName: "Row height",
 							default: "medium",
-							options: {
-								veryShort: "Very short",
-								short: "Short",
-								medium: "Medium",
-								tall: "Tall",
-								extraTall: "Extra tall",
-							},
+							options: ROW_HEIGHT_OPTIONS,
+						},
+						{
+							type: "dropdown",
+							key: "tableStyle",
+							displayName: "Style",
+							default: "custom",
+							options: TABLE_STYLE_OPTIONS,
 						},
 					],
 				});
@@ -146,4 +161,3 @@ export function unregisterBasesViews(plugin: BaseViewsPlugin): void {
 		console.error("[BaseViews][Bases] Error during view unregistration:", error);
 	}
 }
-

@@ -952,6 +952,7 @@ button.bv-bases-view-list__item-menu {
     font-size: var(--bv-bases-table-body-font-size);
     max-width: 100%;
     min-width: 0;
+    cursor: var(--cursor-link, pointer);
 }
 
 .bv-tasknotesCustomTable .bv-bases-table-file-link-wrap {
@@ -1094,6 +1095,114 @@ button.bv-bases-view-list__item-menu {
 }
 
 /* Row height options */
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto {
+    --tn-bases-row-height: auto;
+    --tn-bases-row-line-clamp: unset;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto .bv-bases-custom-table .bv-bases-table-row,
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto .bv-bases-table-cell,
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto .bv-bases-custom-table .bv-bases-table-cell {
+    height: auto;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto .bv-bases-table-cell {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    vertical-align: top;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto .bv-bases-table-text-value,
+.bv-tasknotesCustomTable.bv-bases-table-row-height-auto .bv-bases-table-file-link {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+/* Native-like styling option */
+.bv-tasknotesCustomTable.bv-bases-table-style-native {
+    --bv-bases-table-body-font-size: 14px;
+    --bv-bases-table-header-font-size: 14px;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-scroll {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-wrapper {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-custom-table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native.bv-custom-view-has-bg .bv-bases-table-scroll {
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-header-cell {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 21px;
+    color: var(--text-muted);
+    background: transparent;
+    border-bottom: 1px solid var(--background-modifier-border);
+    border-inline-end: 0;
+    padding: 0 4px;
+    height: 30px;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-header-label,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-header-text {
+    gap: 0;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 21px;
+    color: var(--text-muted);
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-cell {
+    font-size: 14px;
+    line-height: 21px;
+    background: transparent;
+    border-bottom: 1px solid var(--background-modifier-border);
+    border-inline-end: 0;
+    padding: 0 4px;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-cell > * {
+    padding: 0;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-file-link-wrap,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-file-link,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-text-value {
+    font-size: 14px;
+    line-height: 21px;
+    white-space: normal;
+    text-overflow: unset;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-row:hover .bv-bases-table-cell,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-row--jump-target > .bv-bases-table-cell,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-row--jump-target .bv-bases-table-cell {
+    background: transparent;
+}
+
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-header-cell:last-child,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-cell:last-child,
+.bv-tasknotesCustomTable.bv-bases-table-style-native .bv-bases-table-summary-cell:last-child {
+    border-inline-end: 0;
+}
+
 .bv-tasknotesCustomTable.bv-bases-table-row-height-veryShort {
     --tn-bases-row-height: 22px;
     --tn-bases-row-line-clamp: 1;
@@ -1148,5 +1257,3 @@ button.bv-bases-view-list__item-menu {
         padding: var(--tn-spacing-sm) 0 var(--tn-spacing-xs);
     }
 }
-
-
