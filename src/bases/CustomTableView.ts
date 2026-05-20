@@ -38,6 +38,7 @@ import {
 	type DuplicateNavigationIndex,
 } from "./customTableDuplicateNavigation";
 import { formatGroupTitleWithProperty } from "./customTableDisplayUtils";
+import { getStaticDateDisplayValue } from "./customTableValueDisplay";
 import { resolveIconicFileIcon } from "../integrations/iconic/iconicFileIconResolver";
 import { BaseViewListYamlStore } from "./BaseViewListYamlStore";
 import {
@@ -2031,7 +2032,7 @@ export class CustomTableView extends BasesViewBase {
 			return;
 		}
 
-		this.renderValue(cellEl, value);
+		this.renderValue(cellEl, value, propertyId);
 	}
 
 	private safeGetValue(entry: EntryLike, propertyId: string): any {
@@ -2317,11 +2318,17 @@ export class CustomTableView extends BasesViewBase {
 		return /^[a-z0-9-]+$/i.test(trimmed) ? trimmed : null;
 	}
 
-	private renderValue(cellEl: HTMLElement, value: any): void {
+	private renderValue(cellEl: HTMLElement, value: any, propertyId: string): void {
 		// 複数のUI要素生成とイベント接続をまとめて行い、表示初期化を安定させる。
 		if (value == null || (typeof value.isEmpty === "function" && value.isEmpty())) {
 			cellEl.classList.add("bv-bases-table-cell--empty");
 			cellEl.setText("");
+			return;
+		}
+
+		const staticDateValue = getStaticDateDisplayValue(propertyId, value);
+		if (staticDateValue != null) {
+			this.renderTextValue(cellEl, staticDateValue);
 			return;
 		}
 
@@ -2336,9 +2343,13 @@ export class CustomTableView extends BasesViewBase {
 			}
 		}
 
+		this.renderTextValue(cellEl, this.valueToString(value));
+	}
+
+	private renderTextValue(cellEl: HTMLElement, text: string): void {
 		const textEl = this.containerEl.ownerDocument.createElement("span");
 		textEl.className = "bv-bases-table-text-value";
-		textEl.setText(this.valueToString(value));
+		textEl.setText(text);
 		cellEl.appendChild(textEl);
 	}
 
